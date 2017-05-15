@@ -121,6 +121,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
     /* The MasInstance reference is used to update persistent (over a connection) version counters*/
     private final BluetoothMapMasInstance mMasInstance;
     private String mMessageVersion = BluetoothMapUtils.MAP_V10_STR;
+    private final boolean EMAIL_ATTACHMENT_IMPLEMENTED = false;
 
     private int mRemoteFeatureMask = BluetoothMapUtils.MAP_FEATURE_DEFAULT_BITMASK;
     private int mMsgListingVersion = BluetoothMapUtils.MAP_MESSAGE_LISTING_FORMAT_V10;
@@ -1027,13 +1028,20 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                 BluetoothMapEmailContract.buildMailboxUri(mAccount.getProviderAuthority());
         long accountId = mAccount.getAccountId();
         String where = BluetoothMapEmailContract.MailBoxColumns.ACCOUNT_KEY + "=" + accountId;
-        if(parentFolder.getFolderId() == -1) {
+        // Fix subFolder listing for mandatory folders added with folderId "-1".
+        if (parentFolder.getName().equals("msg") && parentFolder.getFolderId() == -1) {
+            //Fetch initial folders list, duplicate entries for name is already handled.
             where += " AND (" + BluetoothMapEmailContract.MailBoxColumns.PARENT_KEY +
                     " = " + parentFolder.getFolderId() + " OR "+
                     BluetoothMapEmailContract.MailBoxColumns.PARENT_SERVER_ID + " ISNULL )";
-         } else {
+         } else if (parentFolder.getFolderId() != -1) {
+           //Fetch subfolders
            where += " AND " + BluetoothMapEmailContract.MailBoxColumns.PARENT_KEY +
                     " = " + parentFolder.getFolderId();
+         } else {
+             if(V) Log.w(TAG,"Not a valid parentFolderId to fetch subFolders" +
+                     parentFolder.getName());
+             return;
          }
          if (V) Log.v(TAG, "addEmailFolders(): parentFolder: "+ parentFolder.getName() +
             "accountId: " + accountId+ " where: " + where);
@@ -1712,7 +1720,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                     message.setEmailBody(emailBody);
                     //Parts
                     Long partId = c.getLong(c.getColumnIndex(BaseColumns._ID));
-                    String contentType = "Content-Type: text/plain; charset=\"UTF-8\"";
+                    String contentType = " text/plain; charset=\"UTF-8\"";
                     String name = null;//c.getString(c.getColumnIndex("displayName"));
                     String text = null;
 
@@ -1813,7 +1821,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                    // Set message type:
                    message.setType(TYPE.EMAIL);
                    message.setVersionString(mMessageVersion);
-                   message.setContentType("Content-Type: text/plain; charset=\"UTF-8\"");
+                   message.setContentType(" text/plain; charset=\"UTF-8\"");
                    message.setDate(c.getLong(c.getColumnIndex(BluetoothMapEmailContract
                        .ExtEmailMessageColumns.TIMESTAMP)));
                    message.setSubject(c.getString(c.getColumnIndex(BluetoothMapContract
@@ -1844,6 +1852,8 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                    // Set originator:
                    nameEmail = c.getString(c.getColumnIndex(BluetoothMapEmailContract
                           .ExtEmailMessageColumns.EMAIL_FROM_LIST));
+                   if (nameEmail == null)
+                       nameEmail = "";
                    tokens = Rfc822Tokenizer.tokenize(nameEmail);
                    if (tokens.length != 0) {
                        if(D) Log.d(TAG, "Originator count= " + tokens.length);
@@ -1860,11 +1870,13 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                } finally {
                    if(c != null) c.close();
                }
-               // Find out if we get attachments
-               //TODO: Attachment Support needs fetch from Attachment content Uri
-               // String attStr = (appParams.getAttachment() == 0) ?
-               //     "/" +  BluetoothMapContract.FILE_MSG_NO_ATTACHMENTS : "";
-               message.setIncludeAttachments(appParams.getAttachment() == 0 ? false : true);
+               /* Find out if we get attachments
+                * TODO: Attachment yet to be supported: Needs fetch from Attachment content Uri.
+                *        Hence, mark attachment support false always for now.
+                * String attStr = (appParams.getAttachment() == 0) ?
+                *     "/" +  BluetoothMapContract.FILE_MSG_NO_ATTACHMENTS : "";
+                */
+               message.setIncludeAttachments(EMAIL_ATTACHMENT_IMPLEMENTED);
 
                // The parts
                extractEmailParts(id, message);
