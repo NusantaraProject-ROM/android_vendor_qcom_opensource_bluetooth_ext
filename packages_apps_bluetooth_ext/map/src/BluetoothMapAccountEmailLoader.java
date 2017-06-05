@@ -92,12 +92,12 @@ public class BluetoothMapAccountEmailLoader extends BluetoothMapAccountLoader {
          * is available and supported from email and IM Apps */
         //groups = super.parsePackages(includeIcon);
         Log.d(TAG, "Groups SIZE: " + groups.size());
-        if(groups.size() == 0) {
+        if (groups.size() == 0) {
             /* Support ONLY account(s) configured from default or primary Email App,
             * accisible with "com.android.email.permission.ACCESS_PROVIDER",
             * similar to MAP email instance as on QCOM KK and L releas(es).*/
             Log.d(TAG,"Found 0 applications - Support legacy default or primary email Account");
-            if( mEmailContext != null ) {
+            if (mEmailContext != null ) {
                 /* Check if "com.android.email" is a Running Process*/
                 boolean isEmailAppStarted = false;
                 ActivityManager activityManager = (ActivityManager) mEmailContext
@@ -107,7 +107,7 @@ public class BluetoothMapAccountEmailLoader extends BluetoothMapAccountLoader {
                 if (appProcesses == null) {
                     return groups;
                 }
-                if(V) Log.v(TAG,"Running Process size: " + appProcesses.size());
+                if (V) Log.v(TAG,"Running Process size: " + appProcesses.size());
                 for (RunningAppProcessInfo appProcess : appProcesses) {
                     if (appProcess.processName.equals(DEFAULT_EMAIL_PROCESS_NAME)) {
                         isEmailAppStarted = true;
@@ -118,45 +118,48 @@ public class BluetoothMapAccountEmailLoader extends BluetoothMapAccountLoader {
                 /* MAS Email SDP is promoted only if Email App is running.
                  * However, register AppObserver for any value of 'isEmailAppStarted'
                  * to support the dynamic EMAIL SDP registration.  */
-                BluetoothMapAccountItem app = BluetoothMapAccountItem.create(
-                    "0",
-                    null,
-                    DEFAULT_EMAIL_PROCESS_NAME,
-                    BluetoothMapEmailContract.EMAIL_AUTHORITY,
-                    null ,
-                    BluetoothMapUtils.TYPE.EMAIL);
-                    if (app != null) {
-                        if (isEmailAppStarted) {
-                            ArrayList<BluetoothMapAccountItem> accounts = parseEmailAccounts(app);
-                            Log.d(TAG,"parseAccnts: " + accounts.size());
-                            // we do not want to list apps without accounts
-                            if(accounts.size() > 0)
-                            {   // we need to make sure that the "select all" checkbox
-                                // is checked if all accounts in the list are checked
-                                app.mIsChecked = true;
-                                for (BluetoothMapAccountItem acc: accounts)
+                BluetoothMapAccountItem app = null;
+                if (isEmailAppInstalled()) {
+                    app = BluetoothMapAccountItem.create(
+                        "0",
+                        null,
+                        DEFAULT_EMAIL_PROCESS_NAME,
+                        BluetoothMapEmailContract.EMAIL_AUTHORITY,
+                        null ,
+                        BluetoothMapUtils.TYPE.EMAIL);
+                }
+                if (app != null) {
+                    if (isEmailAppStarted) {
+                        ArrayList<BluetoothMapAccountItem> accounts = parseEmailAccounts(app);
+                        Log.d(TAG,"parseAccnts: " + accounts.size());
+                        // we do not want to list apps without accounts
+                        if(accounts.size() > 0)
+                        {   // we need to make sure that the "select all" checkbox
+                            // is checked if all accounts in the list are checked
+                            app.mIsChecked = true;
+                            for (BluetoothMapAccountItem acc: accounts)
+                            {
+                                if(!acc.mIsChecked)
                                 {
-                                    if(!acc.mIsChecked)
-                                    {
-                                        app.mIsChecked = false;
-                                        break;
-                                    }
+                                    app.mIsChecked = false;
+                                    break;
                                 }
-                                groups.put(app, accounts);
-                           } else {
-                               //Handle dynamic email account add configuration
-                               groups.put(app, null);
-                           }
-                       } else {
-                           //Handle Email App process start in run-time
-                           groups.put(app, null);
-                       }
-                   } else {
-                       Log.w(TAG,"mEmailContext Cannot Access DefaultEmail");
+                            }
+                            groups.put(app, accounts);
+                        } else {
+                            //Handle dynamic email account add configuration
+                            groups.put(app, null);
+                        }
+                    } else {
+                       //Handle Email App process start in run-time
+                       groups.put(app, null);
                    }
                 } else {
-                    Log.w(TAG,"mEmailContext NOT Assigned - NULL");
-               }
+                   Log.w(TAG,"mEmailContext Cannot Access DefaultEmail");
+                }
+            } else {
+                Log.w(TAG,"mEmailContext NOT Assigned - NULL");
+            }
         }
         return groups;
     }
@@ -286,5 +289,18 @@ public class BluetoothMapAccountEmailLoader extends BluetoothMapAccountLoader {
     public int getAccountsEnabledCount() {
         if(D)Log.d(TAG,"Enabled Accounts count:"+ mAccountsEnabledCount);
         return super.getAccountsEnabledCount() + mAccountsEnabledCount;
+    }
+
+    protected boolean isEmailAppInstalled() {
+        final PackageManager pm = mEmailContext.getPackageManager();
+        //get a list of installed apps.
+        List<ApplicationInfo> packages = pm.getInstalledApplications(
+                PackageManager.GET_META_DATA);
+        for (ApplicationInfo packageInfo : packages) {
+            if (packageInfo.packageName.equals("com.android.email"))
+                return true;
+        }
+        Log.d(TAG," Email app is not installed");
+        return false;
     }
 }
