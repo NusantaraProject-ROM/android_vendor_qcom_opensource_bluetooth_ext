@@ -1835,6 +1835,8 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                    // Set recipient:
                    String nameEmail = c.getString(c.getColumnIndex(BluetoothMapEmailContract
                            .ExtEmailMessageColumns.EMAIL_TO_LIST));
+                   if (nameEmail == null)
+                       nameEmail = "";
                    Rfc822Token tokens[] = Rfc822Tokenizer.tokenize(nameEmail);
                    if (tokens.length != 0) {
                        if(D) Log.d(TAG, "Recipient count= " + tokens.length);
