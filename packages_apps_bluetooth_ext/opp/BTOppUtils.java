@@ -152,11 +152,13 @@ public class BTOppUtils {
          * we have a batch and the file(s) are yet be sent in the row.
          */
         status = (mZeroLengthFile) ? BluetoothShare.STATUS_SUCCESS : status;
-        if (V) Log.d(TAG, " setZeroLengthFileStatus :" + mZeroLengthFile + " status :" + status);
+        if (D) Log.d(TAG, " setZeroLengthFileStatus :" + mZeroLengthFile + " status :" + status);
         return status ;
     }
 
     protected static void cleanFile(String fileName) {
+        if(fileName == null)
+            return;
         if(V) Log.v(TAG, "File to be deleted: " + fileName);
         File fileToDelete = new File(fileName);
         if (fileToDelete != null)
@@ -164,13 +166,13 @@ public class BTOppUtils {
     }
 
     protected static void cleanOnPowerOff(ContentResolver cr) {
-        String WHERE_INBOUND_INTERRUPTED_ON_POWER_OFF = BluetoothShare.DIRECTION + "="
-                + BluetoothShare.DIRECTION_INBOUND + " AND " + BluetoothShare.STATUS + "="
+        String WHERE_INTERRUPTED_ON_POWER_OFF = "( " + BluetoothShare.DIRECTION + "="
+                + BluetoothShare.DIRECTION_INBOUND + " OR "+BluetoothShare.DIRECTION + "="
+                + BluetoothShare.DIRECTION_OUTBOUND + " ) AND " + BluetoothShare.STATUS + "="
                 + BluetoothShare.STATUS_RUNNING;
 
         Cursor cursorToFile = cr.query(BluetoothShare.CONTENT_URI,
-                new String[] { BluetoothShare._DATA }, WHERE_INBOUND_INTERRUPTED_ON_POWER_OFF, null,
-                null);
+                new String[] { BluetoothShare._DATA }, WHERE_INTERRUPTED_ON_POWER_OFF, null, null);
 
         /*
          * remove the share and the respective file which was interrupted by
@@ -180,7 +182,7 @@ public class BTOppUtils {
             if (cursorToFile.moveToFirst()) {
                 cleanFile(cursorToFile.getString(0));
                 int delNum = cr.delete(BluetoothShare.CONTENT_URI,
-                        WHERE_INBOUND_INTERRUPTED_ON_POWER_OFF, null);
+                        WHERE_INTERRUPTED_ON_POWER_OFF, null);
                 if (V) Log.v(TAG, "Delete aborted inbound share, number = " + delNum);
             }
         }
