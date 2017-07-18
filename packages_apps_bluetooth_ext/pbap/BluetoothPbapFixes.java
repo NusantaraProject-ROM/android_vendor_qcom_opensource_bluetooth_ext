@@ -261,4 +261,20 @@ public class BluetoothPbapFixes {
                 BluetoothPbapFixes.SDP_PBAP_LEGACY_SUPPORTED_FEATURES);
         }
     }
+
+    /* To close Handler thread with looper */
+    protected static void closeHandler(BluetoothPbapService service) {
+        Handler mSessionStatusHandler = service.getHandler();
+        if (mSessionStatusHandler != null) {
+            //Perform cleanup in Handler running on worker Thread
+            mSessionStatusHandler.removeCallbacksAndMessages(null);
+            Looper looper = mSessionStatusHandler.getLooper();
+            if (looper != null) {
+                looper.quit();
+                Log.d(TAG, "Quit looper");
+            }
+            mSessionStatusHandler = null;
+            Log.d(TAG, "Removed Handler..");
+        }
+    }
 }
