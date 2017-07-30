@@ -55,9 +55,6 @@
 #include <hardware/bluetooth.h>
 #include <hardware/vendor.h>
 
-/* vendor  */
-extern btvendor_interface_t *btif_vendor_get_interface();
-
 /************************************************************************************
 **  Constants & Macros
 ************************************************************************************/
@@ -470,10 +467,10 @@ int HAL_load(void)
         }
     }
 
-    // Get Vendor Interface
-    if (sBtInterface && (btvendorInterface = (btvendor_interface_t *)sBtInterface->get_profile_interface(BT_PROFILE_VENDOR_ID)))
+    if (!sBtInterface ) {
+        printf("Error in loading bluetooth interface\n");
         return -1;
-
+    }
 
     return err;
 }
@@ -652,6 +649,12 @@ void bdt_init(void)
     printf("INIT BT \n");
     status = (bt_status_t)sBtInterface->init(&bt_callbacks);
     if (status == BT_STATUS_SUCCESS) {
+        // Get Vendor Interface
+        btvendorInterface = (btvendor_interface_t *)sBtInterface->get_profile_interface(BT_PROFILE_VENDOR_ID);
+        if (!btvendorInterface) {
+            printf("Error in loading vendor interface \n");
+            exit(0);
+        }
         status = (bt_status_t)sBtInterface->set_os_callouts(&callouts);
     }
     check_return_status(status);

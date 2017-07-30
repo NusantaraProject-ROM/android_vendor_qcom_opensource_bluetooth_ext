@@ -51,10 +51,6 @@
 #include "bt_target.h"
 #include "bt_testapp.h"
 
-/* vendor  */
-extern btvendor_interface_t *btif_vendor_get_interface();
-
-
 /************************************************************************************
 **  Constants & Macros
 ************************************************************************************/
@@ -531,8 +527,10 @@ int HAL_load(void)
     }
 
     // Get Vendor Interface
-    if (sBtInterface && (btvendorInterface = (btvendor_interface_t *)sBtInterface->get_profile_interface(BT_PROFILE_VENDOR_ID)))
+    if (!sBtInterface) {
+        bdt_log("Error in loading bluetooth interface\n");
         return -1;
+    }
 
     bdt_log("HAL library loaded (%s)", strerror(err));
 
@@ -731,6 +729,12 @@ void bdt_init(void)
     bdt_log("INIT BT ");
     status = (bt_status_t)sBtInterface->init(&bt_callbacks);
     if (status == BT_STATUS_SUCCESS) {
+        // Get Vendor Interface
+        btvendorInterface = (btvendor_interface_t *)sBtInterface->get_profile_interface(BT_PROFILE_VENDOR_ID);
+        if (!btvendorInterface) {
+            bdt_log("Error in loading vendor interface ");
+            exit(0);
+        }
         status = (bt_status_t)sBtInterface->set_os_callouts(&callouts);
     }
     check_return_status(status);
