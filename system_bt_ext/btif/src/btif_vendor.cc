@@ -103,6 +103,12 @@ static void bredrcleanup(void)
                           NULL, 0, NULL);
 }
 
+static void set_wifi_state(bool status)
+{
+    LOG_INFO(LOG_TAG,"setWifiState :%d", status);
+    BTA_DmSetWifiState(status);
+}
+
 static void cleanup(void)
 {
     LOG_INFO(LOG_TAG,"cleanup");
@@ -150,6 +156,7 @@ static const btvendor_interface_t btvendorInterface = {
     NULL,
 #endif
     bredrcleanup,
+    set_wifi_state,
     cleanup,
 };
 

@@ -56,6 +56,9 @@ typedef struct {
     /** Does BREDR cleanup */
     void (*bredrcleanup)(void);
 
+    /** set wifi state */
+    void (*set_wifi_state)(bool);
+
     /** Closes the interface. */
     void  (*cleanup)( void );
 
