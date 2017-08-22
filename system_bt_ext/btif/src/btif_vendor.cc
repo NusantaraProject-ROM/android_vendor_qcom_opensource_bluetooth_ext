@@ -42,6 +42,7 @@
 #include "l2c_api.h"
 #include "stack_config.h"
 #include "btm_api.h"
+#include "profile_config.h"
 
 #if TEST_APP_INTERFACE == TRUE
 #include <bt_testapp.h>
@@ -109,6 +110,11 @@ static void set_wifi_state(bool status)
     BTA_DmSetWifiState(status);
 }
 
+static bool get_profile_info(profile_t profile, profile_info_t feature_name)
+{
+    LOG_INFO(LOG_TAG,"get_profile_info :%d", profile);
+    return profile_feature_fetch(profile,feature_name);
+}
 static void cleanup(void)
 {
     LOG_INFO(LOG_TAG,"cleanup");
@@ -157,6 +163,7 @@ static const btvendor_interface_t btvendorInterface = {
 #endif
     bredrcleanup,
     set_wifi_state,
+    get_profile_info,
     cleanup,
 };
 

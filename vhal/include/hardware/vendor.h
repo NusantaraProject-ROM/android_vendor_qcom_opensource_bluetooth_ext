@@ -26,6 +26,26 @@ __BEGIN_DECLS
 #define BT_PROFILE_VENDOR_ID "vendor"
 #define BT_PROFILE_WIPOWER_VENDOR_ID "wipower"
 
+// Profile related Enums & function
+typedef enum {
+  AVRCP_ID = 1,
+  PBAP_ID,
+  MAP_ID,
+  END_OF_PROFILE_LIST
+} profile_t;
+
+
+typedef enum {
+ VERSION = 1,
+ AVRCP_COVERART_SUPPORT,
+ AVRCP_0103_SUPPORT,
+ USE_SIM_SUPPORT,
+ MAP_EMAIL_SUPPORT,
+ PBAP_0102_SUPPORT,
+ END_OF_FEATURE_LIST
+ } profile_info_t;
+
+// Vendor Callbacks
 /** Callback when bredr cleanup is done.
  */
 typedef void (*  btvendor_bredr_cleanup_callback)(bool status);
@@ -58,6 +78,9 @@ typedef struct {
 
     /** set wifi state */
     void (*set_wifi_state)(bool);
+
+    /** get profile info */
+    bool (*get_profile_info)(profile_t, profile_info_t);
 
     /** Closes the interface. */
     void  (*cleanup)( void );

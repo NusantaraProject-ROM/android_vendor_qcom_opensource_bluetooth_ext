@@ -52,6 +52,8 @@ import com.android.bluetooth.pbap.BluetoothPbapVcardManager.VCardFilter;
 import com.android.bluetooth.R;
 import com.android.bluetooth.opp.BTOppUtils;
 import com.android.bluetooth.sdp.SdpManager;
+import com.android.bluetooth.btservice.AdapterService;
+import com.android.bluetooth.btservice.AbstractionLayer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -86,11 +88,14 @@ public class BluetoothPbapFixes {
 
     /* To get feature support from config file */
     protected static void getFeatureSupport(Context context) {
-        isSimSupported = context.getResources().getBoolean(R.bool.pbap_use_sim_support);
-        isSupportedPbap12 = context.getResources().getBoolean(R.bool.pbap_12_support);
-        if (DEBUG)
-            Log.d(TAG, "isSimSupported :" + isSimSupported + " Pbap 1.2 support: "
-                    + isSupportedPbap12);
+
+        AdapterService adapterService = AdapterService.getAdapterService();
+        if (adapterService != null) {
+            isSupportedPbap12 = adapterService.getProfileInfo(AbstractionLayer.PBAP, AbstractionLayer.PBAP_0102_SUPPORT);
+            isSimSupported = adapterService.getProfileInfo(AbstractionLayer.PBAP, AbstractionLayer.USE_SIM_SUPPORT);
+            if (DEBUG) Log.d(TAG, "isSupportedPbap12: " + isSupportedPbap12);
+            if (DEBUG) Log.d(TAG, "isSimSupported: " + isSimSupported);
+        }
     }
 
     /* To sort name list obtained when search attribute is number*/

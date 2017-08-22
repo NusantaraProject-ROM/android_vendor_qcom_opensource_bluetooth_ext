@@ -14,6 +14,7 @@ cc_library_static {
         "system/bt/utils/include/",
         "system/bt/stack/l2cap/",
         "vendor/qcom/opensource/bluetooth_ext/system_bt_ext/include/",
+        "vendor/qcom/opensource/bluetooth_ext/system_bt_ext/device/include/",
         "vendor/qcom/opensource/bluetooth_ext/vhal/include/",
     ],
     srcs: [
