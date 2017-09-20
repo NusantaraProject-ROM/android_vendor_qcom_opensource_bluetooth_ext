@@ -60,6 +60,8 @@ public class BTOppUtils {
 
     protected static boolean isA2DPPlaying;
 
+    public static boolean isA2DPConnected;
+
     private static WakeLock mWakeLock;
 
     protected static boolean isScreenOff = false;
@@ -195,17 +197,31 @@ public class BTOppUtils {
         } else if (action.equals(Intent.ACTION_SCREEN_ON)) {
             isScreenOff = false;
         } else if (action.equals(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)) {
+            int newState = intent.getIntExtra(BluetoothProfile.EXTRA_STATE,
+                    BluetoothProfile.STATE_DISCONNECTED);
+            BluetoothDevice device = intent.getParcelableExtra(
+                    BluetoothDevice.EXTRA_DEVICE);
+            if (device == null) {
+                Log.i(TAG, "Device is NULL");
+                return;
+            }
             isA2DPPlaying = false;
+            isA2DPConnected = (newState == BluetoothProfile.STATE_CONNECTED) ?
+                    true : false;
+            if (D) Log.d(TAG, "device: " + device + " newState: " + newState +
+                    " isA2DPConnected: " + isA2DPConnected);
+
         } else if (action.equals(BluetoothA2dp.ACTION_PLAYING_STATE_CHANGED)) {
             int newState = intent.getIntExtra(BluetoothProfile.EXTRA_STATE,
                     BluetoothA2dp.STATE_NOT_PLAYING);
             BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-            if (V) Log.v(TAG, "device: " + device + " newState: " + newState);
+            if (D) Log.d(TAG, "device: " + device + " newState: " + newState);
             if (device == null) {
+                Log.i(TAG, "Device is NULL");
                 return;
             }
             isA2DPPlaying = (newState == BluetoothA2dp.STATE_PLAYING) ? true : false;
-            if (V) Log.v(TAG, " isA2DPPlaying :" + isA2DPPlaying);
+            if (D) Log.d(TAG, " isA2DPPlaying :" + isA2DPPlaying);
         }
     }
 
