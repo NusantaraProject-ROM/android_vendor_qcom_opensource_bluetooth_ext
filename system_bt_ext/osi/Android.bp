@@ -1,0 +1,27 @@
+// libbtif_ext static library for target
+// ========================================================
+cc_library_static {
+    name: "libosi_ext",
+    defaults: ["fluoride_defaults"],
+    include_dirs: [
+        "system/bt",
+        "system/bt/include",
+        "system/bt/stack/include",
+        "system/bt/btif/include",
+        "system/bt/utils/include/",
+        "vendor/qcom/opensource/bluetooth_ext/system_bt_ext/include/",
+    ],
+    srcs: [
+        "src/vnd_log.cc",
+    ],
+    shared_libs: [
+        "libcutils",
+        "libutils",
+        "libhardware",
+    ],
+    static_libs: [
+        "libosi",
+        "libbt-utils",
+    ],
+    cflags: ["-DBUILDCFG"],
+}
