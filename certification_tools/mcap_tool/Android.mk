@@ -20,7 +20,7 @@ LOCAL_CFLAGS += -DHAS_NO_BDROID_BUILDCFG
 LOCAL_MODULE_PATH := $(TARGET_OUT_EXECUTABLES)
 LOCAL_MODULE_TAGS := debug optional
 
-LOCAL_MODULE:= mcap_tool
+LOCAL_MODULE:= mcap_tool_qti
 
 LOCAL_SHARED_LIBRARIES += libcutils   \
                           libutils    \
