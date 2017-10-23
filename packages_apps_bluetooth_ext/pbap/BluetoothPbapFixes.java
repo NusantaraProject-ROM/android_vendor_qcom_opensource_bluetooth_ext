@@ -284,15 +284,14 @@ public class BluetoothPbapFixes {
 
     protected static void updateMtu(ServerSession serverSession, boolean isSrmSupported,
             int rfcommMaxMTU) {
-        String offload_cap = SystemProperties.get("persist.bt.a2dp_offload_cap");
-        if (DEBUG) Log.d(TAG, "offload_cap :" + offload_cap + " isSrmSupported :" +
+        String offloadSupported = SystemProperties.get("persist.vendor.bt.enable.splita2dp");
+        if (DEBUG) Log.d(TAG, "offloadSupported :" + offloadSupported + " isSrmSupported :" +
                 isSrmSupported + " isA2DPConnected :" + BTOppUtils.isA2DPConnected +
                 " rfcommMaxMTU :" + rfcommMaxMTU);
-        if (offload_cap.isEmpty() || "false".equals(offload_cap)) {
-            offload_cap = null;
-        } else if (offload_cap != null && !isSrmSupported && BTOppUtils.isA2DPConnected
-                && rfcommMaxMTU > 0) {
-            serverSession.updateMTU(rfcommMaxMTU);
+        if (offloadSupported.isEmpty() || offloadSupported.equals("true")) {
+            if (!isSrmSupported && BTOppUtils.isA2DPConnected && rfcommMaxMTU > 0) {
+                serverSession.updateMTU(rfcommMaxMTU);
+            }
         }
     }
 }
