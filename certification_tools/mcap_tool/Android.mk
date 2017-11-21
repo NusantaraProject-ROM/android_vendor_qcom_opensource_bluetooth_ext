@@ -7,6 +7,7 @@ LOCAL_SRC_FILES:= mcap_tool.cpp
 LOCAL_C_INCLUDES += . \
     system/bt/stack/include \
     system/bt/include \
+    system/bt/internal_include \
     system/bt/stack/l2cap \
     system/bt/utils/include \
     system/bt \
