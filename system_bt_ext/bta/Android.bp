@@ -11,6 +11,7 @@ cc_library_static {
         "vendor/qcom/opensource/system/bt/stack/include",
         "vendor/qcom/opensource/system/bt/btif/include",
         "vendor/qcom/opensource/system/bt/bta/include/",
+        "vendor/qcom/opensource/system/bt/bta/ag/",
         "vendor/qcom/opensource/system/bt/bta/sys/",
         "vendor/qcom/opensource/system/bt/utils/include/",
         "vendor/qcom/opensource/system/bt/stack/l2cap/",
@@ -24,6 +25,8 @@ cc_library_static {
         "tws_plus/bta_tws_plus_act.cc",
         "tws_plus/bta_tws_plus_api.cc",
         "ba/bta_ba.cc",
+        "tws_plus/ag/bta_ag_twsp_dev.cc",
+        "tws_plus/ag/bta_ag_twsp_sco.cc",
     ],
     shared_libs: [
         "libcutils",
