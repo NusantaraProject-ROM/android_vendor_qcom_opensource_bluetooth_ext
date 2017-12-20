@@ -25,5 +25,8 @@ cc_library_static {
         "libosi_qti",
         "libbluetooth-types",
     ],
+    cflags: [
+        "-DHAS_NO_BDROID_BUILDCFG"
+    ],
 
 }
