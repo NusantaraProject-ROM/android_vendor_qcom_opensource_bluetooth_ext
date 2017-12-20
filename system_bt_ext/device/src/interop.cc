@@ -539,8 +539,7 @@ static bool interop_database_match_( interop_db_entry_t *entry,
           interop_name_entry_t *cur = &db_entry->entry_type.name_entry;
 
           if ((src->feature == cur->feature) &&
-              (strlen(src->name) == cur->length) &&
-              (strncasecmp(src->name, cur->name, cur->length) == 0)) {
+              (strcasestr(src->name, cur->name) != NULL)) {
             if (ret_entry) {
               *ret_entry = db_entry;
             }
