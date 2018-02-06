@@ -157,6 +157,7 @@ static void btif_vendor_bredr_cleanup_event(uint16_t event, char *p_param)
         if (i != BTA_BLE_SERVICE_ID && (service_mask &
               (tBTA_SERVICE_MASK)(BTA_SERVICE_ID_TO_SERVICE_MASK(i))))
         {
+            btif_reset_service(i);
             btif_in_execute_service_request(i, FALSE);
         }
     }
