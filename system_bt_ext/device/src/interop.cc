@@ -396,8 +396,17 @@ static void interop_database_add_( interop_db_entry_t *db_entry,
       {
         interop_feature_t feature =
               db_entry->entry_type.addr_entry.feature;
-        std::string addrstr = db_entry->entry_type.addr_entry.addr.ToString();
-        const char* bdstr = addrstr.c_str();
+        interop_addr_entry_t addr_entry =
+              db_entry->entry_type.addr_entry;
+        char bdstr[18] = {'\0'};
+        snprintf(bdstr, sizeof(bdstr), "%02x:%02x:%02x:%02x:%02x:%02x",
+                                            addr_entry.addr.address[0],
+                                            addr_entry.addr.address[1],
+                                            addr_entry.addr.address[2],
+                                            addr_entry.addr.address[3],
+                                            addr_entry.addr.address[4],
+                                            addr_entry.addr.address[5]);
+        bdstr[addr_entry.length*3-1] = {'\0'};
         interop_config_set_str(interop_feature_string_(feature),
                   bdstr, ADDR_BASED);
         interop_config_flush();
