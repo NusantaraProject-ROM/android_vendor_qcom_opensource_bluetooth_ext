@@ -2,17 +2,17 @@
 // ========================================================
 cc_library_static {
     name: "libbtif_ext",
-    defaults: ["fluoride_defaults"],
+    defaults: ["fluoride_defaults_qti"],
     include_dirs: [
-        "system/bt",
-        "system/bt/btcore/include",
-        "system/bt/hci/include",
-        "system/bt/include",
-        "system/bt/stack/include",
-        "system/bt/btif/include",
-        "system/bt/bta/include/",
-        "system/bt/utils/include/",
-        "system/bt/stack/l2cap/",
+        "vendor/qcom/opensource/system/bt",
+        "vendor/qcom/opensource/system/bt/btcore/include",
+        "vendor/qcom/opensource/system/bt/hci/include",
+        "vendor/qcom/opensource/system/bt/internal_include",
+        "vendor/qcom/opensource/system/bt/stack/include",
+        "vendor/qcom/opensource/system/bt/btif/include",
+        "vendor/qcom/opensource/system/bt/bta/include/",
+        "vendor/qcom/opensource/system/bt/utils/include/",
+        "vendor/qcom/opensource/system/bt/stack/l2cap/",
         "vendor/qcom/opensource/bluetooth_ext/system_bt_ext/include/",
         "vendor/qcom/opensource/bluetooth_ext/system_bt_ext/device/include/",
         "vendor/qcom/opensource/bluetooth_ext/vhal/include/",
@@ -25,12 +25,19 @@ cc_library_static {
     ],
     shared_libs: [
         "libcutils",
+        "libchrome",
+        "libbase",
         "libutils",
         "libhardware",
     ],
     static_libs: [
-        "libosi",
-        "libbt-utils",
+        "libosi_qti",
+        "libbt-utils_qti",
+        "libbluetooth-types",
     ],
-    cflags: ["-DBUILDCFG"],
+    cflags: [
+        "-DBUILDCFG",
+        "-DHAS_NO_BDROID_BUILDCFG",
+    ],
+
 }

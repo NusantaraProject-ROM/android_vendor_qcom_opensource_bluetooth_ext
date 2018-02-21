@@ -47,11 +47,11 @@ static bt_status_t L2cap_Init (tL2CAP_APPL_INFO *p);
 static bt_status_t L2cap_Register (uint16_t psm, bool ConnType, uint16_t SecLevel);
 static bt_status_t L2cap_DeRegister (uint16_t psm);
 static uint16_t L2cap_AllocatePSM(void);
-static uint16_t L2cap_Connect(uint16_t psm, bt_bdaddr_t *bd_addr);
-static bool L2cap_ConnectRsp(BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid,
+static uint16_t L2cap_Connect(uint16_t psm, RawAddress *bd_addr);
+static bool L2cap_ConnectRsp(RawAddress p_bd_addr, uint8_t id, uint16_t lcid,
                                         uint16_t result, uint16_t status);
-static uint16_t L2cap_ErtmConnect(uint16_t psm, BD_ADDR p_bd_addr, tL2CAP_ERTM_INFO *p_ertm_info);
-static bool  L2cap_ErtmConnectRsp (BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid,
+static uint16_t L2cap_ErtmConnect(uint16_t psm, RawAddress p_bd_addr, tL2CAP_ERTM_INFO *p_ertm_info);
+static bool  L2cap_ErtmConnectRsp (RawAddress p_bd_addr, uint8_t id, uint16_t lcid,
                                               uint16_t result, uint16_t status,
                                               tL2CAP_ERTM_INFO *p_ertm_info);
 static bool L2cap_ConfigReq(uint16_t cid, tL2CAP_CFG_INFO *p_cfg);
@@ -59,33 +59,33 @@ static bool L2cap_ConfigRsp(uint16_t cid, tL2CAP_CFG_INFO *p_cfg);
 static bool L2cap_DisconnectReq (uint16_t cid);
 static bool L2cap_DisconnectRsp (uint16_t cid);
 static uint8_t L2cap_DataWrite (uint16_t cid, char *p_data, uint32_t len);
-static bool L2cap_Ping (BD_ADDR p_bd_addr, tL2CA_ECHO_RSP_CB *p_cb);
-static bool  L2cap_Echo (BD_ADDR p_bd_addr, BT_HDR *p_data, tL2CA_ECHO_DATA_CB *p_callback);
+static bool L2cap_Ping (RawAddress p_bd_addr, tL2CA_ECHO_RSP_CB *p_cb);
+static bool  L2cap_Echo (RawAddress p_bd_addr, BT_HDR *p_data, tL2CA_ECHO_DATA_CB *p_callback);
 static bool L2cap_SetIdleTimeout (uint16_t cid, uint16_t timeout, bool is_global);
-static bool L2cap_SetIdleTimeoutByBdAddr(BD_ADDR bd_addr, uint16_t timeout);
+static bool L2cap_SetIdleTimeoutByBdAddr(RawAddress bd_addr, uint16_t timeout);
 static void L2cap_SetSecConnOnlyMode (bool secvalue);
 static uint8_t L2cap_SetDesireRole (uint8_t new_role);
-static uint16_t L2cap_LocalLoopbackReq (uint16_t psm, uint16_t handle, BD_ADDR p_bd_addr);
+static uint16_t L2cap_LocalLoopbackReq (uint16_t psm, uint16_t handle, RawAddress p_bd_addr);
 static uint16_t   L2cap_FlushChannel (uint16_t lcid, uint16_t num_to_flush);
-static bool L2cap_SetAclPriority (BD_ADDR bd_addr, uint8_t priority);
+static bool L2cap_SetAclPriority (RawAddress bd_addr, uint8_t priority);
 static bool L2cap_FlowControl (uint16_t cid, bool data_enabled);
 static bool L2cap_SendTestSFrame (uint16_t cid, bool rr_or_rej, uint8_t back_track);
 static bool L2cap_SetTxPriority (uint16_t cid, tL2CAP_CHNL_PRIORITY priority);
-static bool L2cap_RegForNoCPEvt(tL2CA_NOCP_CB *p_cb, BD_ADDR p_bda);
+static bool L2cap_RegForNoCPEvt(tL2CA_NOCP_CB *p_cb, RawAddress p_bda);
 static bool L2cap_SetChnlDataRate (uint16_t cid, tL2CAP_CHNL_DATA_RATE tx, tL2CAP_CHNL_DATA_RATE rx);
-static bool L2cap_SetFlushTimeout (BD_ADDR bd_addr, uint16_t flush_tout);
+static bool L2cap_SetFlushTimeout (RawAddress bd_addr, uint16_t flush_tout);
 static uint8_t L2cap_DataWriteEx (uint16_t cid, BT_HDR *p_data, uint16_t flags);
 static bool L2cap_SetChnlFlushability (uint16_t cid, bool is_flushable);
-static bool L2cap_GetPeerFeatures (BD_ADDR bd_addr, uint32_t *p_ext_feat, uint8_t *p_chnl_mask);
-static bool L2cap_GetBDAddrbyHandle (uint16_t handle, BD_ADDR bd_addr);
+static bool L2cap_GetPeerFeatures (RawAddress bd_addr, uint32_t *p_ext_feat, uint8_t *p_chnl_mask);
+static bool L2cap_GetBDAddrbyHandle (uint16_t handle, RawAddress bd_addr);
 static uint8_t L2cap_GetChnlFcrMode (uint16_t lcid);
-static uint16_t L2cap_SendFixedChnlData (uint16_t fixed_cid, BD_ADDR rem_bda, BT_HDR *p_buf);
+static uint16_t L2cap_SendFixedChnlData (uint16_t fixed_cid, RawAddress rem_bda, BT_HDR *p_buf);
 static bt_status_t L2cap_LE_Register (uint16_t le_psm, bool ConnType, uint16_t SecLevel, uint8_t enc_key_size);
 static bt_status_t L2cap_LE_DeRegister (uint16_t psm);
-static uint16_t L2cap_LE_Connect(uint16_t le_psm , BD_ADDR address, tL2CAP_LE_CFG_INFO *p_cfg);
-static bool L2cap_LE_ConnectRsp (BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result,
+static uint16_t L2cap_LE_Connect(uint16_t le_psm , RawAddress address, tL2CAP_LE_CFG_INFO *p_cfg);
+static bool L2cap_LE_ConnectRsp (RawAddress p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result,
                              uint16_t status, tL2CAP_LE_CFG_INFO *p_cfg);
-//static bool L2cap_LE_ConnectRsp (BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid, tL2CAP_LE_CFG_INFO *p_cfg);
+//static bool L2cap_LE_ConnectRsp (RawAddress p_bd_addr, uint8_t id, uint16_t lcid, tL2CAP_LE_CFG_INFO *p_cfg);
 static bool L2cap_LE_FlowControl (uint16_t lcid, uint16_t credits);
 static void L2cap_LE_freebuf(BT_HDR *p_buf);
 
@@ -234,10 +234,9 @@ static bt_status_t L2cap_LE_Register (uint16_t le_psm, bool ConnType, uint16_t S
     return BT_STATUS_SUCCESS;
 }
 
-static uint16_t L2cap_LE_Connect (uint16_t le_psm , BD_ADDR address, tL2CAP_LE_CFG_INFO *p_cfg)
+static uint16_t L2cap_LE_Connect (uint16_t le_psm , RawAddress address, tL2CAP_LE_CFG_INFO *p_cfg)
 {
-    BTIF_TRACE_DEBUG("LE-L2CAP: %s:: %0x %0x %0x %0x %0x %0x", __FUNCTION__,
-    address[0], address[1], address[2],address[3],address[4],address[5]);
+    BTIF_TRACE_DEBUG("LE-L2CAP: %s:: %s", __FUNCTION__, address.ToString().c_str());
 
     if (0 == (g_lcid = L2CA_CONNECT_COC_REQ (le_psm, address, p_cfg))) {
         BTIF_TRACE_ERROR("LE-L2CAP: L2CA_LE_CreditBasedConn_Req failed for le_psm ");
@@ -245,7 +244,7 @@ static uint16_t L2cap_LE_Connect (uint16_t le_psm , BD_ADDR address, tL2CAP_LE_C
     return g_lcid;
 }
 
-static bool L2cap_LE_ConnectRsp (BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result,
+static bool L2cap_LE_ConnectRsp (RawAddress p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result,
                              uint16_t status, tL2CAP_LE_CFG_INFO *p_cfg)
 {
      p_cfg->credits = L2CAP_LE_DEFAULT_CREDIT;
@@ -293,11 +292,10 @@ static uint16_t L2cap_AllocatePSM(void)
     return L2CA_AllocatePSM();
 }
 
-static uint16_t L2cap_Connect(uint16_t psm, bt_bdaddr_t *bd_addr)
+static uint16_t L2cap_Connect(uint16_t psm, RawAddress *bd_addr)
 {
 
-    BTIF_TRACE_DEBUG("L2cap_Connect:: %0x %0x %0x %0x %0x %0x", bd_addr->address[0],bd_addr->address[1],
-                         bd_addr->address[2],bd_addr->address[3],bd_addr->address[4],bd_addr->address[5]);
+    BTIF_TRACE_DEBUG("L2cap_Connect:: %s", bd_addr->ToString().c_str());
 
     if (0 == (g_lcid = L2CA_ConnectReq (psm, bd_addr->address)))
     {
@@ -306,7 +304,7 @@ static uint16_t L2cap_Connect(uint16_t psm, bt_bdaddr_t *bd_addr)
     return g_lcid;
 }
 
-static bool L2cap_ConnectRsp(BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid,
+static bool L2cap_ConnectRsp(RawAddress p_bd_addr, uint8_t id, uint16_t lcid,
                                         uint16_t result, uint16_t status)
 {
     if (!L2CA_ConnectRsp (p_bd_addr, id, lcid, result, status)) {
@@ -316,16 +314,16 @@ static bool L2cap_ConnectRsp(BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid,
     return BT_STATUS_SUCCESS;
 }
 
-static uint16_t L2cap_ErtmConnect(uint16_t psm, BD_ADDR address, tL2CAP_ERTM_INFO *p_ertm_info)
+static uint16_t L2cap_ErtmConnect(uint16_t psm, RawAddress address, tL2CAP_ERTM_INFO *p_ertm_info)
 {
-    BTIF_TRACE_DEBUG("L2cap_ErtmConnect:: %0x %0x %0x %0x %0x %0x", address[0],address[1],address[2],address[3],address[4],address[5]);
+    BTIF_TRACE_DEBUG("L2cap_ErtmConnect:: %s", address.ToString().c_str());
     if (0 == (g_lcid = L2CA_ErtmConnectReq (psm, address, p_ertm_info))) {
         BTIF_TRACE_DEBUG("Error:: L2CA_ErtmConnectReq failed for psm %d", psm);
     }
     return g_lcid;
 }
 
-static bool  L2cap_ErtmConnectRsp (BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid,
+static bool  L2cap_ErtmConnectRsp (RawAddress p_bd_addr, uint8_t id, uint16_t lcid,
                                              uint16_t result, uint16_t status,
                                              tL2CAP_ERTM_INFO *p_ertm_info)
 {
@@ -386,13 +384,13 @@ static uint8_t L2cap_DataWrite (uint16_t cid, char *p_data, uint32_t len)
 }
 
 
-static bool L2cap_Ping (BD_ADDR p_bd_addr, tL2CA_ECHO_RSP_CB *p_cb)
+static bool L2cap_Ping (RawAddress p_bd_addr, tL2CA_ECHO_RSP_CB *p_cb)
 {
     BTIF_TRACE_DEBUG("L2cap_Ping:: Invoked");
     return L2CA_Ping (p_bd_addr, p_cb);
 }
 
-static bool  L2cap_Echo (BD_ADDR p_bd_addr, BT_HDR *p_data, tL2CA_ECHO_DATA_CB *p_callback)
+static bool  L2cap_Echo (RawAddress p_bd_addr, BT_HDR *p_data, tL2CA_ECHO_DATA_CB *p_callback)
 {
     BTIF_TRACE_DEBUG("L2cap_Echo:: Invoked");
     return L2CA_Echo (p_bd_addr, p_data, p_callback);
@@ -405,7 +403,7 @@ static bool L2cap_SetIdleTimeout (uint16_t cid, uint16_t timeout, bool is_global
 }
 
 
-static bool L2cap_SetIdleTimeoutByBdAddr(BD_ADDR bd_addr, uint16_t timeout)
+static bool L2cap_SetIdleTimeoutByBdAddr(RawAddress bd_addr, uint16_t timeout)
 {
     BTIF_TRACE_DEBUG("L2cap_SetIdleTimeoutByBdAddr:: Invoked");
     return L2CA_SetIdleTimeoutByBdAddr(bd_addr, timeout,BT_TRANSPORT_BR_EDR);
@@ -424,7 +422,7 @@ static uint8_t L2cap_SetDesireRole (uint8_t new_role)
 }
 
 
-static uint16_t L2cap_LocalLoopbackReq (uint16_t psm, uint16_t handle, BD_ADDR p_bd_addr)
+static uint16_t L2cap_LocalLoopbackReq (uint16_t psm, uint16_t handle, RawAddress p_bd_addr)
 {
     BTIF_TRACE_DEBUG("L2cap_LocalLoopbackReq:: Invoked");
     return L2CA_LocalLoopbackReq (psm, handle, p_bd_addr);
@@ -436,7 +434,7 @@ static uint16_t   L2cap_FlushChannel (uint16_t lcid, uint16_t num_to_flush)
     return L2CA_FlushChannel (lcid, num_to_flush);
 }
 
-static bool L2cap_SetAclPriority (BD_ADDR bd_addr, uint8_t priority)
+static bool L2cap_SetAclPriority (RawAddress bd_addr, uint8_t priority)
 {
     BTIF_TRACE_DEBUG("L2cap_SetAclPriority:: Invoked");
     return L2CA_SetAclPriority (bd_addr, priority);
@@ -460,7 +458,7 @@ static bool L2cap_SetTxPriority (uint16_t cid, tL2CAP_CHNL_PRIORITY priority)
     return L2CA_SetTxPriority (cid, priority);
 }
 
-static bool L2cap_RegForNoCPEvt(tL2CA_NOCP_CB *p_cb, BD_ADDR p_bda)
+static bool L2cap_RegForNoCPEvt(tL2CA_NOCP_CB *p_cb, RawAddress p_bda)
 {
     BTIF_TRACE_DEBUG("L2cap_RegForNoCPEvt:: Invoked");
     return L2CA_RegForNoCPEvt(p_cb, p_bda);
@@ -472,7 +470,7 @@ static bool L2cap_SetChnlDataRate (uint16_t cid, tL2CAP_CHNL_DATA_RATE tx, tL2CA
     return L2CA_SetChnlDataRate (cid, tx, rx);
 }
 
-static bool L2cap_SetFlushTimeout (BD_ADDR bd_addr, uint16_t flush_tout)
+static bool L2cap_SetFlushTimeout (RawAddress bd_addr, uint16_t flush_tout)
 {
     BTIF_TRACE_DEBUG("L2cap_SetFlushTimeout:: Invoked");
     return L2CA_SetFlushTimeout (bd_addr, flush_tout);
@@ -488,12 +486,12 @@ static bool L2cap_SetChnlFlushability (uint16_t cid, bool is_flushable)
     BTIF_TRACE_DEBUG("L2cap_SetChnlFlushability:: Invoked");
     return L2CA_SetChnlFlushability (cid, is_flushable);
 }
-static bool L2cap_GetPeerFeatures (BD_ADDR bd_addr, uint32_t *p_ext_feat, uint8_t *p_chnl_mask)
+static bool L2cap_GetPeerFeatures (RawAddress bd_addr, uint32_t *p_ext_feat, uint8_t *p_chnl_mask)
 {
     BTIF_TRACE_DEBUG("L2cap_GetPeerFeatures:: Invoked");
     return L2CA_GetPeerFeatures (bd_addr, p_ext_feat, p_chnl_mask);
 }
-static bool L2cap_GetBDAddrbyHandle (uint16_t handle, BD_ADDR bd_addr)
+static bool L2cap_GetBDAddrbyHandle (uint16_t handle, RawAddress bd_addr)
 {
     BTIF_TRACE_DEBUG("L2cap_GetBDAddrbyHandle:: Invoked");
     return L2CA_GetBDAddrbyHandle (handle, bd_addr);
@@ -505,7 +503,7 @@ static uint8_t L2cap_GetChnlFcrMode (uint16_t lcid)
 }
 
 //---------------------FIXED CHANNEL API ---------------------
-static uint16_t L2cap_SendFixedChnlData (uint16_t fixed_cid, BD_ADDR rem_bda, BT_HDR *p_buf)
+static uint16_t L2cap_SendFixedChnlData (uint16_t fixed_cid, RawAddress rem_bda, BT_HDR *p_buf)
 {
     BTIF_TRACE_DEBUG("L2cap_SendFixedChnlData:: Invoked");
     p_buf->event = 20;

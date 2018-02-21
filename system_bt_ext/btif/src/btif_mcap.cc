@@ -85,7 +85,7 @@ static tMCA_RESULT Mca_DeleteDep(tMCA_HANDLE handle, tMCA_DEP dep)
 }
 
 
-static tMCA_RESULT Mca_ConnectReq(tMCA_HANDLE handle, BD_ADDR bd_addr, uint16_t ctrl_psm, uint16_t sec_mask)
+static tMCA_RESULT Mca_ConnectReq(tMCA_HANDLE handle, RawAddress bd_addr, uint16_t ctrl_psm, uint16_t sec_mask)
 {
     tMCA_RESULT Ret = 0;
     Ret = MCA_ConnectReq(handle, bd_addr, ctrl_psm, sec_mask);

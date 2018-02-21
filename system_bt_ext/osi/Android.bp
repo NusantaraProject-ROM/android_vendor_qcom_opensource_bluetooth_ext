@@ -2,13 +2,13 @@
 // ========================================================
 cc_library_static {
     name: "libosi_ext",
-    defaults: ["fluoride_defaults"],
+    defaults: ["fluoride_defaults_qti"],
     include_dirs: [
-        "system/bt",
-        "system/bt/include",
-        "system/bt/stack/include",
-        "system/bt/btif/include",
-        "system/bt/utils/include/",
+        "vendor/qcom/opensource/system/bt",
+        "vendor/qcom/opensource/system/bt/internal_include",
+        "vendor/qcom/opensource/system/bt/stack/include",
+        "vendor/qcom/opensource/system/bt/btif/include",
+        "vendor/qcom/opensource/system/bt/utils/include/",
         "vendor/qcom/opensource/bluetooth_ext/system_bt_ext/include/",
     ],
     srcs: [

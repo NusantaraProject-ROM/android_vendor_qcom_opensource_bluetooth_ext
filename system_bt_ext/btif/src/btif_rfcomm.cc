@@ -124,29 +124,19 @@ static void bt_rfc_port_cback (uint32_t code, uint16_t handle)
     ALOGI("bt_rfc_port_cback");
 }
 
-/*static void bdcpy (BD_ADDR a, const BD_ADDR b)
-{
-    int   i;
-    for (i = BD_ADDR_LEN; i != 0; i--)
-    {
-        *a++ = *b++;
-    }
-} */
-
-
-
 void rdut_rfcomm (uint8_t server)
 {
     uint16_t   handle;
     int status = -1;
-    BD_ADDR remote_bd = {0x00, 0x15, 0x83, 0x0A, 0x0E, 0x1F};
-    BD_ADDR any_add   = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    RawAddress remote_bd;
+    RawAddress::FromString("00:15:83:0A:0E:1F", remote_bd);
+    RawAddress any_add = RawAddress::kAny;
 
     ALOGI("dut_rfc_mode:%d",server);
     if (server == 0)
     {
         BTM_SetSecurityLevel (TRUE, "", 0, 0, 0x03, 3/*BTM_SEC_PROTO_RFCOMM*/, 20);
-        status = RFCOMM_CreateConnection(0x0020, 20, FALSE, 256, (uint8_t *)remote_bd,
+        status = RFCOMM_CreateConnection(0x0020, 20, FALSE, 256, remote_bd,
                                             &handle, bt_rfc_mmt_cback);
         rfc_handle = handle;
     }
@@ -154,7 +144,7 @@ void rdut_rfcomm (uint8_t server)
     {
         BTM_SetSecurityLevel (FALSE, "", 0, 0, 0x03, 3/*BTM_SEC_PROTO_RFCOMM */, 20);
         BTM_SetConnectability (1, 0, 0); //Pae Mode , window , interval
-        status = RFCOMM_CreateConnection (0x0020, 20, TRUE, 256, (uint8_t *)any_add,
+        status = RFCOMM_CreateConnection (0x0020, 20, TRUE, 256, any_add,
                                        &handle, bt_rfc_mmt_server_cback);
         rfc_handle = handle;
     }
@@ -173,30 +163,30 @@ void rdut_rfcomm (uint8_t server)
 
 void rdut_rfcomm_test_interface (tRFC *input)
 {
-    BD_ADDR   remote_bd;
-    uint16_t    handle;
+    RawAddress remote_bd;
+    uint16_t handle;
     int status = -1;
-    BD_ADDR any_add   = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    RawAddress any_add = RawAddress::kAny;
 
     switch (input->param)
     {
         case RFC_TEST_CLIENT:
         {
-            bdcpy (remote_bd, input->data.conn.bdadd.address);
+            remote_bd = input->data.conn.bdadd;
             BTM_SetSecurityLevel (TRUE, "", 0, 0, 0x03, 3/*BTM_SEC_PROTO_RFCOMM */,
                                                                    input->data.conn.scn);
             status = RFCOMM_CreateConnection(0x0020, input->data.conn.scn, FALSE, 256,
-                                                 (uint8_t *)remote_bd,&handle, bt_rfc_mmt_cback);
+                                                 remote_bd,&handle, bt_rfc_mmt_cback);
             rfc_handle = handle;
         }
         break;
         case RFC_TEST_CLIENT_TEST_MSC_DATA:
         {
-            bdcpy (remote_bd, input->data.conn.bdadd.address);
+            remote_bd = input->data.conn.bdadd;
             BTM_SetSecurityLevel (TRUE, "", 0, 0, 0x03, 3/*BTM_SEC_PROTO_RFCOMM */,
                                                                 input->data.conn.scn);
             status = RFCOMM_CreateConnection(0x0020, input->data.conn.scn, FALSE, 256,
-                                       (uint8_t *)remote_bd, &handle, bt_rfc_mmt_cback_msc_data);
+                                       remote_bd, &handle, bt_rfc_mmt_cback_msc_data);
             rfc_handle = handle;
         }
         break;
@@ -217,7 +207,7 @@ void rdut_rfcomm_test_interface (tRFC *input)
         {
             BTM_SetSecurityLevel (FALSE, "", 0, 0, 0x03, 3/*BTM_SEC_PROTO_RFCOMM */, 20);
             BTM_SetConnectability (1, 0, 0); //Pae Mode , window , interval
-            status = RFCOMM_CreateConnection (0x0020, 20, TRUE, 256, (uint8_t *)any_add,
+            status = RFCOMM_CreateConnection (0x0020, 20, TRUE, 256, any_add,
                                                &handle, bt_rfc_mmt_server_cback);
             rfc_handle = handle;
         }

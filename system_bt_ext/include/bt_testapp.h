@@ -91,10 +91,10 @@ typedef struct {
     bt_status_t (*RegisterPsm)(uint16_t psm, bool conn_type, uint16_t sec_level);
     bt_status_t (*Deregister)(uint16_t psm);
     uint16_t    (*AllocatePsm)(void);
-    uint16_t    (*Connect)(uint16_t psm, bt_bdaddr_t *bd_addr);
-    bool        (*ConnectRsp)(BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result, uint16_t status);
-    uint16_t    (*ErtmConnectReq)(uint16_t psm, BD_ADDR p_bd_addr, tL2CAP_ERTM_INFO *p_ertm_info);
-    bool        (*ErtmConnectRsp)(BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid,
+    uint16_t    (*Connect)(uint16_t psm, RawAddress *bd_addr);
+    bool        (*ConnectRsp)(RawAddress p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result, uint16_t status);
+    uint16_t    (*ErtmConnectReq)(uint16_t psm, RawAddress p_bd_addr, tL2CAP_ERTM_INFO *p_ertm_info);
+    bool        (*ErtmConnectRsp)(RawAddress p_bd_addr, uint8_t id, uint16_t lcid,
                                                 uint16_t result, uint16_t status,
                                                 tL2CAP_ERTM_INFO *p_ertm_info);
     bool        (*ConfigReq)(uint16_t cid, tL2CAP_CFG_INFO *p_cfg);
@@ -102,33 +102,33 @@ typedef struct {
     bool        (*DisconnectReq)(uint16_t cid);
     bool        (*DisconnectRsp)(uint16_t cid);
     uint8_t     (*DataWrite)(uint16_t cid, char *p_data, uint32_t len);
-    bool        (*Ping)(BD_ADDR p_bd_addr, tL2CA_ECHO_RSP_CB *p_cb);
-    bool        (*Echo)(BD_ADDR p_bd_addr, BT_HDR *p_data, tL2CA_ECHO_DATA_CB *p_callback);
+    bool        (*Ping)(RawAddress p_bd_addr, tL2CA_ECHO_RSP_CB *p_cb);
+    bool        (*Echo)(RawAddress p_bd_addr, BT_HDR *p_data, tL2CA_ECHO_DATA_CB *p_callback);
     bool        (*SetIdleTimeout)(uint16_t cid, uint16_t timeout, bool is_global);
-    bool        (*SetIdleTimeoutByBdAddr)(BD_ADDR bd_addr, uint16_t timeout);
+    bool        (*SetIdleTimeoutByBdAddr)(RawAddress bd_addr, uint16_t timeout);
     uint8_t     (*SetDesireRole)(uint8_t new_role);
 	void        (*SetSecConnOnlyMode)(bool secvalue);
-    uint16_t    (*LocalLoopbackReq)(uint16_t psm, uint16_t handle, BD_ADDR p_bd_addr);
+    uint16_t    (*LocalLoopbackReq)(uint16_t psm, uint16_t handle, RawAddress p_bd_addr);
     uint16_t    (*FlushChannel)(uint16_t lcid, uint16_t num_to_flush);
-    bool        (*SetAclPriority)(BD_ADDR bd_addr, uint8_t priority);
+    bool        (*SetAclPriority)(RawAddress bd_addr, uint8_t priority);
     bool        (*FlowControl)(uint16_t cid, bool data_enabled);
     bool        (*SendTestSFrame)(uint16_t cid, bool rr_or_rej, uint8_t back_track);
     bool        (*SetTxPriority)(uint16_t cid, tL2CAP_CHNL_PRIORITY priority);
-    bool        (*RegForNoCPEvt)(tL2CA_NOCP_CB *p_cb, BD_ADDR p_bda);
+    bool        (*RegForNoCPEvt)(tL2CA_NOCP_CB *p_cb, RawAddress p_bda);
     bool        (*SetChnlDataRate)(uint16_t cid, tL2CAP_CHNL_DATA_RATE tx, tL2CAP_CHNL_DATA_RATE rx);
-    bool        (*SetFlushTimeout)(BD_ADDR bd_addr, uint16_t flush_tout);
+    bool        (*SetFlushTimeout)(RawAddress bd_addr, uint16_t flush_tout);
     uint8_t     (*DataWriteEx)(uint16_t cid, BT_HDR *p_data, uint16_t flags);
     bool        (*SetChnlFlushability)(uint16_t cid, bool is_flushable);
-    bool        (*GetPeerFeatures)(BD_ADDR bd_addr, uint32_t *p_ext_feat, uint8_t *p_chnl_mask);
-    bool        (*GetBDAddrbyHandle)(uint16_t handle, BD_ADDR bd_addr);
+    bool        (*GetPeerFeatures)(RawAddress bd_addr, uint32_t *p_ext_feat, uint8_t *p_chnl_mask);
+    bool        (*GetBDAddrbyHandle)(uint16_t handle, RawAddress bd_addr);
     uint8_t     (*GetChnlFcrMode)(uint16_t lcid);
-    uint16_t    (*SendFixedChnlData)(uint16_t fixed_cid, BD_ADDR rem_bda, BT_HDR *p_buf);
+    uint16_t    (*SendFixedChnlData)(uint16_t fixed_cid, RawAddress rem_bda, BT_HDR *p_buf);
     void        (*Cleanup)(void);
     bt_status_t (*RegisterLePsm) (uint16_t le_psm, bool ConnType, uint16_t SecLevel,
                                     uint8_t enc_key_size);
     bt_status_t (*LeDeregister)(uint16_t psm);
-    uint16_t    (*LeConnect) (uint16_t le_psm , BD_ADDR address, tL2CAP_LE_CFG_INFO *p_cfg);
-    bool        (*LeConnectRsp) (BD_ADDR p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result,
+    uint16_t    (*LeConnect) (uint16_t le_psm , RawAddress address, tL2CAP_LE_CFG_INFO *p_cfg);
+    bool        (*LeConnectRsp) (RawAddress p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result,
                              uint16_t status, tL2CAP_LE_CFG_INFO *p_cfg);
     bool        (*LeFlowControl) (uint16_t lcid, uint16_t credits);
     void        (*LeFreeBuf)(BT_HDR *p_buf);
@@ -142,7 +142,7 @@ typedef struct
     void        (*Deregister)(tMCA_HANDLE handle);
     tMCA_RESULT (*CreateDep)(tMCA_HANDLE handle, tMCA_DEP *p_dep, tMCA_CS *p_cs);
     tMCA_RESULT (*DeleteDep)(tMCA_HANDLE handle, tMCA_DEP dep);
-    tMCA_RESULT (*ConnectReq)(tMCA_HANDLE handle, BD_ADDR bd_addr,
+    tMCA_RESULT (*ConnectReq)(tMCA_HANDLE handle, RawAddress bd_addr,
                                           uint16_t ctrl_psm,
                                           uint16_t sec_mask);
     tMCA_RESULT (*DisconnectReq)(tMCA_CL mcl);
@@ -169,12 +169,12 @@ typedef struct
 {
     size_t    size;
     //GATT common APIs (Both client and server)
-    tGATT_IF (*Register) (tBT_UUID *p_app_uuid128, tGATT_CBACK *p_cb_info);
+    tGATT_IF (*Register) (bluetooth::Uuid& p_app_uuid128, tGATT_CBACK *p_cb_info);
     void (*Deregister) (tGATT_IF gatt_if);
     void (*StartIf) (tGATT_IF gatt_if);
-    bool (*Connect) (tGATT_IF gatt_if, BD_ADDR bd_addr, bool is_direct,tBT_TRANSPORT transport);
+    bool (*Connect) (tGATT_IF gatt_if, RawAddress bd_addr, bool is_direct,tBT_TRANSPORT transport);
     tGATT_STATUS (*Disconnect) (uint16_t conn_id);
-    bool (*Listen) (tGATT_IF gatt_if, bool start, BD_ADDR_PTR bd_addr);
+    bool (*Listen) (tGATT_IF gatt_if, bool start, RawAddress& bd_addr);
 
     //GATT Client APIs
     tGATT_STATUS (*cConfigureMTU) (uint16_t conn_id, uint16_t  mtu);
@@ -183,7 +183,7 @@ typedef struct
     tGATT_STATUS (*cWrite) (uint16_t conn_id, tGATT_WRITE_TYPE type, tGATT_VALUE *p_write);
     tGATT_STATUS (*cExecuteWrite) (uint16_t conn_id, bool is_execute);
     tGATT_STATUS (*cSendHandleValueConfirm) (uint16_t conn_id, uint16_t handle);
-    void (*cSetIdleTimeout)(BD_ADDR bd_addr, uint16_t idle_tout);
+    void (*cSetIdleTimeout)(RawAddress bd_addr, uint16_t idle_tout);
     void (*cSetVisibility) (uint16_t disc_mode, uint16_t conn_mode);
 
     //GATT Server APIs
@@ -196,17 +196,17 @@ typedef struct
     size_t    size;
     void (*init)(void);
     bool (*Register) (tSMP_CALLBACK *p_cback);
-    tSMP_STATUS (*Pair) (BD_ADDR bd_addr);
-    bool (*PairCancel) (BD_ADDR bd_addr);
-    void (*SecurityGrant)(BD_ADDR bd_addr, uint8_t res);
-    void (*PasskeyReply) (BD_ADDR bd_addr, uint8_t res, uint32_t passkey);
+    tSMP_STATUS (*Pair) (RawAddress bd_addr);
+    bool (*PairCancel) (RawAddress bd_addr);
+    void (*SecurityGrant)(RawAddress bd_addr, uint8_t res);
+    void (*PasskeyReply) (RawAddress bd_addr, uint8_t res, uint32_t passkey);
     bool (*Encrypt) (uint8_t *key, uint8_t key_len, uint8_t *plain_text, uint8_t pt_len, tSMP_ENC *p_out);
 }btsmp_interface_t;
 typedef struct
 {
     size_t    size;
     void (*Gap_AttrInit)();
-    void (*Gap_BleAttrDBUpdate)(BD_ADDR bd_addr, uint16_t int_min, uint16_t int_max, uint16_t latency, uint16_t sp_tout);
+    void (*Gap_BleAttrDBUpdate)(RawAddress bd_addr, uint16_t int_min, uint16_t int_max, uint16_t latency, uint16_t sp_tout);
 }btgap_interface_t;
 
 /** Bluetooth RFC tool commands */
@@ -222,12 +222,12 @@ typedef enum {
 
 
 typedef struct {
-    bt_bdaddr_t bdadd;
+    RawAddress bdadd;
     uint8_t     scn; //Server Channel Number
 }bt_rfc_conn_t;
 
 typedef struct {
-    bt_bdaddr_t bdadd;
+    RawAddress bdadd;
     uint8_t     role; //0x01 for master
 }bt_role_sw;
 
@@ -247,7 +247,7 @@ typedef struct {
     bt_status_t (*init)( tL2CAP_APPL_INFO* callbacks );
     void  (*rdut_rfcomm)( uint8_t server );
     void  (*rdut_rfcomm_test_interface)( tRFC *input);
-    bt_status_t (*connect)( bt_bdaddr_t *bd_addr );
+    bt_status_t (*connect)( RawAddress *bd_addr );
     void  (*cleanup)( void );
 } btrfcomm_interface_t;
 
