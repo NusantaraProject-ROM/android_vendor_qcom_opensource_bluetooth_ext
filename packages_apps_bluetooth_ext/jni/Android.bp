@@ -19,5 +19,6 @@ cc_library_static {
     defaults: ["libbluetoothqti_jni_default"],
     srcs: [
         "com_android_bluetooth_btservice_vendor.cpp",
+        "com_android_bluetooth_btservice_vendor_socket.cpp",
     ],
 }
