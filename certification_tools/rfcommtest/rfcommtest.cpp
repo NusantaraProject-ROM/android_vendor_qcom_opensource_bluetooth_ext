@@ -50,6 +50,7 @@
 
 #include "bt_target.h"
 #include "bt_testapp.h"
+#include "raw_address.h"
 
 /************************************************************************************
 **  Constants & Macros
@@ -121,17 +122,6 @@ static void bdt_shutdown(void)
 ** Android's init.rc does not yet support applying linux capabilities
 *****************************************************************************/
 
-static int str2bd(char *str, bt_bdaddr_t *addr)
-{
-    int32_t i = 0;
-
-    for (i = 0; i < 6; i++)
-    {
-        addr->address[i] = (uint8_t) strtoul(str, (char **)&str, 16);
-        str++;
-    }
-    return 0;
-}
 static void config_permissions(void)
 {
     struct __user_cap_header_struct header;
@@ -169,7 +159,7 @@ static void config_permissions(void)
 }
 #if 0
 /*Pin_Request_cb */
-static void pin_remote_request_callback (bt_bdaddr_t *remote_bd_addr,
+static void pin_remote_request_callback (RawAddress *remote_bd_addr,
                              bt_bdname_t *bd_name, uint32_t cod)
 {
     bt_pin_code_t    pin_code;
@@ -185,7 +175,7 @@ static void pin_remote_request_callback (bt_bdaddr_t *remote_bd_addr,
 #endif
 
 /* Pairing in Case of SSP */
-static void ssp_remote_requst_callback(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
+static void ssp_remote_requst_callback(RawAddress *remote_bd_addr, bt_bdname_t *bd_name,
                              uint32_t cod, bt_ssp_variant_t pairing_variant, uint32_t pass_key)
 {
     if (pairing_variant == BT_SSP_VARIANT_PASSKEY_ENTRY)
@@ -390,19 +380,6 @@ uint32_t get_hex(char **p, int DefaultValue)
     return Value;
 }
 
-void get_bdaddr(const char *str, bt_bdaddr_t *bd) {
-    char *d = ((char *)bd), *endp;
-    int i;
-    for(i = 0; i < 6; i++) {
-        *d++ = strtol(str, &endp, 16);
-        if (*endp != ':' && i != 5) {
-            memset(bd, 0, sizeof(bt_bdaddr_t));
-            return;
-        }
-        str = endp + 1;
-    }
-}
-
 #define is_cmd(str) ((strlen(str) == strlen(cmd)) && strncmp((const char *)&cmd, str, strlen(str)) == 0)
 #define if_cmd(str)  if (is_cmd(str))
 
@@ -507,34 +484,46 @@ static int create_cmdjob(char *cmd)
  ** Load stack lib
  *******************************************************************************/
 
+#define BLUETOOTH_LIBRARY_NAME "libbluetooth.so"
+int load_bt_lib(const bt_interface_t** interface) {
+  const char* sym = BLUETOOTH_INTERFACE_STRING;
+  bt_interface_t* itf = nullptr;
+
+  // Always try to load the default Bluetooth stack on GN builds.
+  const char* path = BLUETOOTH_LIBRARY_NAME;
+  void* handle = dlopen(path, RTLD_NOW);
+  if (!handle) {
+    const char* err_str = dlerror();
+    printf("failed to load Bluetooth library\n");
+    goto error;
+  }
+
+  // Get the address of the bt_interface_t.
+  itf = (bt_interface_t*)dlsym(handle, sym);
+  if (!itf) {
+    printf("failed to load symbol from Bluetooth library\n");
+    goto error;
+  }
+
+  // Success.
+  printf(" loaded HAL Success\n");
+  *interface = itf;
+  return 0;
+
+error:
+  *interface = NULL;
+  if (handle) dlclose(handle);
+
+  return -EINVAL;
+}
+
 int HAL_load(void)
 {
-    int err = 0;
-
-    hw_module_t* module;
-    hw_device_t* device;
-
-    bdt_log("Loading HAL lib + extensions");
-
-    err = hw_get_module(BT_HARDWARE_MODULE_ID, (hw_module_t const**)&module);
-    if (err == 0)
-    {
-        err = module->methods->open(module, BT_HARDWARE_MODULE_ID, &device);
-        if (err == 0) {
-            bt_device = (bluetooth_device_t *)device;
-            sBtInterface = bt_device->get_bluetooth_interface();
-        }
-    }
-
-    // Get Vendor Interface
-    if (!sBtInterface) {
-        bdt_log("Error in loading bluetooth interface\n");
+    if (load_bt_lib((bt_interface_t const**)&sBtInterface)) {
+        printf("No Bluetooth Library found\n");
         return -1;
     }
-
-    bdt_log("HAL library loaded (%s)", strerror(err));
-
-    return err;
+    return 0;
 }
 
 int HAL_unload(void)
@@ -920,7 +909,7 @@ void do_rfc_con( char *p)
     memset(buf, 0, 64);
     /*Enter BD address */
     get_str(&p, buf);
-    str2bd(buf, &conn_param.data.conn.bdadd);
+    RawAddress::FromString(buf, conn_param.data.conn.bdadd);
     memset(buf ,0 , 64);
     get_str(&p, buf);
     conn_param.data.conn.scn = atoi(buf);
@@ -951,7 +940,7 @@ void do_rfc_con_for_test_msc_data(char *p)
     memset(buf, 0, 64);
     /*Enter BD address */
     get_str(&p, buf);
-    str2bd(buf, &conn_param.data.conn.bdadd);
+    RawAddress::FromString(buf, conn_param.data.conn.bdadd);
     memset(buf ,0 , 64);
     get_str(&p, buf);
     conn_param.data.conn.scn = atoi(buf);
@@ -982,7 +971,7 @@ void do_role_switch(char *p)
     memset(buf ,0 , 64);
     /* Bluetooth Device address */
     get_str(&p, buf);
-    str2bd(buf, &conn_param.data.role_switch.bdadd);
+    RawAddress::FromString(buf, conn_param.data.conn.bdadd);
     memset(buf ,0 , 64);
     get_str(&p, buf);
     conn_param.data.role_switch.role = atoi(buf);

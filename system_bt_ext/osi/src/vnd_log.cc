@@ -47,7 +47,7 @@ static const char *LOGGER_LIBRARY_SYMBOL_NAME = "BLUETOOTH_LOGGER_LIB_INTERFACE"
 static void *lib_handle;
 bt_logger_interface_t *logger_interface = NULL;
 bool bt_logger_enabled = false;
-uint16_t vendor_logging_level = 0;
+uint16_t vendor_logging_level = 0xFFFF;
 
 void init_vnd_Logger(void)
 {
@@ -79,8 +79,11 @@ void init_vnd_Logger(void)
   }
 
   init_ret = logger_interface->init();
-  if(init_ret > 0)
+  if(init_ret > 0) {
     vendor_logging_level = init_ret;
+  } else {
+    LOG_ERROR(LOG_TAG, "%s failed to start logger process, setting snoop logging level to default", __func__);
+  }
 }
 
 void clean_vnd_logger()

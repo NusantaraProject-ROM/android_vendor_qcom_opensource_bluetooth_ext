@@ -215,8 +215,9 @@ static const char* interop_feature_string_(const interop_feature_t feature)
     CASE_RETURN_STR(INTEROP_DELAY_SCO_FOR_MT_CALL)
     CASE_RETURN_STR(INTEROP_DISABLE_CODEC_NEGOTIATION)
     CASE_RETURN_STR(INTEROP_DISABLE_PLAYER_APPLICATION_SETTING_CMDS)
-    CASE_RETURN_STR(END_OF_INTEROP_LIST)
+    CASE_RETURN_STR(INTEROP_ENABLE_AAC_CODEC)
     CASE_RETURN_STR(INTEROP_DISABLE_CONNECTION_AFTER_COLLISION)
+    CASE_RETURN_STR(END_OF_INTEROP_LIST)
   }
   return "UNKNOWN";
 }
@@ -253,7 +254,7 @@ static future_t *interop_clean_up(void)
   return future_new_immediate(FUTURE_SUCCESS);
 }
 
-EXPORT_SYMBOL module_t interop_module = {
+ EXPORT_SYMBOL module_t interop_module = {
   .name = INTEROP_MODULE,
   .init = interop_init,
   .start_up = NULL,
@@ -359,8 +360,7 @@ static int get_feature(char *section)
 
   for ( feature = BEGINING_OF_INTEROP_LIST;
         feature < END_OF_INTEROP_LIST; feature++ ) {
-    if (!strncmp( section, interop_feature_string_((interop_feature_t)feature),
-                      strlen(section)))
+    if (!strcmp( section, interop_feature_string_((interop_feature_t)feature)))
       return feature;
   }
   return -1;
