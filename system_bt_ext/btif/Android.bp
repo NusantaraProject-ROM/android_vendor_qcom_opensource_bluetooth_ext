@@ -2,7 +2,7 @@
 // ========================================================
 cc_library_static {
     name: "libbtif_ext",
-    defaults: ["fluoride_defaults_qti"],
+    defaults: ["fluoride_defaults"],
     include_dirs: [
         "vendor/qcom/opensource/system/bt",
         "vendor/qcom/opensource/system/bt/btcore/include",
