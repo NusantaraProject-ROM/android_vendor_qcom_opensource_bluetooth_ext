@@ -2,7 +2,7 @@
 // ========================================================
 cc_library_static {
     name: "libbtdevice_ext",
-    defaults: ["fluoride_defaults_qti"],
+    defaults: ["fluoride_defaults"],
     local_include_dirs: [
         "include",
     ],
