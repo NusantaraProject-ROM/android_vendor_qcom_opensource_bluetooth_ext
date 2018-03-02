@@ -35,6 +35,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.CursorWindowAllocationException;
 import android.database.MatrixCursor;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -48,9 +49,12 @@ import android.provider.ContactsContract.Data;
 import android.util.Log;
 
 import com.android.bluetooth.ObexServerSockets;
+import com.android.bluetooth.pbap.BluetoothPbapObexServer.AppParamValue;
+import com.android.bluetooth.pbap.BluetoothPbapObexServer.ContentType;
 import com.android.bluetooth.pbap.BluetoothPbapVcardManager.VCardFilter;
 import com.android.bluetooth.R;
 import com.android.bluetooth.opp.BTOppUtils;
+import com.android.bluetooth.util.DevicePolicyUtils;
 import com.android.bluetooth.sdp.SdpManager;
 import com.android.bluetooth.btservice.AdapterService;
 import com.android.bluetooth.btservice.AbstractionLayer;
@@ -82,13 +86,23 @@ public class BluetoothPbapFixes {
 
     protected static final int SDP_PBAP_LEGACY_SUPPORTED_FEATURES = 0x0003;
 
+    private static final int SDP_PBAP_SUPPORTED_REPOSITORIES = 0x0003;
+
+    private static final int SDP_PBAP_SERVER_VERSION = 0x0102;
+
+    private static final int SDP_PBAP_SUPPORTED_FEATURES = 0x021F;
+
     protected static boolean isSimSupported = true;
 
     protected static boolean isSupportedPbap12 = true;
 
+    protected static Context sContext;
+
+    private static final int ORDER_BY_ALPHABETICAL = 1;
+
     /* To get feature support from config file */
     protected static void getFeatureSupport(Context context) {
-
+        sContext = context;
         AdapterService adapterService = AdapterService.getAdapterService();
         if (adapterService != null) {
             isSupportedPbap12 = adapterService.getProfileInfo(AbstractionLayer.PBAP, AbstractionLayer.PBAP_0102_SUPPORT);
@@ -171,18 +185,6 @@ public class BluetoothPbapFixes {
         return false;
     }
 
-    public static void removeSdpRecord(BluetoothAdapter mAdapter, int mSdpHandle,
-        BluetoothPbapService service) {
-        if (mAdapter != null && mSdpHandle >= 0 &&
-                                SdpManager.getDefaultManager() != null) {
-            Log.d(TAG, "Removing SDP record for PBAP with SDP handle: " +
-                mSdpHandle);
-            boolean status = SdpManager.getDefaultManager().removeSdpRecord(mSdpHandle);
-            Log.d(TAG, "RemoveSDPrecord returns " + status);
-            service.mSdpHandle = -1;
-        }
-    }
-
     public static String initCreateProfileVCard(String vcard, Context mContext,
             int vcardType, byte [] filter,final boolean vcardType21, boolean ignorefilter,
             VCardFilter vcardfilter) {
@@ -206,84 +208,31 @@ public class BluetoothPbapFixes {
         savedPosList.clear();
     }
 
-    public static void handleCleanup(BluetoothPbapService service, int shutdown) {
-        Handler mSessionStatusHandler = service.getHandler();
-        /* Stop PbapProfile if already started.*/
-        if (!service.isPbapStarted()) {
-            if (DEBUG) Log.d(TAG, "Service Not Available to STOP or Shutdown" +
-                " already in progress - Ignoring");
-            return;
-        } else {
-            if (VERBOSE) Log.v(TAG, "Service Stoping()");
-        }
-        /* SetState Disconnect already handled from closeService.
-         * Handle it otherwise. Redundant for backup */
-        if (service.getState() != BluetoothPbap.STATE_DISCONNECTED) {
-            service.setState(BluetoothPbap.STATE_DISCONNECTED,
-                BluetoothPbap.RESULT_CANCELED);
-        }
-        /* Cleanup already handled in Stop().
-         * Move this  extra check to Handler. */
-        if (mSessionStatusHandler != null) {
-              Message msg = mSessionStatusHandler.obtainMessage(shutdown);
-              mSessionStatusHandler.sendMessage(msg);
-        }
-        service.mStartError = true;
-    }
-
-    /* To check if device is unlocked in Direct Boot Mode */
-    public static boolean isUserUnlocked(Context context) {
-        UserManager manager = UserManager.get(context);
-        return (manager == null || manager.isUserUnlocked());
-    }
-
-    /* To remove '-', '(', ')' or ' ' from TEL number. */
-    public static String processTelNumberAndTag(String line) {
-        if (VERBOSE) Log.v(TAG, "vCard line: " + line);
-        String vTag = line.substring(0, line.lastIndexOf(":") + 1);
-        String vTel = line.substring(line.lastIndexOf(":") + 1, line.length())
-                              .replace("-", "")
-                              .replace("(", "")
-                              .replace(")", "")
-                              .replace(" ", "");
-        if (VERBOSE) Log.v(TAG, "vCard Tel Tag:" + vTag + ", Number:" + vTel);
-        if (vTag.length() + vTel.length() < line.length())
-            line = new StringBuilder().append(vTag).append(vTel).toString();
-        return line;
-    }
-
     /* To create spd record when pbap 1.2 support is not there and depending on
      * sim support value*/
     protected static void createSdpRecord(ObexServerSockets serverSockets,
-            int supportedRepository, BluetoothPbapService service) {
+            BluetoothPbapService service) {
         if (!isSupportedPbap12 && !isSimSupported) {
+            Log.i(TAG ," with out sim and pbp 1.2 ");
             service.mSdpHandle = SdpManager.getDefaultManager().createPbapPseRecord
                 ("OBEX Phonebook Access Server",serverSockets.getRfcommChannel(),
                 -1, BluetoothPbapFixes.SDP_PBAP_LEGACY_SERVER_VERSION,
                 BluetoothPbapFixes.SDP_PBAP_LEGACY_SUPPORTED_REPOSITORIES,
                 BluetoothPbapFixes.SDP_PBAP_LEGACY_SUPPORTED_FEATURES);
         } else if (!isSupportedPbap12 && isSimSupported) {
+            Log.i(TAG ," with sim with out pbp 1.2 ");
             service.mSdpHandle = SdpManager.getDefaultManager().createPbapPseRecord
                 ("OBEX Phonebook Access Server",serverSockets.getRfcommChannel(),
                 -1, BluetoothPbapFixes.SDP_PBAP_LEGACY_SERVER_VERSION,
-                supportedRepository,
+                SDP_PBAP_SUPPORTED_REPOSITORIES,
                 BluetoothPbapFixes.SDP_PBAP_LEGACY_SUPPORTED_FEATURES);
-        }
-    }
-
-    /* To close Handler thread with looper */
-    protected static void closeHandler(BluetoothPbapService service) {
-        Handler mSessionStatusHandler = service.getHandler();
-        if (mSessionStatusHandler != null) {
-            //Perform cleanup in Handler running on worker Thread
-            mSessionStatusHandler.removeCallbacksAndMessages(null);
-            Looper looper = mSessionStatusHandler.getLooper();
-            if (looper != null) {
-                looper.quit();
-                Log.d(TAG, "Quit looper");
-            }
-            mSessionStatusHandler = null;
-            Log.d(TAG, "Removed Handler..");
+        } else {
+            Log.i(TAG ," with sim with pbp 1.2 ");
+            service.mSdpHandle = SdpManager.getDefaultManager().createPbapPseRecord
+            ("OBEX Phonebook Access Server",serverSockets.getRfcommChannel(),
+                serverSockets.getL2capPsm(), SDP_PBAP_SERVER_VERSION,
+                SDP_PBAP_SUPPORTED_REPOSITORIES,
+                SDP_PBAP_SUPPORTED_FEATURES);
         }
     }
 
@@ -299,4 +248,136 @@ public class BluetoothPbapFixes {
             }
         }
     }
+
+    public static MatrixCursor filterOutSimContacts(Cursor contactCursor) {
+        if (contactCursor == null)
+            return null;
+
+        MatrixCursor mCursor = new MatrixCursor(new String[]{
+                    Phone.CONTACT_ID
+        });
+        final int contactIdColumn = contactCursor.getColumnIndex(Data.CONTACT_ID);
+        final int account_col_id = contactCursor.getColumnIndex(Phone.ACCOUNT_TYPE_AND_DATA_SET);
+        long previousContactId = -1;
+        contactCursor.moveToPosition(-1);
+        while (contactCursor.moveToNext()) {
+            long currentContactId = contactCursor.getLong(contactIdColumn);
+            String accType = contactCursor.getString(account_col_id);
+            if (previousContactId != currentContactId &&
+                    !(accType != null && accType.startsWith("com.android.sim"))) {
+                if (VERBOSE)
+                    Log.v(TAG, "currentContactId = " + currentContactId);
+                previousContactId = currentContactId;
+                mCursor.addRow(new Long[]{currentContactId});
+            }
+        }
+        return mCursor;
+    }
+
+    /* Get account type for given contact*/
+    public static String getAccount(long contactId) {
+        String account = null;
+        Uri uri = DevicePolicyUtils.getEnterprisePhoneUri(sContext);
+        String whereClause = Phone.CONTACT_ID + "=?";
+        String [] selectionArgs = {String.valueOf(contactId)};
+        Cursor cursor = sContext.getContentResolver().query(uri,
+                BluetoothPbapVcardManager.PHONES_CONTACTS_PROJECTION,
+                whereClause, selectionArgs, Phone.CONTACT_ID);
+        if (cursor != null) {
+            cursor.moveToPosition(-1);
+            while (cursor.moveToNext()) {
+                long cid = cursor.getLong(cursor.getColumnIndex(Phone.CONTACT_ID));
+                account = cursor.getString(cursor.getColumnIndex(Phone.ACCOUNT_TYPE_AND_DATA_SET));
+                if (VERBOSE)
+                    Log.v(TAG, "For cid = " + cid + ", account = " + account);
+            }
+            cursor = null;
+        }
+        return account;
+    }
+
+    static int createList(BluetoothPbapSimVcardManager vcardSimManager, BluetoothPbapVcardManager
+            vcardManager, BluetoothPbapObexServer server, boolean vcardSelector, int orderBy,
+            AppParamValue appParamValue, int needSendBody, int size, StringBuilder result,
+            String type) {
+        int itemsFound = 0;
+         ArrayList<String> nameList = null;
+
+        if (appParamValue.needTag == ContentType.SIM_PHONEBOOK) {
+            nameList = vcardSimManager.getSIMPhonebookNameList(orderBy);
+        } else if (isSupportedPbap12 && vcardSelector) {
+            nameList = vcardManager.getSelectedPhonebookNameList(orderBy, appParamValue.vcard21,
+                    needSendBody, size, appParamValue.vCardSelector,
+                    appParamValue.vCardSelectorOperator);
+        } else {
+            nameList = vcardManager.getPhonebookNameList(orderBy);
+        }
+
+        final int requestSize =
+                nameList.size() >= appParamValue.maxListCount ? appParamValue.maxListCount
+                        : nameList.size();
+        final int listSize = nameList.size();
+        String compareValue = "", currentValue;
+
+        if (DEBUG) {
+            Log.d(TAG, "search by " + type + ", requestSize=" + requestSize + " offset="
+                    + appParamValue.listStartOffset + " searchValue=" + appParamValue.searchValue);
+        }
+        ArrayList<String> selectedNameList = new ArrayList<String>();
+        ArrayList<Integer> savedPosList = new ArrayList<>();
+        if (type.equals("number")) {
+            // query the number, to get the names
+            ArrayList<String> names = vcardSimManager.retrieveContactNamesByNumber
+                    ((appParamValue.needTag == ContentType.SIM_PHONEBOOK ),
+                            vcardManager, appParamValue.searchValue);
+            if (orderBy == ORDER_BY_ALPHABETICAL) Collections.sort(names);
+            for (int i = 0; i < names.size(); i++) {
+                String handle = "-1";
+                compareValue = names.get(i).trim();
+                if (DEBUG) {
+                    Log.d(TAG, "compareValue=" + compareValue);
+                }
+                for (int pos = 0; pos < listSize; pos++) {
+                    currentValue = nameList.get(pos);
+                    if (VERBOSE) {
+                        Log.d(TAG, "currentValue=" + currentValue);
+                    }
+                    if (currentValue.equals(compareValue)) {
+                        if (currentValue.contains(",")) {
+                            handle = BluetoothPbapFixes.getHandle(currentValue);
+                            currentValue = currentValue.substring(0, currentValue.lastIndexOf(','));
+                        }
+                        selectedNameList.add(currentValue);
+                        savedPosList = BluetoothPbapFixes.addToListAtPos(savedPosList, pos, handle);
+                    }
+                }
+            }
+            filterSearchedListByOffset(selectedNameList, savedPosList,
+                    appParamValue.listStartOffset, itemsFound, requestSize, result, server);
+        } else {
+            if (appParamValue.searchValue != null) {
+                compareValue = appParamValue.searchValue.trim().toLowerCase();
+            }
+            for (int pos = 0; pos < listSize; pos++) {
+                String handle = "-1";
+                currentValue = nameList.get(pos);
+                if (currentValue.contains(",")) {
+                    handle = BluetoothPbapFixes.getHandle(currentValue);
+                    currentValue = currentValue.substring(0, currentValue.lastIndexOf(','));
+                }
+
+                if (appParamValue.searchValue != null) {
+                    if (appParamValue.searchValue.isEmpty() ||
+                        ((currentValue.toLowerCase()).startsWith(compareValue.toLowerCase()))) {
+                        selectedNameList.add(currentValue);
+                        savedPosList = BluetoothPbapFixes.addToListAtPos(savedPosList, pos, handle);
+                    }
+                }
+            }
+            filterSearchedListByOffset(selectedNameList, savedPosList,
+                    appParamValue.listStartOffset, itemsFound, requestSize, result, server);
+        }
+        return itemsFound;
+    }
+
 }

@@ -551,7 +551,7 @@ public class BluetoothPbapSimVcardManager {
             boolean ignorefilter, byte[] propertySelector, BluetoothPbapObexServer server) {
         if (startPoint == 0) {
             String ownerVcard = mVcardManager.getOwnerPhoneNumberVcard(vcard21,
-                    ignorefilter, propertySelector);
+                    propertySelector);
             if (endPoint == 0) {
                 return server.pushBytes(op, ownerVcard);
             } else {
@@ -573,7 +573,7 @@ public class BluetoothPbapSimVcardManager {
         } else if (intIndex == 0) {
             // For PB_PATH, 0.vcf is the phone number of this phone.
             String ownerVcard = mVcardManager.getOwnerPhoneNumberVcard(vcard21,
-                    ignorefilter, propertySelector);
+                    propertySelector);
             return server.pushBytes(op, ownerVcard);
         } else {
             return composeAndSendSIMPhonebookOneVcard(op, intIndex, vcard21, null, mOrderBy);

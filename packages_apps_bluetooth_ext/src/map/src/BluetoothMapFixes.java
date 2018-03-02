@@ -71,27 +71,6 @@ public class BluetoothMapFixes {
         return false;
     }
 
-    /*
-     * Handle IOT Specific case for incorrect SMS Type in BMsg for PushMsg.
-     * (when carkit push message for different type(GSM/CDMA) than the phone
-     *  type (CDMA/GSM)). Support only default telephony manager phone type.
-     */
-    public static void autoCorrectMsgtype(Context context,
-            BluetoothMapbMessage message) {
-        if (message.getType().equals(TYPE.SMS_GSM) ||
-                message.getType().equals(TYPE.SMS_CDMA)) {
-            //Check to Auto convert to the default Phone network Type.
-            TelephonyManager tm = (TelephonyManager)context
-                    .getSystemService(Context.TELEPHONY_SERVICE);
-            if (tm.getPhoneType() == TelephonyManager.PHONE_TYPE_GSM) {
-                    message.setType(TYPE.SMS_GSM);
-            } else if (tm.getPhoneType() == TelephonyManager.PHONE_TYPE_CDMA) {
-                    message.setType(TYPE.SMS_CDMA);
-            }
-            Log.d(TAG, "pushMsg: SMS TYPE: " + message.getType());
-        }
-    }
-
     /**
       * Create both MAP SMS/MMS and EMAIL SDP in a handler thread.
       */
@@ -109,32 +88,6 @@ public class BluetoothMapFixes {
         } else if(mSessionStatusHandler != null ) {
             Log.w(TAG, "mSessionStatusHandler START_MAPEMAIL message already in Queue");
         }
-    }
-
-    public static void handleCleanup(BluetoothMapService mService) {
-        Handler mSessionStatusHandler = mService.getHandler();
-        /* Stop MapProfile if already started.
-         * TODO: Check if the profile state can be retreived from ProfileService
-         * or AdapterService */
-        if (!mService.isMapStarted()) {
-            if (DEBUG) Log.d(TAG, "Service Not Available to STOP or Shutdown" +
-                " already in progress - Ignoring");
-            return;
-        } else {
-            if (VERBOSE) Log.d(TAG, "Service Stoping()");
-        }
-        /* SetState Disconnect already handled from closeService.
-         * Handle it otherwise. Redundant for backup */
-        if (mService.getState() != BluetoothMap.STATE_DISCONNECTED) {
-            mService.setState(BluetoothMap.STATE_DISCONNECTED,
-                BluetoothMap.RESULT_CANCELED);
-        }
-        /* Cleanup already handled in Stop().
-         * Move this  extra check to Handler. */
-        if (mSessionStatusHandler != null) {
-            mService.sendShutdownMessage();
-        }
-        mService.mStartError = true;
     }
 
     /* Check if Map App Observer is null. */
@@ -158,22 +111,6 @@ public class BluetoothMapFixes {
        /** Uses mEnabledAccounts, hence getEnabledAccountItems()
           * must be called before this. */
         mService.createMasInstances();
-    }
-
-    /* handle stopping MAP profile Service*/
-    public static void handleStoppingMap(BluetoothMapService mService) {
-        Handler mSessionStatusHandler = mService.getHandler();
-        //Stop MapProfile if already started.
-        if (!mService.isMapStarted()) {
-            if (DEBUG) Log.d(TAG, "Service Not Available to STOP or Shutdown"
-                + "already in progress - Ignoring");
-        } else if (mSessionStatusHandler != null) {
-            if (VERBOSE) Log.d(TAG, "Service Stoping()");
-            mService.sendShutdownMessage();
-        } else {
-            if (DEBUG) Log.d(TAG, "Unable to perform STOP or Shutdown " +
-                "already in progress - Ignoring");
-        }
     }
 
 }

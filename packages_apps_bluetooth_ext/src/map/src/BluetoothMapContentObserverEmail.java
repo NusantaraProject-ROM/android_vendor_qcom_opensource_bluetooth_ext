@@ -848,8 +848,8 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
             BluetoothMapAppParams ap, String emailBaseUri) throws IllegalArgumentException,
             RemoteException, IOException {
         if (D) Log.d(TAG, "pushMessage emailBaseUri: "+emailBaseUri);
-        ArrayList<BluetoothMapbMessage.vCard> recipientList = msg.getRecipients();
-        ArrayList<BluetoothMapbMessage.vCard> originatorList = msg.getOriginators();
+        ArrayList<BluetoothMapbMessage.VCard> recipientList = msg.getRecipients();
+        ArrayList<BluetoothMapbMessage.VCard> originatorList = msg.getOriginators();
         int transparent = (ap.getTransparent() == BluetoothMapAppParams.INVALID_VALUE_PARAMETER) ?
                 0 : ap.getTransparent();
         int retry = ap.getRetry();
@@ -881,9 +881,9 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
                 }
             }
             String toAddress[] = null;
-            for (BluetoothMapbMessage.vCard recipient : recipientList) {
+            for (BluetoothMapbMessage.VCard recipient : recipientList) {
                 if(recipient.getEnvLevel() == 0) // Only send the message to the top level recipient
-                    toAddress = ((BluetoothMapbMessage.vCard)recipient).getEmailAddresses();
+                    toAddress = ((BluetoothMapbMessage.VCard)recipient).getEmailAddresses();
                 Uri uriInsert = BluetoothMapEmailContract
                         .buildEmailMessageUri(BluetoothMapEmailContract.EMAIL_AUTHORITY);
                 if (D) Log.d(TAG, "pushMessage - uriInsert= " + uriInsert.toString() +

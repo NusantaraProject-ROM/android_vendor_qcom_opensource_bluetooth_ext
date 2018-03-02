@@ -94,6 +94,8 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
 
     private static boolean mObexConnected;
 
+    private boolean mAcceptNewConnections;
+
     public AvrcpBipRsp (Context context) {
         mContext = context;
         mAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -182,9 +184,7 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
 
         closeConnectionSocket();
 
-        if(mServerSocket != null) {
-            mServerSocket.prepareForNewConnect();
-        } else {
+        if(mServerSocket == null) {
             /* AVRCP 1.6 does not support obex over rfcomm */
             mServerSocket = ObexServerSockets.createWithFixedChannels(this, -1,
                               AVRCP_BIP_L2CAP_PSM);
@@ -194,6 +194,10 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
             }
         }
 
+    }
+
+    void acceptNewConnections() {
+        mAcceptNewConnections = true;
     }
 
     private final synchronized void closeServerSocket() {
@@ -214,6 +218,7 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
             } finally {
                 mConnSocket = null;
                 mRemoteDevice = null;
+                acceptNewConnections();
             }
         }
     }
@@ -289,7 +294,11 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
                    + mRemoteDevice.getAddress());
             return false;
         }
-
+        if (!mAcceptNewConnections) {
+            Log.d(TAG, " onConnect BluetoothSocket :" + socket + " rejected");
+            return false;
+        }
+        mAcceptNewConnections = false;
         mRemoteDevice = device;
         mConnSocket = socket;
 
