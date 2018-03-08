@@ -218,9 +218,9 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
             } finally {
                 mConnSocket = null;
                 mRemoteDevice = null;
-                acceptNewConnections();
             }
         }
+        acceptNewConnections();
     }
 
     private final synchronized void startObexServerSession() throws IOException {
