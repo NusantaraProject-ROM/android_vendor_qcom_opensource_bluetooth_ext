@@ -171,6 +171,10 @@ public class BluetoothPbapSimVcardManager {
         builder.appendLine(VCardConstants.PROPERTY_N, name, needCharset, false);
 
         String number = mCursor.getString(NUMBER_COLUMN_INDEX);
+        if (TextUtils.isEmpty(number)) {
+            // To avoid Spec violation and IOT issues, intialise with invalid number
+            number = "000000";
+        }
         if (number.equals("-1")) {
             number = mContext.getString(R.string.unknownNumber);
         }
