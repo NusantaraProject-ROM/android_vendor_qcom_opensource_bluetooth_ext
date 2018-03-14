@@ -100,6 +100,8 @@ public class BluetoothPbapFixes {
 
     private static final int ORDER_BY_ALPHABETICAL = 1;
 
+    static final int MAX_CONNECTED_DEVICES = 2;
+
     /* To get feature support from config file */
     protected static void getFeatureSupport(Context context) {
         sContext = context;
