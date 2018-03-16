@@ -77,7 +77,6 @@ static unsigned char main_done = 0;
 static bt_status_t status;
 
 /* Main API */
-static bluetooth_device_t* bt_device;
 const bt_interface_t* sBtInterface = NULL;
 const btvendor_interface_t *btvendorInterface  = NULL;
 const btrfcomm_interface_t *sRfcInterface = NULL;
@@ -484,7 +483,7 @@ static int create_cmdjob(char *cmd)
  ** Load stack lib
  *******************************************************************************/
 
-#define BLUETOOTH_LIBRARY_NAME "libbluetooth.so"
+#define BLUETOOTH_LIBRARY_NAME "libbluetooth_qti.so"
 int load_bt_lib(const bt_interface_t** interface) {
   const char* sym = BLUETOOTH_INTERFACE_STRING;
   bt_interface_t* itf = nullptr;

@@ -83,8 +83,6 @@ static bt_status_t status;
 static bool strict_mode = FALSE;
 
 /* Main API */
-static bluetooth_device_t* bt_device;
-
 const bt_interface_t* sBtInterface = NULL;
 const btvendor_interface_t *btvendorInterface = NULL;
 
@@ -148,20 +146,6 @@ tMCA_CL  g_Mcl  = 0;
 
 static void process_cmd(char *p, unsigned char is_job);
 static void bdt_log(const char *fmt_str, ...);
-
-int GetBdAddr(char *p, bt_bdaddr_t *pbd_addr);
-
-static int str2bd(char *str, bt_bdaddr_t *addr)
-{
-    int32_t i = 0;
-
-    for (i = 0; i < 6; i++)
-    {
-        addr->address[i] = (uint8_t) strtoul(str, (char **)&str, 16);
-        str++;
-    }
-    return 0;
-}
 
 /************************************************************************************
 **  Externs
@@ -583,7 +567,7 @@ static int create_cmdjob(char *cmd)
 /*******************************************************************************
  ** Load stack lib
  *******************************************************************************/
-#define BLUETOOTH_LIBRARY_NAME "libbluetooth.so"
+#define BLUETOOTH_LIBRARY_NAME "libbluetooth_qti.so"
 int load_bt_lib(const bt_interface_t** interface) {
   const char* sym = BLUETOOTH_INTERFACE_STRING;
   bt_interface_t* itf = nullptr;
@@ -711,7 +695,7 @@ static void discovery_state_changed(bt_discovery_state_t state)
 }
 
 
-static void pin_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name, uint32_t cod, bool min_16_digit)
+static void pin_request_cb(RawAddress *remote_bd_addr, bt_bdname_t *bd_name, uint32_t cod, bool min_16_digit)
 {
     bt_pin_code_t pincode = {{ 0x31, 0x32, 0x33, 0x34}};
 
@@ -721,7 +705,7 @@ static void pin_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name, ui
     }
 }
 
-static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
+static void ssp_request_cb(RawAddress *remote_bd_addr, bt_bdname_t *bd_name,
                            uint32_t cod, bt_ssp_variant_t pairing_variant, uint32_t pass_key)
 {
     printf("ssp_request_cb : %s %d %u\n", bd_name->name, pairing_variant, pass_key);
@@ -731,17 +715,15 @@ static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
     }
 }
 
-static void bond_state_changed_cb(bt_status_t status, bt_bdaddr_t *remote_bd_addr, bt_bond_state_t state)
+static void bond_state_changed_cb(bt_status_t status, RawAddress *remote_bd_addr, bt_bond_state_t state)
 {
     printf("Bond State Changed = %d\n", state);
     g_PairState = state;
 }
 
-static void acl_state_changed(bt_status_t status, bt_bdaddr_t *remote_bd_addr, bt_acl_state_t state)
+static void acl_state_changed(bt_status_t status, RawAddress *remote_bd_addr, bt_acl_state_t state)
 {
-    printf("acl_state_changed : remote_bd_addr=%02x:%02x:%02x:%02x:%02x:%02x, acl status=%s \n",
-    remote_bd_addr->address[0], remote_bd_addr->address[1], remote_bd_addr->address[2],
-    remote_bd_addr->address[3], remote_bd_addr->address[4], remote_bd_addr->address[5],
+    printf("acl_state_changed : acl status=%s \n", 
     (state == BT_ACL_STATE_CONNECTED)?"ACL Connected" :"ACL Disconnected"
     );
 }
@@ -1034,17 +1016,17 @@ static void do_mcap_delete_dep(char *p)
 static void do_mcap_connect(char *p)
 {
     tMCA_RESULT  Ret = 0;
-    bt_bdaddr_t bd_addr = {{0}};
+    RawAddress bd_addr;
     uint16_t      ctrl_psm = 0;
     uint16_t      sec_mask = 0;
     char   buf[64];
 
     get_str(&p, buf);
-    str2bd(buf, &bd_addr);
+    RawAddress::FromString(buf, bd_addr);
     ctrl_psm  = get_hex(&p, -1);// arg2
     sec_mask  = get_int(&p, -1);// arg3
     printf("ctrl_psm=%d, secMask=%d \n", ctrl_psm, sec_mask);
-    Ret = sMcapIface->ConnectReq(g_Mcap_Handle, bd_addr.address, ctrl_psm, sec_mask);
+    Ret = sMcapIface->ConnectReq(g_Mcap_Handle, bd_addr, ctrl_psm, sec_mask);
     printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
 }
 
@@ -1073,10 +1055,9 @@ static void do_mcap_close(char *p)
 
 static void do_pairing(char *p)
 {
-    bt_bdaddr_t bd_addr = {{0}};
+    RawAddress bd_addr;
+    RawAddress::FromString(p, bd_addr);
 
-    if(FALSE == GetBdAddr(p, &bd_addr))
-        return; // arg1
     if(BT_STATUS_SUCCESS != sBtInterface->create_bond(&bd_addr, TRANSPORT_BREDR))
     {
         printf("Failed to Initiate Pairing \n");
@@ -1170,35 +1151,4 @@ int main (int argc, char * argv[])
     bdt_log(":: Bluedroid test app terminating");
 
     return 0;
-}
-
-
-int GetBdAddr(char *p, bt_bdaddr_t *pbd_addr)
-{
-    char Arr[13] = {0};
-    uint8_t k1 = 0;
-    uint8_t k2 = 0;
-    int i;
-
-    if(12 != strlen(p))
-    {
-        printf("\nInvalid Bd Address. Format[112233445566]\n");
-        return FALSE;
-    }
-    strlcpy(Arr, p, sizeof(Arr));
-    for(i=0; i<12; i++)
-    {
-        Arr[i] = tolower(Arr[i]);
-    }
-    for(i=0; i<6; i++)
-    {
-        k1 = (uint8_t) ( (Arr[i*2] >= 'a') ? ( 10 + (uint8_t)( Arr[i*2] - 'a' )) : (Arr[i*2] - '0') );
-        k2 = (uint8_t) ( (Arr[(i*2)+1] >= 'a') ? ( 10 + (uint8_t)( Arr[(i*2)+1] - 'a' )) : (Arr[(i*2)+1] - '0') );
-        if ( (k1>15)||(k2>15) )
-        {
-            return FALSE;
-        }
-        pbd_addr->address[i] = (k1<<4 | k2);
-    }
-    return TRUE;
 }

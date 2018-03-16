@@ -23,6 +23,7 @@ LOCAL_MODULE_TAGS := debug optional
 LOCAL_MODULE:= l2test_ertm
 
 LOCAL_SHARED_LIBRARIES += libcutils   \
+                          libchrome   \
                           libutils    \
 
 LOCAL_STATIC_LIBRARIES += libbluetooth-types
