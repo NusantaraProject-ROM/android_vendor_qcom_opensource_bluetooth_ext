@@ -74,6 +74,7 @@ extern tBTM_STATUS BTM_ReadRemoteVersion(const RawAddress& addr, uint8_t* lmp_ve
                                   uint16_t* manufacturer,
                                   uint16_t* lmp_sub_version);
 extern bool interface_ready(void);
+extern void set_prop_callouts(bt_property_callout_t *callouts);
 void btif_vendor_cleanup_iot_broadcast_timer(void);
 
 btvendor_callbacks_t *bt_vendor_callbacks = NULL;
@@ -209,6 +210,12 @@ static bool get_profile_info(profile_t profile, profile_info_t feature_name)
     LOG_INFO(LOG_TAG,"get_profile_info :%d", profile);
     return profile_feature_fetch(profile,feature_name);
 }
+
+static void set_property_callouts(bt_property_callout_t* property_callouts)
+{
+    set_prop_callouts(property_callouts);
+}
+
 static void cleanup(void)
 {
     LOG_INFO(LOG_TAG,"cleanup");
@@ -258,6 +265,7 @@ static const btvendor_interface_t btvendorInterface = {
     bredrcleanup,
     set_wifi_state,
     get_profile_info,
+    set_property_callouts,
     cleanup,
 };
 

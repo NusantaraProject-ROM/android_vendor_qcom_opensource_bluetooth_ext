@@ -22,6 +22,7 @@
 #include <hardware/vendor.h>
 #include "utils/Log.h"
 #include "android_runtime/AndroidRuntime.h"
+#include <cutils/properties.h>
 
 
 namespace android {
@@ -31,6 +32,23 @@ static jmethodID method_iotDeviceBroadcast;
 
 static btvendor_interface_t *sBluetoothVendorInterface = NULL;
 static jobject mCallbacksObj = NULL;
+
+static int property_set_callout(const char* key, const char* value) {
+    return property_set(key, value);
+}
+
+static int property_get_callout(const char* key, char* value, const char* default_value) {
+    return property_get(key, value, default_value);
+}
+
+static int32_t property_get_int32_callout(const char* key, int32_t default_value) {
+    return property_get_int32(key, default_value);
+}
+
+static bt_property_callout_t sBluetoothPropertyCallout = {
+    sizeof(sBluetoothPropertyCallout), property_set_callout,
+    property_get_callout, property_get_int32_callout,
+};
 
 static void bredr_cleanup_callback(bool status){
 
@@ -101,6 +119,7 @@ static void initNative(JNIEnv *env, jobject object) {
         return;
     }
     mCallbacksObj = env->NewGlobalRef(object);
+    sBluetoothVendorInterface->set_property_callouts(&sBluetoothPropertyCallout);
 }
 
 static void cleanupNative(JNIEnv *env, jobject object) {

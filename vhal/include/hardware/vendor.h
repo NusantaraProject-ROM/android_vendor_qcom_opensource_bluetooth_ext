@@ -61,6 +61,18 @@ typedef struct {
     btvendor_iot_device_broadcast_callback iot_device_broadcast_cb;
 } btvendor_callbacks_t;
 
+typedef int (*property_set_callout)(const char* key, const char* value);
+typedef int (*property_get_callout)(const char* key, char* value, const char* default_value);
+typedef int32_t (*property_get_int32_callout)(const char* key, int32_t default_value);
+
+typedef struct {
+  size_t size;
+
+  property_set_callout bt_set_property;
+  property_get_callout bt_get_property;
+  property_get_int32_callout bt_get_property_int32;
+} bt_property_callout_t;
+
 /** Represents the standard BT-Vendor interface.
  */
 typedef struct {
@@ -84,6 +96,8 @@ typedef struct {
 
     /** get profile info */
     bool (*get_profile_info)(profile_t, profile_info_t);
+
+    void (*set_property_callouts)(bt_property_callout_t* property_callouts);
 
     /** Closes the interface. */
     void  (*cleanup)( void );
