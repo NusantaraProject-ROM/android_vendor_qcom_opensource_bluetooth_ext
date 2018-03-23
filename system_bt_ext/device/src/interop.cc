@@ -201,7 +201,6 @@ static const char* interop_feature_string_(const interop_feature_t feature)
     CASE_RETURN_STR(INTEROP_DISABLE_LE_CONN_PREFERRED_PARAMS)
     CASE_RETURN_STR(INTEROP_ADV_AVRCP_VER_1_3)
     CASE_RETURN_STR(INTEROP_DISABLE_AAC_CODEC)
-    CASE_RETURN_STR(INTEROP_ENABLE_AAC_CODEC)
     CASE_RETURN_STR(INTEROP_DYNAMIC_ROLE_SWITCH)
     CASE_RETURN_STR(INTEROP_DISABLE_ROLE_SWITCH)
     CASE_RETURN_STR(INTEROP_DISABLE_ROLE_SWITCH_POLICY)
@@ -387,7 +386,7 @@ static void interop_database_add_( interop_db_entry_t *db_entry,
   }
 
   if (!persist) {
-    //return if the persist option is not set
+    // return if the persist option is not set
     return;
   }
 
