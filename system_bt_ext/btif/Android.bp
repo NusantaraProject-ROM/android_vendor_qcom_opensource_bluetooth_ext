@@ -23,6 +23,9 @@ cc_library_static {
         "src/btif_rfcomm.cc",
         "src/btif_vendor.cc",
         "src/btif_vendor_socket.cc",
+        "src/btif_gap.cc",
+        "src/btif_gatt_qual.cc",
+        "src/btif_smp.cc",
     ],
     shared_libs: [
         "libcutils",
