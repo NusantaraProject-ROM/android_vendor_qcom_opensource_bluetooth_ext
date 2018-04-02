@@ -600,8 +600,16 @@ static bool interop_database_remove_( interop_db_entry_t *entry)
         interop_addr_entry_t *src = &entry->entry_type.addr_entry;
 
         interop_feature_t feature = src->feature;
-        std::string addrstr = src->addr.ToString();
-        const char* bdstr = addrstr.c_str();
+
+        char bdstr[18] = {'\0'};
+        snprintf(bdstr, sizeof(bdstr), "%02x:%02x:%02x:%02x:%02x:%02x",
+                                src->addr.address[0],
+                                src->addr.address[1],
+                                src->addr.address[2],
+                                src->addr.address[3],
+                                src->addr.address[4],
+                                src->addr.address[5]);
+        bdstr[src->length*3-1] = {'\0'};
         interop_config_remove(interop_feature_string_(feature), bdstr);
         interop_config_flush();
         break;
