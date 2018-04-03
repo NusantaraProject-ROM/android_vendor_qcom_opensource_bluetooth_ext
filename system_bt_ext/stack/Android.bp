@@ -5,6 +5,7 @@ cc_library_static {
     defaults: ["fluoride_defaults"],
     local_include_dirs: [
         "btm",
+        "include",
     ],
     include_dirs: [
         "vendor/qcom/opensource/system/bt",
@@ -20,10 +21,13 @@ cc_library_static {
         "vendor/qcom/opensource/system/bt/stack/include",
         "vendor/qcom/opensource/system/bt/stack/btm",
         "vendor/qcom/opensource/bluetooth_ext/system_bt_ext/bta/include/",
+        "vendor/qcom/opensource/bluetooth_ext/vhal/include"
     ],
     srcs: [
         "btm/btm_csb.cc",
         "hcic/hcivendorcmds.cc",
+        "a2dp/a2dp_vendor_aptx_tws_encoder.cc",
+        "a2dp/a2dp_vendor_aptx_tws.cc",
     ],
     static_libs: [
         "libbt-hci_qti",
