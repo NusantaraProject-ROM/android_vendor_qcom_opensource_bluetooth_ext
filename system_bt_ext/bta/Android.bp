@@ -16,12 +16,14 @@ cc_library_static {
         "vendor/qcom/opensource/system/bt/stack/l2cap/",
         "vendor/qcom/opensource/bluetooth_ext/system_bt_ext/include/",
         "vendor/qcom/opensource/bluetooth_ext/system_bt_ext/bta/include/",
+        "vendor/qcom/opensource/bluetooth_ext/system_bt_ext/btif/include/",
         "vendor/qcom/opensource/bluetooth_ext/vhal/include/",
     ],
     srcs: [
         "tws_plus/bta_tws_plus_main.cc",
         "tws_plus/bta_tws_plus_act.cc",
         "tws_plus/bta_tws_plus_api.cc",
+        "ba/bta_ba.cc",
     ],
     shared_libs: [
         "libcutils",

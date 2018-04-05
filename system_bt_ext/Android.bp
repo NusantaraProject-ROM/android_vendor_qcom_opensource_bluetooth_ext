@@ -2,5 +2,6 @@ subdirs = [
     "device",
     "btif",
     "osi",
+    "stack",
     "bta",
 ]
