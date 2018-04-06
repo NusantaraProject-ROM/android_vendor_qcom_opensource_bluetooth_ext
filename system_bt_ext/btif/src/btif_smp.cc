@@ -47,16 +47,16 @@ static void SmpInit(void)
 {
     SMP_Init();
 }
-static BOOLEAN SmpRegister(tSMP_CALLBACK *p_cback)
+static bool SmpRegister(tSMP_CALLBACK *p_cback)
 {
-    BOOLEAN Ret = 0;
+    bool Ret = 0;
     Ret = SMP_Register(p_cback);
     printf("%s:: Ret=%d\n", __FUNCTION__, Ret);
     return Ret;
 
 }
 
-static tSMP_STATUS SmpPair(BD_ADDR bd_addr)
+static tSMP_STATUS SmpPair(RawAddress bd_addr)
 {
     tSMP_STATUS Ret = 0;
     Ret = SMP_Pair(bd_addr);
@@ -64,31 +64,31 @@ static tSMP_STATUS SmpPair(BD_ADDR bd_addr)
     return Ret;
 }
 
-static BOOLEAN PairCancel(BD_ADDR bd_addr)
+static bool PairCancel(RawAddress bd_addr)
 {
-    BOOLEAN Ret = 0;
+    bool Ret = 0;
     Ret = SMP_PairCancel(bd_addr);
     printf("%s:: Ret=%d\n", __FUNCTION__, Ret);
     return Ret;
 }
 
-static void SecurityGrant(BD_ADDR bd_addr, UINT8 res)
+static void SecurityGrant(RawAddress bd_addr, uint8_t res)
 {
         SMP_SecurityGrant(bd_addr, res);
     printf("%s:: executed \n", __FUNCTION__);
 }
 
-static void PasskeyReply(BD_ADDR bd_addr, UINT8 res, UINT32 passkey)
+static void PasskeyReply(RawAddress bd_addr, uint8_t res, uint32_t passkey)
 {
         SMP_PasskeyReply(bd_addr, res, passkey);
     printf("%s:: executed \n", __FUNCTION__);
 }
 
-static BOOLEAN Encrypt(UINT8 *key, UINT8 key_len,
-                                        UINT8 *plain_text, UINT8 pt_len,
+static bool Encrypt(uint8_t *key, uint8_t key_len,
+                                        uint8_t *plain_text, uint8_t pt_len,
                                         tSMP_ENC *p_out)
 {
-    BOOLEAN Ret = 0;
+    bool Ret = 0;
     Ret = SMP_Encrypt(key, key_len, plain_text, pt_len, p_out);
     printf("%s:: Ret=%d\n", __FUNCTION__, Ret);
     return Ret;

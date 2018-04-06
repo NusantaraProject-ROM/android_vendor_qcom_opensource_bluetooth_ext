@@ -50,10 +50,10 @@ static void GapAttrInit(void)
 {
     GAP_Init();
 }
-static void Gap_BleAttrDBUpdate(BD_ADDR p_bda, UINT16 int_min, UINT16 int_max, UINT16 latency, UINT16 sp_tout)
+static void Gap_BleAttrDBUpdate(RawAddress p_bda, uint16_t int_min, uint16_t int_max, uint16_t latency, uint16_t sp_tout)
 {
     printf("%s:: remote_bd_addr=%02x:%02x:%02x:%02x:%02x:%02x, int_min=%d, int_max=%d, latency=%d sp_tout=%d\n", __FUNCTION__,
-            p_bda[0], p_bda[1], p_bda[2], p_bda[3], p_bda[4], p_bda[5],
+            p_bda.address[0], p_bda.address[1], p_bda.address[2], p_bda.address[3], p_bda.address[4], p_bda.address[5],
             int_min, int_max, latency, sp_tout);
     L2CA_UpdateBleConnParams(p_bda, 50, 70, 0, 1000);
 
