@@ -168,6 +168,9 @@ typedef struct {
     /** Does BREDR cleanup */
     void (*bredrcleanup)(void);
 
+    /** Does BREDR startup */
+    void (*bredrstartup)(void);
+
     /** set wifi state */
     void (*set_wifi_state)(bool);
 
