@@ -29,12 +29,17 @@
 
 package com.android.bluetooth.pbap;
 
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.NotificationChannel;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothPbap;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.CursorWindowAllocationException;
 import android.database.MatrixCursor;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -59,9 +64,15 @@ import com.android.bluetooth.sdp.SdpManager;
 import com.android.bluetooth.btservice.AdapterService;
 import com.android.bluetooth.btservice.AbstractionLayer;
 
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import javax.obex.ServerSession;
 
 public class BluetoothPbapFixes {
@@ -101,6 +112,19 @@ public class BluetoothPbapFixes {
     private static final int ORDER_BY_ALPHABETICAL = 1;
 
     static final int MAX_CONNECTED_DEVICES = 2;
+
+    // Stores map of BD address to isRebonded for the given BT Session
+    protected static HashMap<String,String> PbapSdpResponse = new HashMap <String,String>();
+    // Stores map of BD address to PCE version for the given BT Session
+    protected static HashMap<String,Integer> remoteVersion = new HashMap <String,Integer>();
+
+    protected static final String PBAP_NOTIFICATION_ID = "pbap_notification";
+    protected static final String PBAP_NOTIFICATION_NAME = "BT_PBAP_ADVANCE_SUPPORT";
+    protected static final int PBAP_ADV_VERSION = 0x0102;
+    protected static final int RECORD_LENGTH = 6;
+    protected static final int VERSION_LENGTH = 2;
+    protected static final int ADDRESS_LENGTH = 3;
+    protected static NotificationManager mNotificationManager;
 
     /* To get feature support from config file */
     protected static void getFeatureSupport(Context context) {
@@ -214,27 +238,20 @@ public class BluetoothPbapFixes {
      * sim support value*/
     protected static void createSdpRecord(ObexServerSockets serverSockets,
             BluetoothPbapService service) {
-        if (!isSupportedPbap12 && !isSimSupported) {
-            Log.i(TAG ," with out sim and pbp 1.2 ");
+        if (!isSimSupported) {
+            Log.d(TAG ,"creating PBAP 1.1 record without sim support");
             service.mSdpHandle = SdpManager.getDefaultManager().createPbapPseRecord
                 ("OBEX Phonebook Access Server",serverSockets.getRfcommChannel(),
                 -1, BluetoothPbapFixes.SDP_PBAP_LEGACY_SERVER_VERSION,
                 BluetoothPbapFixes.SDP_PBAP_LEGACY_SUPPORTED_REPOSITORIES,
                 BluetoothPbapFixes.SDP_PBAP_LEGACY_SUPPORTED_FEATURES);
-        } else if (!isSupportedPbap12 && isSimSupported) {
-            Log.i(TAG ," with sim with out pbp 1.2 ");
+        } else if (isSimSupported) {
+            Log.d(TAG ,"creating PBAP 1.1 record with sim support");
             service.mSdpHandle = SdpManager.getDefaultManager().createPbapPseRecord
                 ("OBEX Phonebook Access Server",serverSockets.getRfcommChannel(),
                 -1, BluetoothPbapFixes.SDP_PBAP_LEGACY_SERVER_VERSION,
                 SDP_PBAP_SUPPORTED_REPOSITORIES,
                 BluetoothPbapFixes.SDP_PBAP_LEGACY_SUPPORTED_FEATURES);
-        } else {
-            Log.i(TAG ," with sim with pbp 1.2 ");
-            service.mSdpHandle = SdpManager.getDefaultManager().createPbapPseRecord
-            ("OBEX Phonebook Access Server",serverSockets.getRfcommChannel(),
-                serverSockets.getL2capPsm(), SDP_PBAP_SERVER_VERSION,
-                SDP_PBAP_SUPPORTED_REPOSITORIES,
-                SDP_PBAP_SUPPORTED_FEATURES);
         }
     }
 
@@ -382,4 +399,108 @@ public class BluetoothPbapFixes {
         return itemsFound;
     }
 
+    /* Send SDP request to know about remote PCE Profile Support only if 1.2
+     * entry for Bonded device is not found. */
+    protected static boolean remoteSupportsPbap1_2(BluetoothDevice device) {
+        Log.d(TAG, "checkRemoteProfileSupport");
+        if (device == null) {
+            Log.e(TAG, "Remote Device not fetched, Return");
+            return false;
+        }
+        boolean isEntryFound = readRemoteProfileVersion1_2(device);
+        if (isEntryFound) {
+            Log.d(TAG, "Remote Supports PBAP 1.2");
+            return true;
+        }
+        return false;
+    }
+
+    protected static boolean readRemoteProfileVersion1_2(BluetoothDevice device) {
+        Log.d(TAG, "readRemoteProfileVersion ");
+        try {
+            final String filePath = "/data/misc/bluedroid/pce_peer_entries.conf";
+            File file = new File(filePath);
+            Log.d(TAG, "file length = " + (int)file.length());
+            byte[] fileData = new byte[(int) file.length()];
+            DataInputStream dis = new DataInputStream(new FileInputStream(file));
+            dis.readFully(fileData);
+            dis.close();
+            return readRecord(fileData, device);
+        } catch (IOException io) {
+            Log.e(TAG, "File Read Failed: " + io);
+        }
+        return false;
+    }
+
+    /* Read all records and check if entry for remote device is found
+     * Returns true if 1.2 support is stored for remote else false */
+    public static boolean readRecord(byte[] fileData, BluetoothDevice device) {
+        for (int i = 0, j = 0 ; (j + RECORD_LENGTH) <= fileData.length; i++) {
+            // Read Version from PCE Entry
+            byte[] versionBytes = Arrays.copyOfRange(fileData, j, j + VERSION_LENGTH);
+            int version = byteArrayToInt(versionBytes);
+            j += VERSION_LENGTH;
+
+            // Read BD ADDRESS from PCE Entry
+            StringBuilder address = new StringBuilder();
+            address.append(String.format("%02X", fileData[j]) + ":"
+                    + String.format("%02X", fileData[j+1]) + ":"
+                    + String.format("%02X", fileData[j+2]));
+            j += ADDRESS_LENGTH;
+
+            // Read rebonded from PCE Entry
+            char isRebonded = (char)fileData[j++];
+            Log.d(TAG, "version: " + version + ", address = " + address.toString()
+                    + ", isRebonded = "+ isRebonded +" Remote Address = "
+                    + device.getAddress());
+
+            boolean isMatched = device.getAddress().toLowerCase()
+                    .startsWith(address.toString().toLowerCase());
+            PbapSdpResponse.put(address.toString(), Character.toString(isRebonded));
+            if (isMatched) {
+                remoteVersion.put(address.toString(), Integer.valueOf(version));
+                return (version >= PBAP_ADV_VERSION ? true : false);
+            }
+        }
+        return false;
+    }
+
+    /* Convert 2 bytes of data to integer */
+    public static int byteArrayToInt(byte[] b)
+    {
+        return   b[0] & 0xFF |
+                (b[1] & 0xFF) << 8 ;
+    }
+
+    /*Creates Notification for PBAP version upgrade/downgrade */
+    protected static void createNotification(BluetoothPbapService context, boolean isUpgrade) {
+        if (VERBOSE) Log.v(TAG, "Create PBAP Notification for Upgrade/Downgrade");
+        // create Notification channel.
+        mNotificationManager = (NotificationManager)
+                context.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationChannel mChannel = new NotificationChannel(PBAP_NOTIFICATION_ID,
+                PBAP_NOTIFICATION_NAME, NotificationManager.IMPORTANCE_DEFAULT);
+        mChannel.setDescription("Remote Phonebook Profile Version Change");
+        mNotificationManager.createNotificationChannel(mChannel);
+
+        // create notification
+        String title = isUpgrade ? "Phonebook Advance Feature Supported" :
+                            "Remote Phonebook Feature Downgrade";
+        String contentText = isUpgrade ? "Re-pair for Advance Phonebook Feature.":
+                "Re-pair for Phonebook Access Version Compatibility";
+        int NOTIFICATION_ID = android.R.drawable.stat_sys_data_bluetooth;
+        Notification notification = new Notification.Builder(context)
+            .setContentTitle(title)
+            .setContentText(contentText)
+            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
+            .setChannelId(PBAP_NOTIFICATION_ID)
+            .setDefaults(Notification.DEFAULT_ALL)
+            .setAutoCancel(true)
+            .build();
+
+        if (mNotificationManager != null )
+            mNotificationManager.notify(NOTIFICATION_ID, notification);
+        else
+            Log.e(TAG,"mNotificationManager is null");
+    }
 }
