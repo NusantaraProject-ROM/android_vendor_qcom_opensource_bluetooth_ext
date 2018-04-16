@@ -20,5 +20,6 @@ cc_library_static {
     srcs: [
         "com_android_bluetooth_btservice_vendor.cpp",
         "com_android_bluetooth_btservice_vendor_socket.cpp",
+        "com_android_bluetooth_avrcp_ext.cpp",
     ],
 }
