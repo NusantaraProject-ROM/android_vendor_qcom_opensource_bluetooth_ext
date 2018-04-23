@@ -457,8 +457,8 @@ public class BluetoothPbapFixes {
             boolean isMatched = device.getAddress().toLowerCase()
                     .startsWith(address.toString().toLowerCase());
             PbapSdpResponse.put(address.toString(), Character.toString(isRebonded));
+            remoteVersion.put(address.toString(), Integer.valueOf(version));
             if (isMatched) {
-                remoteVersion.put(address.toString(), Integer.valueOf(version));
                 return (version >= PBAP_ADV_VERSION ? true : false);
             }
         }
