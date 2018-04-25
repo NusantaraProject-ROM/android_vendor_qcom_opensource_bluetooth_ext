@@ -66,6 +66,30 @@
 #include <signal.h>
 #include <time.h>
 
+#include <base/bind.h>
+
+using bluetooth::Uuid;
+#define bluetooth_module_t "bluetooth_test"
+
+typedef struct {
+  uint16_t advertising_event_properties;
+  uint32_t adv_int_min;
+  uint32_t adv_int_max;
+  tBTM_BLE_ADV_CHNL_MAP channel_map;
+  tBTM_BLE_AFP adv_filter_policy;
+  int8_t tx_power;
+  uint8_t primary_advertising_phy;
+  uint8_t secondary_advertising_phy;
+  uint8_t scan_request_notification_enable;
+} tBTM_BLE_ADV_PARAMS;
+
+typedef struct {
+  uint8_t enable;
+  uint16_t min_interval;
+  uint16_t max_interval;
+  uint16_t periodic_advertising_properties;
+} tBLE_PERIODIC_ADV_PARAMS;
+
 
 #ifdef TEST_APP_INTERFACE
 /************************************************************************************
@@ -90,23 +114,18 @@
 /************************************************************************************
 **  Local type definitions
 ************************************************************************************/
-static void register_client_cb(int status, int client_if, bt_uuid_t *app_uuid);
-static void scan_result_cb(bt_bdaddr_t* remote_bd_addr, int rssi, uint8_t* adv_data);
-static void listen_cb(int status, int server_if);
+static void register_client_cb(int status, int client_if, const Uuid& app_uuid);
 
-static void register_server_cb(int status, int server_if, bt_uuid_t *app_uuid);
-
+static void register_server_cb(int status, int server_if, const Uuid& app_uuid);
 
 /************************************************************************************
 **  Static variables
 ************************************************************************************/
 
 static unsigned char main_done = 0;
-static bt_status_t status;
+static int status;
 
 /* Main API */
-static bluetooth_device_t* bt_device;
-
 const bt_interface_t* sBtInterface = NULL;
 
 static gid_t groups[] = { AID_NET_BT, AID_INET, AID_NET_BT_ADMIN,
@@ -124,7 +143,6 @@ static int  g_ConnectionState   = DISCONNECT;
 static int  g_AdapterState      = BT_STATE_OFF;
 static int  g_PairState         = BT_BOND_STATE_NONE;
 
-
 static int  g_conn_id        = 0;
 static int  g_client_if      = 0;
 static int  g_server_if      = 0;
@@ -140,18 +158,22 @@ const btvendor_interface_t *btvendorInterface = NULL;
 
 
 int  Btif_gatt_layer = TRUE;
-bt_bdaddr_t *remote_bd_address;
+RawAddress* remote_bd_address;
 
-static UINT16 g_SecLevel = 0;
-static BOOLEAN g_ConnType = TRUE;//DUT is initiating connection
-static BOOLEAN g_Fcr_Present = FALSE;
-static UINT8 g_Fcr_Mode = L2CAP_FCR_BASIC_MODE;
-static UINT8 g_Ertm_AllowedMode = (L2CAP_FCR_CHAN_OPT_BASIC | L2CAP_FCR_CHAN_OPT_ERTM | L2CAP_FCR_CHAN_OPT_STREAM);
+static uint16_t g_SecLevel = 0;
+static bool g_ConnType = TRUE;//DUT is initiating connection
+static bool g_Fcr_Present = FALSE;
+static uint8_t g_Fcr_Mode = L2CAP_FCR_BASIC_MODE;
+static uint8_t g_Ertm_AllowedMode = (L2CAP_FCR_CHAN_OPT_BASIC | L2CAP_FCR_CHAN_OPT_ERTM | L2CAP_FCR_CHAN_OPT_STREAM);
 
 
 /* Default mtu */
 static int g_imtu = 672;
 static int g_omtu = 0;
+
+int start_advertising_set_advertiser_id = -1;
+int start_advertising_set_tx_power = -1;
+int start_advertising_set_status = -1;
 
 enum {
 L2CAP_NOT_CONNECTED,
@@ -161,8 +183,8 @@ L2CAP_CONNECTED
 
 static int L2cap_conn_state = L2CAP_NOT_CONNECTED;
 static tL2CAP_CFG_INFO tl2cap_cfg_info;
-static UINT16           g_PSM           = 0;
-static UINT16           g_lcid          = 0;
+static uint16_t           g_PSM           = 0;
+static uint16_t           g_lcid          = 0;
 
 
 enum {
@@ -203,62 +225,39 @@ static tL2CAP_ERTM_INFO t_ertm_info = {0, 0, 0, 0, 0, 0};
 static void process_cmd(char *p, unsigned char is_job);
 //static void job_handler(void *param);
 static void bdt_log(const char *fmt_str, ...);
-static void l2c_connect(bt_bdaddr_t *bd_addr);
-static UINT16 do_l2cap_connect(bt_bdaddr_t * bd_addr);
+static void l2c_connect(RawAddress bd_addr);
+static uint16_t do_l2cap_connect(RawAddress bd_addr);
 
 
 
-int GetBdAddr(char *p, bt_bdaddr_t *pbd_addr);
+int GetBdAddr(char *p, RawAddress* pbd_addr);
 
+int reg_inst_id = -1;
+int reg_status = -1;
 
 /************************************************************************************
 **  GATT Client Callbacks
 ************************************************************************************/
-static void register_client_cb(int status, int client_if, bt_uuid_t *app_uuid)
+static void register_client_cb(int status, int client_if, const Uuid& app_uuid)
 {
-    printf("%s:: status=%d, client_if=%d, uuid=%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x \n", __FUNCTION__, status, client_if,
-            app_uuid->uu[0], app_uuid->uu[1], app_uuid->uu[2], app_uuid->uu[3],
-            app_uuid->uu[4], app_uuid->uu[5], app_uuid->uu[6], app_uuid->uu[7],
-            app_uuid->uu[8], app_uuid->uu[9], app_uuid->uu[10], app_uuid->uu[11],
-            app_uuid->uu[12], app_uuid->uu[13], app_uuid->uu[14], app_uuid->uu[15]);
+    printf("%s:: status=%d, client_if=%d \n", __FUNCTION__, status, client_if);
     if(0 == status)    g_client_if_scan = client_if;
 }
 
-static void scan_result_cb(bt_bdaddr_t* remote_bd_addr, int rssi, uint8_t* adv_data)
-{
-    printf("%s:: remote_bd_addr=%02x:%02x:%02x:%02x:%02x:%02x, adv_data=0x%x \n",  __FUNCTION__,
-    remote_bd_addr->address[0], remote_bd_addr->address[1], remote_bd_addr->address[2],
-    remote_bd_addr->address[3], remote_bd_addr->address[4], remote_bd_addr->address[5], *adv_data);
-}
-
-static void connect_cb(int conn_id, int status, int client_if, bt_bdaddr_t* remote_bd_addr)
+static void connect_cb(int conn_id, int status, int client_if, const RawAddress& remote_bd_addr)
 {
     printf("%s:: remote_bd_addr=%02x:%02x:%02x:%02x:%02x:%02x, conn_id=0x%x, status=%d, client_if=%d\n",  __FUNCTION__,
-    remote_bd_addr->address[0], remote_bd_addr->address[1], remote_bd_addr->address[2],
-    remote_bd_addr->address[3], remote_bd_addr->address[4], remote_bd_addr->address[5], conn_id, status, client_if);
+    remote_bd_addr.address[0], remote_bd_addr.address[1], remote_bd_addr.address[2],
+    remote_bd_addr.address[3], remote_bd_addr.address[4], remote_bd_addr.address[5], conn_id, status, client_if);
 
     g_conn_id = conn_id;
-    sGapInterface->Gap_BleAttrDBUpdate(remote_bd_addr->address, 50, 70, 0, 1000);
+    sGapInterface->Gap_BleAttrDBUpdate(remote_bd_addr.address, 50, 70, 0, 1000);
 
-}
-
-/*
-static void register_for_notification_cb(int conn_id, int registered, int status, btgatt_srvc_id_t *srvc_id, btgatt_gatt_id_t *char_id)
-{
-    printf("%s:: conn_id=%d, registered=%d, status=%d \n", __FUNCTION__, conn_id, registered, status);
-}
-*/
-
-static void listen_cb(int status, int server_if)
-{
-    printf("%s:: status=%d, server_if=%d \n", __FUNCTION__, status, server_if);
-    if(0 == status)    g_server_if = server_if;
 }
 
 static btgatt_client_callbacks_t sGattClient_cb =
 {
     register_client_cb,
-    scan_result_cb,
     connect_cb,
     NULL,
     NULL,
@@ -270,7 +269,6 @@ static btgatt_client_callbacks_t sGattClient_cb =
     NULL,
     NULL,
     NULL,
-    listen_cb,
     NULL,
     NULL,
     NULL,
@@ -278,30 +276,41 @@ static btgatt_client_callbacks_t sGattClient_cb =
     NULL,
     NULL,
     NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
+};
+
+/************************************************************************************
+**  Scanner Callbacks
+************************************************************************************/
+
+static void scan_result_cb(uint16_t event_type, uint8_t addr_type,
+                           RawAddress *bda, uint8_t primary_phy,
+                           uint8_t secondary_phy,
+                           uint8_t advertising_sid, int8_t tx_power,
+                           int8_t rssi, uint16_t periodic_adv_int,
+                           std::vector<uint8_t> adv_data)
+{
+    printf("%s:: event_type=%d, bda=%02x:%02x:%02x:%02x:%02x:%02x \n", __FUNCTION__, event_type, bda->address[0],
+           bda->address[1], bda->address[2], bda->address[3], bda->address[4], bda->address[5]);
+}
+
+static btgatt_scanner_callbacks_t  sScanner_cb =
+{
+    scan_result_cb,
     NULL,
     NULL,
     NULL
 };
 
-
 /************************************************************************************
 **  GATT Server Callbacks
 ************************************************************************************/
-static void register_server_cb(int status, int server_if, bt_uuid_t *app_uuid)
+static void register_server_cb(int status, int server_if, const Uuid& app_uuid)
 {
     printf("%s:: status=%d, server_if=%d \n", __FUNCTION__, status, server_if);
     if(0 == status)    g_server_if_scan = server_if;
 }
 
-static void server_connection_cb(int conn_id, int server_if, int connected, bt_bdaddr_t *bda)
+static void server_connection_cb(int conn_id, int server_if, int connected, const RawAddress& bda)
 {
     printf("%s:: conn_id=%d, server_if=%d \n", __FUNCTION__, conn_id, server_if);
     g_conn_id = conn_id;
@@ -331,30 +340,30 @@ static btgatt_server_callbacks_t     sGattServer_cb =
 /************************************************************************************
 **  GATT Callbacks
 ************************************************************************************/
-static void DiscoverRes_cb (UINT16 conn_id, tGATT_DISC_TYPE disc_type, tGATT_DISC_RES *p_data)
+static void DiscoverRes_cb (uint16_t conn_id, tGATT_DISC_TYPE disc_type, tGATT_DISC_RES *p_data)
 {
     printf("%s:: conn_id=%d, disc_type=%d\n", __FUNCTION__, conn_id, disc_type);
 }
 
-static void DiscoverCmpl_cb (UINT16 conn_id, tGATT_DISC_TYPE disc_type, tGATT_STATUS status)
+static void DiscoverCmpl_cb (uint16_t conn_id, tGATT_DISC_TYPE disc_type, tGATT_STATUS status)
 {
     printf("%s:: conn_id=%d, disc_type=%d, status=%d\n", __FUNCTION__, conn_id, disc_type, status);
 }
 
-static void  OperationCmpl_cb(UINT16 conn_id, tGATTC_OPTYPE op, tGATT_STATUS status, tGATT_CL_COMPLETE *p_data)
+static void  OperationCmpl_cb(uint16_t conn_id, tGATTC_OPTYPE op, tGATT_STATUS status, tGATT_CL_COMPLETE *p_data)
 {
     printf("%s:: conn_id=%d, op=%d, status=%d\n", __FUNCTION__, conn_id, op, status);
 }
 
-static void Connection_cb (tGATT_IF gatt_if, BD_ADDR bda, UINT16 conn_id, BOOLEAN connected, tGATT_DISCONN_REASON reason,tBT_TRANSPORT transport)
+static void Connection_cb (tGATT_IF gatt_if, const RawAddress& bda, uint16_t conn_id, bool connected, tGATT_DISCONN_REASON reason,tBT_TRANSPORT transport)
 {
     printf("%s:: remote_bd_addr=%02x:%02x:%02x:%02x:%02x:%02x, conn_id=0x%x, connected=%d, reason=%d, gatt_if=%d \n", __FUNCTION__,
-            bda[0], bda[1], bda[2], bda[3], bda[4], bda[5],
+            bda.address[0], bda.address[1], bda.address[2], bda.address[3], bda.address[4], bda.address[5],
             conn_id, connected, reason, gatt_if);
     g_conn_id = conn_id;
 }
 
-static void AttributeReq_cb(UINT16 conn_id, UINT32 trans_id, tGATTS_REQ_TYPE type, tGATTS_DATA *p_data)
+static void AttributeReq_cb(uint16_t conn_id, uint32_t trans_id, tGATTS_REQ_TYPE type, tGATTS_DATA *p_data)
 {
     printf("%s:: conn_id=%d, trans_id=%d, type=%u\n", __FUNCTION__, conn_id, trans_id, type);
 }
@@ -368,6 +377,8 @@ static tGATT_CBACK sGattCB =
     DiscoverCmpl_cb,
     AttributeReq_cb,
     NULL,
+    NULL,
+    NULL,
     NULL
 };
 
@@ -375,21 +386,21 @@ static tGATT_CBACK sGattCB =
 **  GAP Callbacks
 ************************************************************************************/
 /*
-static void gap_ble_s_attr_request_cback (UINT16 conn_id, UINT32 trans_id, tGATTS_REQ_TYPE op_code, tGATTS_DATA *p_data)
+static void gap_ble_s_attr_request_cback (uint16_t conn_id, uint32_t trans_id, tGATTS_REQ_TYPE op_code, tGATTS_DATA *p_data)
 {
     printf("%s:: conn_id=%d, trans_id=%d, op_code=%u\n", __FUNCTION__, conn_id, trans_id, op_code);
 }
 
 // client connection callback
 
-static void  gap_ble_c_connect_cback (tGATT_IF gatt_if, BD_ADDR bda, UINT16 conn_id, BOOLEAN connected, tGATT_DISCONN_REASON reason,tBT_TRANSPORT transport)
+static void  gap_ble_c_connect_cback (tGATT_IF gatt_if, BD_ADDR bda, uint16_t conn_id, bool connected, tGATT_DISCONN_REASON reason,tBT_TRANSPORT transport)
 {
     printf("%s:: gatt_if=%d, remote_bd_addr=%02x:%02x:%02x:%02x:%02x:%02x, conn_id=%d, connected=%d, reason=%d\n", __FUNCTION__,
     gatt_if, bda[0], bda[1], bda[2], bda[3], bda[4], bda[5], conn_id, connected, reason);
     g_conn_id = conn_id;
 }
 
-static void  gap_ble_c_cmpl_cback (UINT16 conn_id, tGATTC_OPTYPE op, tGATT_STATUS status, tGATT_CL_COMPLETE *p_data)
+static void  gap_ble_c_cmpl_cback (uint16_t conn_id, tGATTC_OPTYPE op, tGATT_STATUS status, tGATT_CL_COMPLETE *p_data)
 {
     printf("%s:: conn_id=%d, op=%d, status=%d\n", __FUNCTION__, conn_id, op, status);
 }
@@ -411,12 +422,12 @@ static tGATT_CBACK gap_cback =
 /************************************************************************************
 **  SMP Callbacks
 ************************************************************************************/
-static UINT8 SMP_cb (tSMP_EVT event, BD_ADDR bda, tSMP_EVT_DATA *p_data)
+static uint8_t SMP_cb (tSMP_EVT event, const RawAddress& bda, tSMP_EVT_DATA *p_data)
 {
     printf("%s:: event=%d(1-SMP_IO_CAP_REQ_EVT, 2-SMP_SEC_REQUEST_EVT,    \
                    3-SMP_PASSKEY_NOTIF_EVT, 4-SMP_PASSKEY_REQ_EVT, 6-SMP_COMPLT_EVT),   \
                   \nremote_bd_addr=%02x:%02x:%02x:%02x:%02x:%02x, PassKey=%u \n", __FUNCTION__, event,
-            bda[0], bda[1], bda[2], bda[3], bda[4], bda[5], p_data->passkey);
+            bda.address[0], bda.address[1], bda.address[2], bda.address[3], bda.address[4], bda.address[5], p_data->passkey);
     switch(event)
     {
     case SMP_IO_CAP_REQ_EVT:
@@ -443,8 +454,6 @@ static UINT8 SMP_cb (tSMP_EVT event, BD_ADDR bda, tSMP_EVT_DATA *p_data)
     }
     return 0;
 }
-
-
 
 
 /************************************************************************************
@@ -499,7 +508,6 @@ static void config_permissions(void)
 }
 
 
-
 /*****************************************************************************
 **   Logger API
 *****************************************************************************/
@@ -519,7 +527,7 @@ void bdt_log(const char *fmt_str, ...)
 /*******************************************************************************
  ** Misc helper functions
  *******************************************************************************/
-static const char* dump_bt_status(bt_status_t status)
+static const char* dump_bt_status(int status)
 {
     switch(status)
     {
@@ -535,62 +543,6 @@ static const char* dump_bt_status(bt_status_t status)
     }
 }
 
-/*
-static void hex_dump(char *msg, void *data, int size, int trunc)
-{
-    unsigned char *p = data;
-    unsigned char c;
-    int n;
-    char bytestr[4] = {0};
-    char addrstr[10] = {0};
-    char hexstr[ 16*3 + 5] = {0};
-    char charstr[16*1 + 5] = {0};
-
-    bdt_log("%s  \n", msg);
-
-    // truncate
-    if(trunc && (size>32))
-        size = 32;
-
-    for(n=1;n<=size;n++) {
-        if (n%16 == 1) {
-            // store address for this line
-            snprintf(addrstr, sizeof(addrstr), "%.4x",
-               ((intptr_t)p-(intptr_t)data) );
-        }
-
-        c = *p;
-        if (isalnum(c) == 0) {
-            c = '.';
-        }
-
-        // store hex str (for left side)
-        snprintf(bytestr, sizeof(bytestr), "%02X ", *p);
-        strncat(hexstr, bytestr, sizeof(hexstr)-strlen(hexstr)-1);
-
-        // store char str (for right side)
-        snprintf(bytestr, sizeof(bytestr), "%c", c);
-        strncat(charstr, bytestr, sizeof(charstr)-strlen(charstr)-1);
-
-        if(n%16 == 0) {
-            // line completed
-            bdt_log("[%4.4s]   %-50.50s  %s\n", addrstr, hexstr, charstr);
-            hexstr[0] = 0;
-            charstr[0] = 0;
-        } else if(n%8 == 0) {
-            // half line: add whitespaces
-            strncat(hexstr, "  ", sizeof(hexstr)-strlen(hexstr)-1);
-            strncat(charstr, " ", sizeof(charstr)-strlen(charstr)-1);
-        }
-        p++; // next byte
-    }
-
-    if (strlen(hexstr) > 0) {
-        // print rest of buffer if not empty
-        bdt_log("[%4.4s]   %-50.50s  %s\n", addrstr, hexstr, charstr);
-    }
-}
-*/
 
 /*******************************************************************************
  ** Console helper functions
@@ -699,18 +651,41 @@ uint32_t get_hex_byte(char **p, int DefaultValue)
     return (get_hex_any(p, DefaultValue, 2));
 }
 
-void get_bdaddr(const char *str, bt_bdaddr_t *bd) {
-    char *d = ((char *)bd), *endp;
-    int i;
-    for(i = 0; i < 6; i++) {
-        *d++ = strtol(str, &endp, 16);
-        if (*endp != ':' && i != 5) {
-            memset(bd, 0, sizeof(bt_bdaddr_t));
-            return;
-        }
-        str = endp + 1;
+std::string get_uuid_str(char **p, int uuid_len_bytes)
+{
+    std::string uuid_str, temp;
+    switch(uuid_len_bytes)
+    {
+        case 2: //16 bit uuid
+            for(int i=0; i<4; i++)
+            {
+                temp = temp + (**p);
+            }
+            uuid_str = "0000"+temp+"-0000-1000-8000-00805F9B34FB";
+            break;
+
+        case 4: //32 bit uuid
+            for(int i=0; i<8; i++)
+            {
+                temp = temp + (**p);
+            }
+            uuid_str = temp+"-0000-1000-8000-00805F9B34FB";
+            break;
+
+        case 16: //128 bit uuid
+            for(int i=0; i<32; i++)
+            {
+                temp = temp + (**p);
+            }
+            uuid_str = temp;
+            break;
+
+        default:
+            printf("%s:: ERROR: no matching uuid \n", __FUNCTION__);
     }
+    return uuid_str;
 }
+
 
 #define is_cmd(str) ((strlen(str) == strlen(cmd)) && strncmp((const char *)&cmd, str, strlen(str)) == 0)
 #define if_cmd(str)  if (is_cmd(str))
@@ -724,11 +699,140 @@ typedef struct {
     unsigned char is_job;
 } t_cmd;
 
+void do_help(char *p);
+void do_quit(char *p);
+void do_init(char *p);
+void do_enable(char *p);
+void do_disable(char *p);
+void do_dut_mode_configure(char *p);
+void do_le_test_mode(char *p);
+void do_cleanup(char *p);
+void do_le_client_register(char *p);
+void do_le_client_deregister(char *p);
+void do_le_client_connect (char *p);
+void do_le_client_refresh (char *p);
+void do_le_conn_param_update(char *p);
+void do_le_client_connect_auto (char *p);
+void do_le_client_disconnect (char *p);
+void do_le_client_scan_start (char *p);
+void do_le_client_scan_stop (char *p);
+void do_le_client_set_adv_data(char *p);
+void do_le_client_set_adv_mode(char *p);
+void do_le_client_multi_adv_set_inst_data(char *p);
+void do_le_client_adv_update(char *p);
+void do_le_client_adv_enable(char *p);
+void do_le_client_adv_disable(char *p);
+void do_le_client_configureMTU(char *p);
+void do_le_client_discover(char *p);
+void do_le_client_read(char *p);
+void do_le_client_write(char *p);
+void do_le_execute_write(char *p);
+void do_le_set_idle_timeout(char *p);
+void do_le_server_register(char *p);
+void do_le_server_deregister(char *p);
+void do_le_server_add_service(char *p);
+void do_le_server_connect (char *p);
+void do_le_server_connect_auto (char *p);
+void do_le_server_disconnect (char *p);
+void do_smp_init(char *p);
+void do_smp_pair(char *p);
+void do_smp_pair_cancel(char *p);
+void do_smp_security_grant(char *p);
+void do_smp_passkey_reply(char *p);
+void do_smp_encrypt(char *p);
+void do_le_gap_conn_param_update(char *p);
+void do_le_gap_attr_init(char *p);
+void do_pairing(char *p);
+void do_l2cap_send_data_cid(char *p);
+static void do_set_localname(char *p);
+void do_start_adv_set(char *p);
+//void do_register_adv(char *p);
+void do_unregister_adv_set(char *p);
 
-const t_cmd console_cmd_list[];
+/*******************************************************************
+ *
+ *  CONSOLE COMMAND TABLE
+ *
+*/
+
+const t_cmd console_cmd_list[] =
+{
+    /*
+     * INTERNAL
+     */
+
+    { "help", do_help, "lists all available console commands", 0 },
+    { "quit", do_quit, "", 0},
+
+    /*
+     * API CONSOLE COMMANDS
+     */
+
+     /* Init and Cleanup shall be called automatically */
+    { "enable", do_enable, ":: enables bluetooth", 0 },
+    { "disable", do_disable, ":: disables bluetooth", 0 },
+    { "dut_mode_configure", do_dut_mode_configure, ":: DUT mode - 1 to enter,0 to exit", 0 },
+    { "c_register", do_le_client_register, "::UUID: 1<1111..> 2<12323..> 3<321111..>", 0 },
+    { "c_deregister", do_le_client_deregister, "::UUID: 1<1111..> 2<12323..> 3<321111..>", 0 },
+    { "c_connect", do_le_client_connect, ":: transport-type<0,1...> , BdAddr<00112233445566>", 0 },
+    { "c_refresh", do_le_client_refresh, ":: BdAddr<00112233445566>", 0 },
+    { "c_conn_param_update", do_le_conn_param_update, ":: int min_interval, int max_interval,int latency, BdAddr<00112233445566>", 0 },
+    { "c_connect_auto", do_le_client_connect_auto, ":: BdAddr<00112233445566>", 0 },
+    { "c_disconnect", do_le_client_disconnect, ":: BdAddr<00112233445566>", 0 },
+    { "c_configureMTU", do_le_client_configureMTU, ":: 23", 0 },
+    { "c_discover", do_le_client_discover, "type(1-PrimaryService, 2-PrimaryService using UUID, 3-Included Service, 4-Characteristic, 5-Characteristic Descriptor) \
+                                            \n\t s.handle(hex) e.handle(hex) UUIDLen(16/32/128) UUID(hex)", 0 },
+    { "c_read", do_le_client_read, "Type(1-ByType, 2-ByHandle, 3-ByMultiple, 4-CharValue, 5-Partial (blob)) Auth_Req \
+                                    \n\t ByType       :: s.handle(hex) e.handle(hex) UUIDLen(16/32/128) UUID(hex) \
+                                    \n\t ByHandle     :: Handle(hex) \
+                                    \n\t ByMultiple   :: NumOfHandle<1-10> Handle_1(hex) Handle_2(hex) ... Handle_N(hex) \
+                                    \n\t CharValue    :: s.handle(hex) e.handle(hex) UUIDLen(16/32/128) UUID(hex) \
+                                    \n\t Partial/Blob :: Handle(hex) Offset(hex)", 0 },
+    { "c_write", do_le_client_write, "Type(1-No response, 2-write, 3-prepare write), Auth_req, Handle, Offset, Len(0-600), Value(hex)", 0 },
+    { "c_execute_write", do_le_execute_write, "is_execute", 0 },
+    { "c_scan_start", do_le_client_scan_start, "::", 0 },
+    { "c_scan_stop", do_le_client_scan_stop, "::", 0 },
+    //{ "c_listen_start", do_le_client_listen_start, "::", 0 },
+    //{ "c_listen_stop", do_le_client_listen_stop, "::", 0 },
+   /* { "c_set_adv_mode", do_le_client_set_adv_mode, ":: Discoverability mode,Connectable_mode,", 0 },
+    { "c_set_adv_data", do_le_client_set_adv_data, "::EnableScanrsp<0/1>, IncludeName<0/1> IncludeTxPower<0/1>,min_conn_interval,int  max_conn_interval", 0 },
+    { "c_set_multi_adv_data", do_le_client_multi_adv_set_inst_data, "::EnableScanrsp<0/1>, IncludeName<0/1> IncludeTxPower<0/1>", 0 },
+    { "start_advertising", do_le_client_adv_enable, "::int client_if,int min_interval,int max_interval,int adv_type,int chnl_map, int tx_power timeout",0},
+    { "c_adv_update", do_le_client_adv_update, "::int client_if, int min_interval,int max_interval,int adv_type,int chnl_map, int tx_power, int timeout",0},
+    { "stop_advertising", do_le_client_adv_disable, "::int adv_if",0},*/
+    { "c_set_idle_timeout", do_le_set_idle_timeout, "bd_addr, time_out(int)", 0 },
+    { "c_gap_attr_init", do_le_gap_attr_init, "::", 0 },
+    { "c_gap_conn_param_update", do_le_gap_conn_param_update, "::", 0 },
+
+    { "s_register", do_le_server_register, "::UUID: 1<1111..> 2<12323..> 3<321111..>", 0 },
+    { "s_connect", do_le_server_connect, ":: BdAddr<00112233445566>", 0 },
+    { "s_connect_auto", do_le_server_connect_auto, ":: BdAddr<00112233445566>", 0 },
+    { "s_disconnect", do_le_server_disconnect, ":: BdAddr<00112233445566>", 0 },
+    { "s_add_service", do_le_server_add_service, "::", 0 },
+
+    { "pair", do_pairing, ":: BdAddr<00112233445566>", 0 },
+
+    { "smp_init", do_smp_init, "::", 0 }, //Here itself we will register.
+    { "smp_pair", do_smp_pair, ":: BdAddr<00112233445566>", 0 },
+    { "smp_pair_cancel", do_smp_pair_cancel, ":: BdAddr<00112233445566>", 0 },
+    { "smp_security_grant", do_smp_security_grant, ":: BdAddr<00112233445566>, res<>", 0 },
+    { "smp_passkey_reply", do_smp_passkey_reply, ":: BdAddr<00112233445566>, res<>, passkey<>", 0 },
+    //{ "smp_encrypt", do_smp_encrypt, "::", 0 },
+    { "l2cap_send_data_cid", do_l2cap_send_data_cid, ":: BdAddr<00112233445566>, CID<>", 0 },
+
+    { "set_local_name", do_set_localname, ":: setName<name>", 0 },
+    /* add here */
+    //{ "register_advertiser", do_register_adv, ":: RegisterAdvertiser", 0 },
+    { "start_adv_set", do_start_adv_set, ":: startAdvertisingSet", 0 },
+    { "unregister_advertiser", do_unregister_adv_set, ":: UnregisterAdvertiser", 0 },
+    /* last entry */
+    {NULL, NULL, "", 0},
+};
+
+
 static int console_cmd_maxlen = 0;
 
-static void cmdjob_handler(void *param)
+static void *cmdjob_handler(void *param)
 {
     char *job_cmd = (char*)param;
 
@@ -739,6 +843,7 @@ static void cmdjob_handler(void *param)
     bdt_log("cmdjob terminating");
 
     free(job_cmd);
+    return NULL;
 }
 
 static int create_cmdjob(char *cmd)
@@ -749,8 +854,9 @@ static int create_cmdjob(char *cmd)
     job_cmd = (char*)calloc(1, strlen(cmd)+1); /* freed in job handler */
     if (job_cmd) {
        strlcpy(job_cmd, cmd,(strlen(cmd)+1));
-      if (pthread_create(&thread_id, NULL,
-                       (void*)cmdjob_handler, (void*)job_cmd)!=0)
+       if (pthread_create(&thread_id, NULL, cmdjob_handler, (void *)job_cmd) != 0)
+      /*if (pthread_create(&thread_id, NULL,
+                       (void*)cmdjob_handler, (void*)job_cmd) !=0)*/
          perror("pthread_create");
       return 0;
     }
@@ -762,31 +868,46 @@ static int create_cmdjob(char *cmd)
 /*******************************************************************************
  ** Load stack lib
  *******************************************************************************/
+#define BLUETOOTH_LIBRARY_NAME "libbluetooth_qti.so"
+int load_bt_lib(const bt_interface_t** interface) {
+  const char* sym = BLUETOOTH_INTERFACE_STRING;
+  bt_interface_t* itf = nullptr;
+
+  // Always try to load the default Bluetooth stack on GN builds.
+  const char* path = BLUETOOTH_LIBRARY_NAME;
+  void* handle = dlopen(path, RTLD_NOW);
+  if (!handle) {
+    //const char* err_str = dlerror();
+    printf("failed to load Bluetooth library\n");
+    goto error;
+  }
+
+  // Get the address of the bt_interface_t.
+  itf = (bt_interface_t*)dlsym(handle, sym);
+  if (!itf) {
+    printf("failed to load symbol from Bluetooth library\n");
+    goto error;
+  }
+
+  // Success.
+  printf(" loaded HAL Success\n");
+  *interface = itf;
+  return 0;
+
+error:
+  *interface = NULL;
+  if (handle) dlclose(handle);
+
+  return -EINVAL;
+}
 
 int HAL_load(void)
 {
-    int err = 0;
-
-    hw_module_t* module;
-    hw_device_t* device;
-
-    bdt_log("Loading HAL lib + extensions");
-
-    err = hw_get_module(BT_HARDWARE_MODULE_ID, (hw_module_t const**)&module);
-    if (err == 0)
-    {
-
-        err = module->methods->open(module, BT_HARDWARE_MODULE_ID, &device);
-        bdt_log("HAL library open (%s)", strerror(err));
-        if (err == 0) {
-            bt_device = (bluetooth_device_t *)device;
-            sBtInterface = bt_device->get_bluetooth_interface();
-        }
+    if (load_bt_lib((bt_interface_t const**)&sBtInterface)) {
+        printf("No Bluetooth Library found\n");
+        return -1;
     }
-
-    bdt_log("HAL library loaded (%s) interface pointer =%x ", strerror(err), sBtInterface);
-
-    return err;
+    return 0;
 }
 
 int HAL_unload(void)
@@ -817,7 +938,7 @@ void setup_test_env(void)
     }
 }
 
-void check_return_status(bt_status_t status)
+void check_return_status(int status)
 {
     if (status != BT_STATUS_SUCCESS)
     {
@@ -845,16 +966,17 @@ static void do_set_adv_params(char *p)
 static void do_set_localname(char *p)
 {
     printf("set name in progress: %s\n", p);
-    bt_property_t property = {BT_PROPERTY_BDNAME, strlen(p), p};
-    status = sBtInterface->set_adapter_property(&property);
+    bt_property_t property = {BT_PROPERTY_BDNAME, static_cast<int>(strlen(p)), p};
+    status =  sBtInterface->set_adapter_property(&property);
 }
 
 static void adapter_state_changed(bt_state_t state)
 {
     int V1 = 1000, V2=2;
-    bt_property_t property = {9 /*BT_PROPERTY_DISCOVERY_TIMEOUT*/, 4, &V1};
-    bt_property_t property1 = {7 /*SCAN*/, 2, &V2};
-    bt_property_t property2 ={1,9,"GATTTOOL"};
+    char V3[] = "GATTTOOL";
+    bt_property_t property = {(bt_property_type_t)9 /*BT_PROPERTY_DISCOVERY_TIMEOUT*/, 4, &V1};
+    bt_property_t property1 = {(bt_property_type_t)7 /*SCAN*/, 2, &V2};
+    bt_property_t property2 ={(bt_property_type_t)1,9, &V3};
     printf("ADAPTER STATE UPDATED : %s\n", (state == BT_STATE_OFF)?"OFF":"ON");
 
     g_AdapterState = state;
@@ -897,7 +1019,7 @@ static void discovery_state_changed(bt_discovery_state_t state)
 }
 
 
-static void pin_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name, uint32_t cod, bool min_16_digit )
+static void pin_request_cb(RawAddress* remote_bd_addr, bt_bdname_t *bd_name, uint32_t cod, bool min_16_digit )
 {
     remote_bd_address = remote_bd_addr;
     //bt_pin_code_t pincode = {{0x31, 0x32, 0x33, 0x34}};
@@ -908,7 +1030,7 @@ static void pin_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name, ui
         printf("Pin Reply failed\n");
     }*/
 }
-static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
+static void ssp_request_cb(RawAddress* remote_bd_addr, bt_bdname_t *bd_name,
                            uint32_t cod, bt_ssp_variant_t pairing_variant, uint32_t pass_key)
 {
     printf("ssp_request_cb : name=%s variant=%d passkey=%u\n", bd_name->name, pairing_variant, pass_key);
@@ -918,12 +1040,12 @@ static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
     }
 }
 
-static void bond_state_changed_cb(bt_status_t status, bt_bdaddr_t *remote_bd_addr, bt_bond_state_t state)
+static void bond_state_changed_cb(bt_status_t status, RawAddress* remote_bd_addr, bt_bond_state_t state)
 {
     g_PairState = state;
 }
 
-static void acl_state_changed(bt_status_t status, bt_bdaddr_t *remote_bd_addr, bt_acl_state_t state)
+static void acl_state_changed(bt_status_t status, RawAddress* remote_bd_addr, bt_acl_state_t state)
 {
     printf("acl_state_changed : remote_bd_addr=%02x:%02x:%02x:%02x:%02x:%02x, acl status=%s \n",
     remote_bd_addr->address[0], remote_bd_addr->address[1], remote_bd_addr->address[2],
@@ -994,8 +1116,7 @@ static bt_callbacks_t bt_callbacks = {
     NULL, /* thread_evt_cb */
     dut_mode_recv, /*dut_mode_recv_cb */
     le_test_mode, /* le_test_mode_cb */
-    NULL,      /*energy_info_cb*/
-    NULL       /* hci_event_recv_cb */
+    NULL      /*energy_info_cb*/
 };
 
 static bt_os_callouts_t bt_os_callbacks = {
@@ -1005,7 +1126,7 @@ static bt_os_callouts_t bt_os_callbacks = {
      release_wake_lock
 };
 
-static void l2test_l2c_connect_ind_cb(BD_ADDR bd_addr, UINT16 lcid, UINT16 psm, UINT8 id)
+static void l2test_l2c_connect_ind_cb(const RawAddress& bd_addr, uint16_t lcid, uint16_t psm, uint8_t id)
 {
 
     if((L2CAP_FCR_ERTM_MODE == g_Fcr_Mode) || (L2CAP_FCR_STREAM_MODE == g_Fcr_Mode)) {
@@ -1027,7 +1148,7 @@ static void l2test_l2c_connect_ind_cb(BD_ADDR bd_addr, UINT16 lcid, UINT16 psm, 
     g_lcid = lcid;
 }
 
-static void l2test_l2c_connect_cfm_cb(UINT16 lcid, UINT16 result)
+static void l2test_l2c_connect_cfm_cb(uint16_t lcid, uint16_t result)
 {
 
     if (result == L2CAP_CONN_OK) {
@@ -1041,11 +1162,11 @@ static void l2test_l2c_connect_cfm_cb(UINT16 lcid, UINT16 result)
     }
 }
 
-static void l2test_l2c_connect_pnd_cb(UINT16 lcid)
+static void l2test_l2c_connect_pnd_cb(uint16_t lcid)
 {
     g_ConnectionState = CONNECTING;
 }
-static void l2test_l2c_config_ind_cb(UINT16 lcid, tL2CAP_CFG_INFO *p_cfg)
+static void l2test_l2c_config_ind_cb(uint16_t lcid, tL2CAP_CFG_INFO *p_cfg)
 {
     p_cfg->result = L2CAP_CFG_OK;
     p_cfg->fcr_present = FALSE;
@@ -1055,7 +1176,7 @@ static void l2test_l2c_config_ind_cb(UINT16 lcid, tL2CAP_CFG_INFO *p_cfg)
     return;
 }
 
-static void l2test_l2c_config_cfm_cb(UINT16 lcid, tL2CAP_CFG_INFO *p_cfg)
+static void l2test_l2c_config_cfm_cb(uint16_t lcid, tL2CAP_CFG_INFO *p_cfg)
 {
 
     /* For now, always accept configuration from the other side */
@@ -1077,7 +1198,7 @@ static void l2test_l2c_config_cfm_cb(UINT16 lcid, tL2CAP_CFG_INFO *p_cfg)
     if(0 == g_omtu) g_omtu = L2CAP_DEFAULT_MTU;
 }
 
-static void l2test_l2c_disconnect_ind_cb(UINT16 lcid, BOOLEAN ack_needed)
+static void l2test_l2c_disconnect_ind_cb(uint16_t lcid, bool ack_needed)
 {
     if (ack_needed)
     {
@@ -1087,31 +1208,31 @@ static void l2test_l2c_disconnect_ind_cb(UINT16 lcid, BOOLEAN ack_needed)
     g_ConnectionState = DISCONNECTING;
     g_lcid = 0;
 }
-static void l2test_l2c_disconnect_cfm_cb(UINT16 lcid, UINT16 result)
+static void l2test_l2c_disconnect_cfm_cb(uint16_t lcid, uint16_t result)
 {
     g_ConnectionState = DISCONNECT;
     g_lcid = 0;
 }
-static void l2test_l2c_QoSViolationInd(BD_ADDR bd_addr)
+static void l2test_l2c_QoSViolationInd(const RawAddress& bd_addr)
 {
     printf("l2test_l2c_QoSViolationInd\n");
 }
-static void l2test_l2c_data_ind_cb(UINT16 lcid, BT_HDR *p_buf)
+static void l2test_l2c_data_ind_cb(uint16_t lcid, BT_HDR *p_buf)
 {
      printf("l2test_l2c_data_ind_cb:: event=%u, len=%u, offset=%u, layer_specific=%u\n", p_buf->event, p_buf->len, p_buf->offset, p_buf->layer_specific);
 }
-static void l2test_l2c_congestion_ind_cb(UINT16 lcid, BOOLEAN is_congested)
+static void l2test_l2c_congestion_ind_cb(uint16_t lcid, bool is_congested)
 {
     printf("l2test_l2c_congestion_ind_cb\n");
 }
 
-static void l2test_l2c_tx_complete_cb (UINT16 lcid, UINT16 NoOfSDU)
+static void l2test_l2c_tx_complete_cb (uint16_t lcid, uint16_t NoOfSDU)
 {
     printf("l2test_l2c_tx_complete_cb, cid=0x%x, SDUs=%u\n", lcid, NoOfSDU);
 }
 
 /*
-static void l2c_echo_rsp_cb(UINT16 p)
+static void l2c_echo_rsp_cb(uint16_t p)
 {
     printf("Ping Response = %s\n", (L2CAP_PING_RESULT_OK==p) ?"Ping Reply OK" :(L2CAP_PING_RESULT_NO_LINK==p) ?"Link Could Not be setup" :"Remote L2cap did not reply");
 }
@@ -1134,13 +1255,20 @@ static tL2CAP_APPL_INFO l2test_l2c_appl = {
 };
 
 
-
-
 void bdt_init(void)
 {
     bdt_log("INIT BT ");
     status = sBtInterface->init(&bt_callbacks);
-    status = sBtInterface->set_os_callouts(&bt_os_callbacks);
+    if (status == BT_STATUS_SUCCESS) {
+        // Get Vendor Interface
+        btvendorInterface = (btvendor_interface_t *)sBtInterface->get_profile_interface(BT_PROFILE_VENDOR_ID);
+        if (!btvendorInterface) {
+            bdt_log("Error in loading vendor interface ");
+            exit(0);
+        }
+        //status = (bt_status_t)sBtInterface->set_os_callouts(&callouts);
+        status = sBtInterface->set_os_callouts(&bt_os_callbacks);
+    }
     check_return_status(status);
 }
 
@@ -1170,7 +1298,7 @@ void bdt_disable(void)
 
 void do_pairing(char *p)
 {
-    bt_bdaddr_t bd_addr = {{0}};
+    RawAddress bd_addr = {{0}};
     int transport = GATT_TRANSPORT_LE;
     if(FALSE == GetBdAddr(p, &bd_addr))    return;    // arg1
     if(BT_STATUS_SUCCESS != sBtInterface->create_bond(&bd_addr, transport))
@@ -1322,8 +1450,9 @@ void do_le_client_register(char *p)
 {
     bt_status_t        Ret;
     int Idx;
-    tBT_UUID    uuid;
-    bt_uuid_t    bt_uuid;
+    Uuid uuid;
+    Uuid bt_uuid;
+    bool is_valid = false;
 
     skip_blanks(&p);
     Idx = atoi(p);
@@ -1331,14 +1460,12 @@ void do_le_client_register(char *p)
     switch(Idx)
     {
     case 1:
-        uuid.len = LEN_UUID_128;
-        memcpy(&uuid.uu.uuid128, "\x00\x00\xA0\x0C\x00\x00\x00\x00\x01\x23\x45\x67\x89\xAB\xCD\xEF", 16); //0000A00C-0000-0000-0123-456789ABCDEF
-        memcpy(&bt_uuid.uu, "\x00\x00\xA0\x0C\x00\x00\x00\x00\x01\x23\x45\x67\x89\xAB\xCD\xEF", 16); //0000A00C-0000-0000-0123-456789ABCDEF
+        uuid = Uuid::FromString("0000A00C-0000-0000-01234-56789ABCDEF", &is_valid);//0000A00C-0000-0000-0123-456789ABCDEF
+        bt_uuid = Uuid::FromString("0000A00C-0000-0000-0123-456789ABCDEF", &is_valid); //0000A00C-0000-0000-0123-456789ABCDEF
         break;
     case 2:
-        uuid.len = LEN_UUID_128;
-        memcpy(&uuid.uu.uuid128, "\x11\x22\xA0\x0C\x00\x00\x00\x00\x01\x23\x45\x67\x89\xAB\xCD\xEF", 16); //1122A00C-0000-0000-0123-456789ABCDEF
-        memcpy(&bt_uuid.uu, "\x11\x22\xA0\x0C\x00\x00\x00\x00\x01\x23\x45\x67\x89\xAB\xCD\xEF", 16); //1122A00C-0000-0000-0123-456789ABCDEF
+        uuid = Uuid::FromString("1122A00C-0000-0000-0123-456789ABCDEF", &is_valid);//1122A00C-0000-0000-0123-456789ABCDEF
+        bt_uuid = Uuid::FromString("1122A00C-0000-0000-0123-456789ABCDEF", &is_valid);//1122A00C-0000-0000-0123-456789ABCDEF*/
         break;
     default:
         printf("%s:: ERROR: no matching uuid \n", __FUNCTION__);
@@ -1346,12 +1473,12 @@ void do_le_client_register(char *p)
     }
     if(Btif_gatt_layer)
     {
-        Ret = sGattIfaceScan->client->register_client(&bt_uuid);
+        Ret = sGattIfaceScan->client->register_client(bt_uuid);
         printf("%s:: ret value %d\n", __FUNCTION__,Ret);
     }
     else
     {
-        g_client_if = sGattInterface->Register(&uuid, &sGattCB);
+        g_client_if = sGattInterface->Register(uuid, &sGattCB);
         sleep(2);
         sGattInterface->StartIf(g_client_if);
     }
@@ -1384,8 +1511,8 @@ void do_le_client_deregister(char *p)
 
 void do_le_client_connect (char *p)
 {
-    BOOLEAN        Ret = false;
-    bt_bdaddr_t bd_addr = {{0}};
+    bool        Ret = false;
+    RawAddress  bd_addr = {{0}};
     int transport = BT_TRANSPORT_BR_EDR;
     transport = get_int(&p, -1);
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
@@ -1402,11 +1529,12 @@ void do_le_client_connect (char *p)
         sL2capInterface->RegisterPsm(g_PSM, g_ConnType, g_SecLevel /*BTM_SEC_IN_AUTHORIZE */);
         sleep(3);
 
-        l2c_connect(&bd_addr);
+        l2c_connect(bd_addr);
     }
     else if(Btif_gatt_layer)
     {
-        Ret = sGattIfaceScan->client->connect(g_client_if_scan, &bd_addr, TRUE, transport);
+        //TODO need to add phy parameter as 0x07 for connection to all types of Phys
+        Ret = sGattIfaceScan->client->connect(g_client_if_scan, bd_addr, TRUE, transport, FALSE, 0x01);
     }
     else
     {
@@ -1417,21 +1545,21 @@ void do_le_client_connect (char *p)
 
 void do_le_client_refresh (char *p)
 {
-    BOOLEAN        Ret;
-    bt_bdaddr_t bd_addr = {{0}};
+    bool        Ret;
+    RawAddress  bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
 
     if(Btif_gatt_layer)
     {
-        Ret = sGattIfaceScan->client->refresh(g_client_if_scan, &bd_addr);
+        Ret = sGattIfaceScan->client->refresh(g_client_if_scan, bd_addr);
         printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
     }
 }
 
 void do_le_conn_param_update(char *p)
 {
-    BOOLEAN        Ret;
-    bt_bdaddr_t bd_addr = {{0}};
+    bool        Ret;
+    RawAddress bd_addr = {{0}};
     int min_interval = 24;
     int max_interval = 40;
     int latency = 0;
@@ -1444,20 +1572,20 @@ void do_le_conn_param_update(char *p)
     if(!max_interval)
         max_interval = 40;
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
-    Ret = sGattIfaceScan->client->conn_parameter_update(&bd_addr,min_interval,max_interval,latency,timeout);
+    Ret = sGattIfaceScan->client->conn_parameter_update(bd_addr,min_interval,max_interval,latency,timeout);
     printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
 
 }
 
 void do_le_client_connect_auto (char *p)
 {
-    BOOLEAN        Ret;
-    bt_bdaddr_t bd_addr = {{0}};
+    bool        Ret;
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
 
     if(Btif_gatt_layer)
     {
-        Ret = sGattIfaceScan->client->connect(g_client_if_scan, &bd_addr, FALSE,BT_TRANSPORT_LE);
+        Ret = sGattIfaceScan->client->connect(g_client_if_scan, bd_addr, FALSE,BT_TRANSPORT_LE, FALSE, 0x07);
     }
     else
     {
@@ -1469,19 +1597,20 @@ void do_le_client_connect_auto (char *p)
 
 void do_le_client_disconnect (char *p)
 {
-    bt_status_t        Ret;
-    bt_bdaddr_t bd_addr = {{0}};
+    int        Ret = -1;
+    bool return_status;
+    RawAddress bd_addr = {{0}};
     int transport = BT_TRANSPORT_BR_EDR;
     transport = get_int(&p, -1);
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
 
     if(transport == BT_TRANSPORT_BR_EDR)
     {
-        Ret = sL2capInterface->DisconnectReq(g_lcid);
+        return_status = sL2capInterface->DisconnectReq(g_lcid);
     }
     else if(Btif_gatt_layer)
     {
-        Ret = sGattIfaceScan->client->disconnect(g_client_if_scan, &bd_addr, g_conn_id);
+        Ret = sGattIfaceScan->client->disconnect(g_client_if_scan, bd_addr, g_conn_id);
     }
     else
     {
@@ -1492,33 +1621,15 @@ void do_le_client_disconnect (char *p)
 
 void do_le_client_scan_start (char *p)
 {
-    bt_status_t        Ret;
-    Ret = sGattIfaceScan->client->scan(TRUE);
-    printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
+    sGattIfaceScan->scanner->Scan(true);
 }
 
 void do_le_client_scan_stop (char *p)
 {
-    bt_status_t        Ret;
-    Ret = sGattIfaceScan->client->scan(FALSE);
-    printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
+    sGattIfaceScan->scanner->Scan(false);
 }
 
-void do_le_client_listen_start (char *p)
-{
-    bt_status_t        Ret;
-    Ret = sGattIfaceScan->client->listen(g_client_if_scan,TRUE);
-    printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
-}
-
-void do_le_client_listen_stop (char *p)
-{
-    bt_status_t        Ret;
-    Ret = sGattIfaceScan->client->listen(g_client_if_scan,FALSE);
-    printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
-}
-
-void do_le_client_set_adv_data(char *p)
+/*void do_le_client_set_adv_data(char *p)
 {
     bt_status_t        Ret;
     bool              SetScanRsp        = FALSE;
@@ -1534,7 +1645,7 @@ void do_le_client_set_adv_data(char *p)
     max_conn_interval     = get_int(&p, -1);  // arg3  Other than zero will be considered as true.
 
     //To start with we are going with hard-code values.
-    Ret = sGattIfaceScan->client->set_adv_data(/*g_server_if*/ g_server_if_scan /*g_client_if_scan*/, SetScanRsp, IncludeName, IncludeTxPower, min_conn_interval, max_conn_interval, 0,8, "QUALCOMM", 0, NULL,0,NULL);
+    Ret = sGattIfaceScan->client->set_adv_data(g_server_if_scan , SetScanRsp, IncludeName, IncludeTxPower, min_conn_interval, max_conn_interval, 0,8, "QUALCOMM", 0, NULL,0,NULL);
     printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
 }
 void do_le_client_set_adv_mode(char *p)
@@ -1561,7 +1672,7 @@ void do_le_client_multi_adv_set_inst_data(char *p)
     IncludeTxPower     = get_int(&p, -1);  // arg3  Other than zero will be considered as true.
 
     //To start with we are going with hard-code values.
-    Ret = sGattIfaceScan->client->multi_adv_set_inst_data(g_client_if_scan /*g_client_if_scan*/, SetScanRsp, IncludeName, IncludeTxPower,0,8, "QUALCOMM", 0, NULL,0,NULL);
+    Ret = sGattIfaceScan->client->multi_adv_set_inst_data(g_client_if_scan , SetScanRsp, IncludeName, IncludeTxPower,0,8, "QUALCOMM", 0, NULL,0,NULL);
     printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
 }
 
@@ -1618,12 +1729,52 @@ void do_le_client_adv_disable(char *p)
     adv_if = get_int(&p, -1);
     Ret = sGattIfaceScan->client->multi_adv_disable(adv_if);
     printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
+}*/
+
+void DoNothing2(uint8_t, uint8_t) {}
+
+void StartAdvertisingSetCb(uint8_t advertiser_id, int8_t tx_power,
+                                uint8_t status) {
+        start_advertising_set_advertiser_id = advertiser_id;
+        start_advertising_set_tx_power = tx_power;
+        start_advertising_set_status = status;
+}
+
+void do_start_adv_set(char *p)
+{
+    std::vector<uint8_t> scan_resp;
+    AdvertiseParameters params;
+    PeriodicAdvertisingParameters periodic_params;
+    periodic_params.enable = false;
+    std::vector<uint8_t> periodic_data;
+
+    //Adv params
+    params.advertising_event_properties = 0x13;
+    params.min_interval = 0xA00;
+    params.max_interval = 0xA32;
+    params.channel_map = 0x07;
+    params.tx_power = -7;
+    params.primary_advertising_phy =0x01;
+    params.secondary_advertising_phy =0x01;
+    params.scan_request_notification_enable = false;
+
+    //adv data
+    uint8_t arr[] ={10,9,'G','A','T','T','-','T','O','O','L'};
+    std::vector<uint8_t> adv_data(arr, arr + (sizeof(arr)/sizeof(arr[0])));
+
+    sGattIfaceScan->advertiser->StartAdvertisingSet(base::Bind(&StartAdvertisingSetCb),
+            params, adv_data, scan_resp, periodic_params, periodic_data,
+            0 , 0 ,  base::Bind(DoNothing2));
+}
+void do_unregister_adv_set(char *p)
+{
+    sGattIfaceScan->advertiser->Unregister(start_advertising_set_advertiser_id);
 }
 
 void do_le_client_configureMTU(char *p)
 {
     tGATT_STATUS Ret =0;
-    UINT16 mtu = 23;
+    uint16_t mtu = 23;
 
     printf("%s:: mtu :%d\n", __FUNCTION__, mtu);
     Ret = sGattInterface->cConfigureMTU(g_conn_id, mtu);
@@ -1632,10 +1783,11 @@ void do_le_client_configureMTU(char *p)
 
 void do_le_client_discover(char *p)
 {
-    int        uuid_len = 0;
+    int        uuid_len = 0, uuid_len_bytes = 0;
     tGATT_STATUS Ret =0;
     tGATT_DISC_PARAM param;
     tGATT_DISC_TYPE disc_type; //GATT_DISC_SRVC_ALL , GATT_DISC_SRVC_BY_UUID
+    bool is_valid = false;
 
     disc_type = get_int(&p, -1);  // arg1
     param.s_handle = get_hex(&p, -1);  // arg2
@@ -1644,37 +1796,18 @@ void do_le_client_discover(char *p)
     uuid_len    = get_int(&p, -1);  // arg4 - Size in bits for the uuid (16, 32, or 128)
     if((16==uuid_len) || (32==uuid_len) || (128==uuid_len))
     {
-        param.service.len = uuid_len/8;
+        uuid_len_bytes = uuid_len/8;
     }
     else
     {
         printf("%s::ERROR - Invalid Parameter. UUID Len should be either 16/32/128 \n",__FUNCTION__);
         return;
-        }
-
-    switch(param.service.len)
-    {
-        case 2: //16 bit uuid
-            param.service.uu.uuid16 = get_hex(&p, -1); // arg5
-            break;
-
-        case 4: //32 bit uuid
-            param.service.uu.uuid32 = get_hex(&p, -1); // arg5
-            break;
-
-        case 16: //128 bit uuid
-            *((unsigned int*)&param.service.uu.uuid128[12]) = get_hex(&p, -1);
-            *((unsigned int*)&param.service.uu.uuid128[8]) = get_hex(&p, -1);
-            *((unsigned int*)&param.service.uu.uuid128[4]) = get_hex(&p, -1);
-            *((unsigned int*)param.service.uu.uuid128) = get_hex(&p, -1);    //arg5
-
-            break;
-        default:
-            printf("%s::ERROR - Invalid Parameter. UUID Len should  \n",__FUNCTION__);
-            return;
     }
 
-    printf("%s:: disc_type = %d, uuid=%04x \n", __FUNCTION__, disc_type, param.service.uu.uuid16);
+    std::string uuid_str = get_uuid_str(&p, uuid_len_bytes);
+    param.service = Uuid::FromString(uuid_str, &is_valid);
+
+    printf("%s:: disc_type = %d \n", __FUNCTION__, disc_type);
 
     //if(FALSE == GetDiscType(p, &disc_type))    return;        //TODO - add the function if user input is needed
     Ret = sGattInterface->cDiscover(g_conn_id, disc_type, &param);
@@ -1685,11 +1818,13 @@ void do_le_client_discover(char *p)
 void do_le_client_read(char *p)
 {
     int i =0;
-    int        uuid_len = 0;
+    int  uuid_len = 0, uuid_len_bytes=0;
     tGATT_STATUS Ret = 0;
     tGATT_READ_TYPE read_type;
     int auth_req;
     tGATT_READ_PARAM readBuf;// = {GATT_AUTH_REQ_NONE, 0x201};
+    bool is_valid = false;
+    std::string uuid_str;
 
     //Parse and copy command line arguments
     read_type = get_int(&p, -1); // arg2
@@ -1707,7 +1842,7 @@ void do_le_client_read(char *p)
         uuid_len    = get_int(&p, -1);  // arg4 - Size in bits for the uuid (16, 32, or 128)
         if((16==uuid_len) || (32==uuid_len) || (128==uuid_len))
         {
-            readBuf.service.uuid.len = uuid_len/8;
+            uuid_len_bytes = uuid_len/8;
         }
         else
         {
@@ -1715,27 +1850,8 @@ void do_le_client_read(char *p)
             return;
         }
 
-        switch(readBuf.service.uuid.len)
-        {
-            case 2: //16 bit uuid
-                readBuf.service.uuid.uu.uuid16 = get_hex(&p, -1); // arg5
-                break;
-
-            case 4: //32 bit uuid
-                readBuf.service.uuid.uu.uuid32 = get_hex(&p, -1); // arg5
-                break;
-
-            case 16: //128 bit uuid
-                *((unsigned int*)&readBuf.service.uuid.uu.uuid128[12]) = get_hex(&p, -1);
-                *((unsigned int*)&readBuf.service.uuid.uu.uuid128[8]) = get_hex(&p, -1);
-                *((unsigned int*)&readBuf.service.uuid.uu.uuid128[4]) = get_hex(&p, -1);
-                *((unsigned int*)readBuf.service.uuid.uu.uuid128) = get_hex(&p, -1);    //arg5
-
-                break;
-            default:
-                printf("%s::ERROR - Invalid Parameter. UUID Len should be either 4/8/32characters, which corresponds <16/32/128> bits \n",__FUNCTION__);
-                return;
-        }
+        uuid_str = get_uuid_str(&p, uuid_len_bytes);
+        readBuf.service.uuid = Uuid::FromString(uuid_str, &is_valid);
         break;
 
 
@@ -1819,7 +1935,7 @@ void do_le_client_write(char *p)
 }
 void do_le_execute_write(char *p)
 {
-    BOOLEAN is_execute;
+    bool is_execute;
     tGATT_STATUS Ret = 0;
 
     is_execute = get_int(&p, -1); // arg1
@@ -1831,7 +1947,7 @@ void do_le_execute_write(char *p)
 void do_le_set_idle_timeout(char *p)
 {
     int idle_timeout;
-    bt_bdaddr_t bd_addr = {{0}};
+    RawAddress bd_addr = {{0}};
         if(FALSE == GetBdAddr(p, &bd_addr))    return;
     idle_timeout = get_int(&p, -1); //arg2
     sGattInterface->cSetIdleTimeout(bd_addr.address, idle_timeout);
@@ -1845,22 +1961,21 @@ void do_le_set_idle_timeout(char *p)
 void do_le_server_register(char *p)
 {
     bt_status_t        Ret;
+    bool is_valid = false;
     int Idx;
-    tBT_UUID    uuid;
-    bt_uuid_t    bt_uuid;
+    Uuid uuid;
+    Uuid bt_uuid;
     skip_blanks(&p);
     Idx = atoi(p);
     switch(Idx)
     {
     case 1:
-        uuid.len = LEN_UUID_128;
-        memcpy(&uuid.uu.uuid128, "\x00\x00\xA0\x0C\x00\x00\x00\x00\x01\x23\x45\x67\x89\xAB\xCD\xEF", 16); //0000A00C-0000-0000-0123-456789ABCDEF
-        memcpy(&bt_uuid.uu, "\x00\x00\xA0\x0C\x00\x00\x00\x00\x01\x23\x45\x67\x89\xAB\xCD\xEF", 16); //0000A00C-0000-0000-0123-456789ABCDEF
+        uuid = Uuid::FromString("0000A00C-0000-0000-0123-456789ABCDEF", &is_valid);//0000A00C-0000-0000-0123-456789ABCDEF
+        bt_uuid = Uuid::FromString("0000A00C-0000-0000-0123-456789ABCDEF", &is_valid); //0000A00C-0000-0000-0123-456789ABCDEF
         break;
     case 2:
-        uuid.len = LEN_UUID_128;
-        memcpy(&uuid.uu.uuid128, "\x11\x22\xA0\x0C\x00\x00\x00\x00\x01\x23\x45\x67\x89\xAB\xCD\xEF", 16); //1122A00C-0000-0000-0123-456789ABCDEF
-        memcpy(&bt_uuid.uu, "\x11\x22\xA0\x0C\x00\x00\x00\x00\x01\x23\x45\x67\x89\xAB\xCD\xEF", 16); //1122A00C-0000-0000-0123-456789ABCDEF
+        uuid = Uuid::FromString("1122A00C-0000-0000-0123-456789ABCDEF", &is_valid);//1122A00C-0000-0000-0123-456789ABCDEF
+        bt_uuid = Uuid::FromString("1122A00C-0000-0000-0123-456789ABCDEF", &is_valid);//1122A00C-0000-0000-0123-456789ABCDEF*/
         break;
     default:
         printf("%s:: ERROR: no matching uuid \n", __FUNCTION__);
@@ -1869,15 +1984,14 @@ void do_le_server_register(char *p)
 
     if(Btif_gatt_layer)
     {
-        Ret = sGattIfaceScan->server->register_server(&bt_uuid);
+        Ret = sGattIfaceScan->server->register_server(bt_uuid);
         printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
     }
     else
     {
-        g_server_if = sGattInterface->Register(&uuid, &sGattCB);
+        g_server_if = sGattInterface->Register(uuid, &sGattCB);
         printf("%s:: g_server_if=%d \n", __FUNCTION__, g_server_if);
     }
-
 }
 
 void do_le_server_deregister(char *p)
@@ -1895,34 +2009,41 @@ void do_le_server_deregister(char *p)
 
 void do_le_server_add_service(char *p)
 {
-    bt_status_t     Ret = 0;
+    int  Ret = 0;
+    bool is_valid = false;
 
-    //Later take this value as cmd line
-    btgatt_srvc_id_t    srvc_id;
-    memcpy(&srvc_id.id.uuid.uu, "\x00\x00\x18\x00\x00\x00\x10\x00\x80\x00\x00\x80\x5f\x9b\x34\xfb", 16);  //00001800-0000-1000-8000-00805f9b34fb
+    std::vector<btgatt_db_element_t> service;
+    //1st service
+    btgatt_db_element_t svc1;
+    svc1.uuid = Uuid::FromString("00001800-0000-1000-8000-00805f9b34fb", &is_valid);//00001800-0000-1000-8000-00805f9b34fb
+    svc1.type = BTGATT_DB_PRIMARY_SERVICE;
+    service.push_back(svc1);
 
+    //2nd service
+    btgatt_db_element_t svc2;
+    svc2.uuid = Uuid::FromString("00001801-0000-1000-8000-00805f9b34fb", &is_valid);//00001801-0000-1000-8000-00805f9b34fb
+    svc2.type = BTGATT_DB_PRIMARY_SERVICE;
+    service.push_back(svc2);
 
-    srvc_id.id.inst_id    = 1;//
-    srvc_id.is_primary    = BTGATT_SERVICE_TYPE_PRIMARY; // BTGATT_SERVICE_TYPE_SECONDARY
-    Ret = sGattIfaceScan->server->add_service(g_server_if_scan, &srvc_id, 1/*num_handles*/);
+    Ret = sGattIfaceScan->server->add_service(g_server_if_scan, service);
     printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
 }
 
 void do_le_server_connect (char *p)
 {
-    BOOLEAN        Ret;
-    bt_bdaddr_t bd_addr = {{0}};
+    bool        Ret;
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
-    Ret = sGattIfaceScan->server->connect(g_server_if_scan, &bd_addr, TRUE, BT_TRANSPORT_LE);
+    Ret = sGattIfaceScan->server->connect(g_server_if_scan, bd_addr, TRUE, BT_TRANSPORT_LE);
     printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
 }
 
 void do_le_server_connect_auto (char *p)
 {
-    BOOLEAN        Ret;
-    bt_bdaddr_t bd_addr = {{0}};
+    bool        Ret;
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
-    Ret = sGattIfaceScan->server->connect(g_server_if_scan, &bd_addr, FALSE, BT_TRANSPORT_LE);
+    Ret = sGattIfaceScan->server->connect(g_server_if_scan, bd_addr, FALSE, BT_TRANSPORT_LE);
     printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
 }
 
@@ -1930,9 +2051,9 @@ void do_le_server_connect_auto (char *p)
 void do_le_server_disconnect (char *p)
 {
     bt_status_t        Ret;
-    bt_bdaddr_t bd_addr = {{0}};
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
-    Ret = sGattIfaceScan->server->disconnect(g_server_if_scan, &bd_addr, g_conn_id);
+    Ret = sGattIfaceScan->server->disconnect(g_server_if_scan, bd_addr, g_conn_id);
     printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
 }
 
@@ -1995,23 +2116,23 @@ static int l2c_pair(char *p)
 }
 */
 
-static UINT16 do_l2cap_connect(bt_bdaddr_t * bd_addr)
+static uint16_t do_l2cap_connect(RawAddress bd_addr)
 {
 
     if((L2CAP_FCR_STREAM_MODE == g_Fcr_Mode) || (L2CAP_FCR_ERTM_MODE == g_Fcr_Mode)) {
-        return sL2capInterface->ErtmConnectReq(g_PSM, bd_addr->address, &t_ertm_info);
+        return sL2capInterface->ErtmConnectReq(g_PSM, bd_addr, &t_ertm_info);
     } else {
-        return sL2capInterface->Connect(g_PSM, bd_addr);
+        return sL2capInterface->Connect(g_PSM, &bd_addr);
     }
 }
 
-static void l2c_connect(bt_bdaddr_t *bd_addr)
+static void l2c_connect(RawAddress bd_addr)
 {
     do_l2cap_connect(bd_addr);
 }
 
 
-BOOLEAN do_l2cap_disconnect(char *p)
+bool do_l2cap_disconnect(char *p)
 {
     return sL2capInterface->DisconnectReq(g_lcid);
 }
@@ -2033,7 +2154,7 @@ void do_smp_init(char *p)
 void do_smp_pair(char *p)
 {
     tSMP_STATUS Ret = 0;
-    bt_bdaddr_t bd_addr = {{0}};
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
     Ret = sSmpIface->Pair(bd_addr.address);
     printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
@@ -2041,8 +2162,8 @@ void do_smp_pair(char *p)
 
 void do_smp_pair_cancel(char *p)
 {
-    BOOLEAN Ret = 0;
-    bt_bdaddr_t bd_addr = {{0}};
+    bool Ret = 0;
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
     Ret = sSmpIface->PairCancel(bd_addr.address);
     printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
@@ -2050,8 +2171,8 @@ void do_smp_pair_cancel(char *p)
 
 void do_smp_security_grant(char *p)
 {
-    UINT8    res;
-    bt_bdaddr_t bd_addr = {{0}};
+    uint8_t    res;
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return; //arg1
     res = get_int(&p, -1); // arg2
     sSmpIface->SecurityGrant(bd_addr.address, res);
@@ -2060,9 +2181,9 @@ void do_smp_security_grant(char *p)
 
 void do_smp_passkey_reply(char *p)
 {
-    UINT32 passkey;
-    UINT8    res;
-    bt_bdaddr_t bd_addr = {{0}};
+    uint32_t passkey;
+    uint8_t    res;
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return; //arg1
         printf("get res value\n");
     res = get_int(&p, -1); // arg2
@@ -2075,9 +2196,9 @@ void do_smp_passkey_reply(char *p)
 
 void do_smp_encrypt(char *p)
 {
-    BOOLEAN Ret = 0;
-    UINT8    res;
-    bt_bdaddr_t bd_addr = {{0}};
+    bool Ret = 0;
+    uint8_t    res;
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return; //arg1
     res = get_int(&p, -1); // arg2
     printf("%s:: res =%d Ret=%d \n", __FUNCTION__,res, Ret);
@@ -2091,7 +2212,7 @@ void do_le_gap_conn_param_update(char *p)
     attr_value.conn_param.int_max = 70;
     attr_value.conn_param.latency = 0;
     attr_value.conn_param.sp_tout = 10;
-    bt_bdaddr_t bd_addr = {{0}};
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return; //arg1
     //attr_uuid = get_hex(&p, -1);
     //L2CA_UpdateBleConnParams(bd_addr.address, 50, 70, 0, 1000);
@@ -2109,10 +2230,10 @@ void do_le_gap_attr_init(char *p)
 /*
 void do_le_gap_set_disc(char *p)
 {
-    UINT16 Ret = 0;
-    UINT16 mode;
-    UINT16 duration;
-    UINT16 interval;
+    uint16_t Ret = 0;
+    uint16_t mode;
+    uint16_t duration;
+    uint16_t interval;
 
     mode = get_int(&p, -1);
     if(1 == mode)         mode = GAP_NON_DISCOVERABLE;
@@ -2133,10 +2254,10 @@ void do_le_gap_set_disc(char *p)
 
 void do_le_gap_set_conn(char *p)
 {
-    UINT16 Ret=0;
-    UINT16 mode;
-    UINT16 duration;
-    UINT16 interval;
+    uint16_t Ret=0;
+    uint16_t mode;
+    uint16_t duration;
+    uint16_t interval;
 
     mode = get_int(&p, -1);
     if(1 == mode)
@@ -2156,10 +2277,10 @@ void do_le_gap_set_conn(char *p)
 */
 void do_l2cap_send_data_cid(char *p)
 {
-    UINT16        cid        = 0;
+    uint16_t        cid        = 0;
     BT_HDR        bt_hdr;
-    UINT16         Ret = 0;
-    bt_bdaddr_t bd_addr = {{0}};
+    uint16_t         Ret = 0;
+    RawAddress bd_addr = {{0}};
     if(FALSE == GetBdAddr(p, &bd_addr))    return; //arg1
     cid = get_int(&p, -1); // arg2
 
@@ -2173,83 +2294,6 @@ void do_l2cap_send_data_cid(char *p)
     printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
 
 }
-/*******************************************************************
- *
- *  CONSOLE COMMAND TABLE
- *
-*/
-
-const t_cmd console_cmd_list[] =
-{
-    /*
-     * INTERNAL
-     */
-
-    { "help", do_help, "lists all available console commands", 0 },
-    { "quit", do_quit, "", 0},
-
-    /*
-     * API CONSOLE COMMANDS
-     */
-
-     /* Init and Cleanup shall be called automatically */
-    { "enable", do_enable, ":: enables bluetooth", 0 },
-    { "disable", do_disable, ":: disables bluetooth", 0 },
-    { "dut_mode_configure", do_dut_mode_configure, ":: DUT mode - 1 to enter,0 to exit", 0 },
-    { "c_register", do_le_client_register, "::UUID: 1<1111..> 2<12323..> 3<321111..>", 0 },
-    { "c_deregister", do_le_client_deregister, "::UUID: 1<1111..> 2<12323..> 3<321111..>", 0 },
-    { "c_connect", do_le_client_connect, ":: transport-type<0,1...> , BdAddr<00112233445566>", 0 },
-    { "c_refresh", do_le_client_refresh, ":: BdAddr<00112233445566>", 0 },
-    { "c_conn_param_update", do_le_conn_param_update, ":: int min_interval, int max_interval,int latency, BdAddr<00112233445566>", 0 },
-    { "c_connect_auto", do_le_client_connect_auto, ":: BdAddr<00112233445566>", 0 },
-    { "c_disconnect", do_le_client_disconnect, ":: BdAddr<00112233445566>", 0 },
-    { "c_configureMTU", do_le_client_configureMTU, ":: 23", 0 },
-    { "c_discover", do_le_client_discover, "type(1-PrimaryService, 2-PrimaryService using UUID, 3-Included Service, 4-Characteristic, 5-Characteristic Descriptor) \
-                                            \n\t s.handle(hex) e.handle(hex) UUIDLen(16/32/128) UUID(hex)", 0 },
-    { "c_read", do_le_client_read, "Type(1-ByType, 2-ByHandle, 3-ByMultiple, 4-CharValue, 5-Partial (blob)) Auth_Req \
-                                    \n\t ByType       :: s.handle(hex) e.handle(hex) UUIDLen(16/32/128) UUID(hex) \
-                                    \n\t ByHandle     :: Handle(hex) \
-                                    \n\t ByMultiple   :: NumOfHandle<1-10> Handle_1(hex) Handle_2(hex) ... Handle_N(hex) \
-                                    \n\t CharValue    :: s.handle(hex) e.handle(hex) UUIDLen(16/32/128) UUID(hex) \
-                                    \n\t Partial/Blob :: Handle(hex) Offset(hex)", 0 },
-    { "c_write", do_le_client_write, "Type(1-No response, 2-write, 3-prepare write), Auth_req, Handle, Offset, Len(0-600), Value(hex)", 0 },
-    { "c_execute_write", do_le_execute_write, "is_execute", 0 },
-    { "c_scan_start", do_le_client_scan_start, "::", 0 },
-    { "c_scan_stop", do_le_client_scan_stop, "::", 0 },
-    { "c_listen_start", do_le_client_listen_start, "::", 0 },
-    { "c_listen_stop", do_le_client_listen_stop, "::", 0 },
-    { "c_set_adv_mode", do_le_client_set_adv_mode, ":: Discoverability mode,Connectable_mode,", 0 },
-    { "c_set_adv_data", do_le_client_set_adv_data, "::EnableScanrsp<0/1>, IncludeName<0/1> IncludeTxPower<0/1>,min_conn_interval,int  max_conn_interval", 0 },
-    { "c_set_multi_adv_data", do_le_client_multi_adv_set_inst_data, "::EnableScanrsp<0/1>, IncludeName<0/1> IncludeTxPower<0/1>", 0 },
-    { "start_advertising", do_le_client_adv_enable, "::int client_if,int min_interval,int max_interval,int adv_type,int chnl_map, int tx_power timeout",0},
-    { "c_adv_update", do_le_client_adv_update, "::int client_if, int min_interval,int max_interval,int adv_type,int chnl_map, int tx_power, int timeout",0},
-    { "stop_advertising", do_le_client_adv_disable, "::int adv_if",0},
-    { "c_set_idle_timeout", do_le_set_idle_timeout, "bd_addr, time_out(int)", 0 },
-    { "c_gap_attr_init", do_le_gap_attr_init, "::", 0 },
-    { "c_gap_conn_param_update", do_le_gap_conn_param_update, "::", 0 },
-
-    { "s_register", do_le_server_register, "::UUID: 1<1111..> 2<12323..> 3<321111..>", 0 },
-    { "s_connect", do_le_server_connect, ":: BdAddr<00112233445566>", 0 },
-    { "s_connect_auto", do_le_server_connect_auto, ":: BdAddr<00112233445566>", 0 },
-    { "s_disconnect", do_le_server_disconnect, ":: BdAddr<00112233445566>", 0 },
-    { "s_add_service", do_le_server_add_service, "::", 0 },
-
-    { "pair", do_pairing, ":: BdAddr<00112233445566>", 0 },
-
-    { "smp_init", do_smp_init, "::", 0 }, //Here itself we will register.
-    { "smp_pair", do_smp_pair, ":: BdAddr<00112233445566>", 0 },
-    { "smp_pair_cancel", do_smp_pair_cancel, ":: BdAddr<00112233445566>", 0 },
-    { "smp_security_grant", do_smp_security_grant, ":: BdAddr<00112233445566>, res<>", 0 },
-    { "smp_passkey_reply", do_smp_passkey_reply, ":: BdAddr<00112233445566>, res<>, passkey<>", 0 },
-    //{ "smp_encrypt", do_smp_encrypt, "::", 0 },
-    { "l2cap_send_data_cid", do_l2cap_send_data_cid, ":: BdAddr<00112233445566>, CID<>", 0 },
-
-    { "set_local_name", do_set_localname, ":: setName<name>", 0 },
-    /* add here */
-
-    /* last entry */
-    {NULL, NULL, "", 0},
-};
 
 /*
  * Main console command handler
@@ -2298,7 +2342,7 @@ static void process_cmd(char *p, unsigned char is_job)
 
 int main (int argc, char * argv[])
 {
-    static btgatt_callbacks_t    sGatt_cb = {sizeof(btgatt_callbacks_t), &sGattClient_cb, &sGattServer_cb};
+    static btgatt_callbacks_t    sGatt_cb = {sizeof(btgatt_callbacks_t), &sGattClient_cb, &sGattServer_cb, &sScanner_cb};
 
     config_permissions();
     bdt_log("\n:::::::::::::::::::::::::::::::::::::::::::::::::::");
@@ -2324,7 +2368,7 @@ int main (int argc, char * argv[])
     sGapInterface    = (btgap_interface_t *)btvendorInterface->get_testapp_interface(TEST_APP_GAP);
 
     bdt_log("Get GATT IF");
-    sGattIfaceScan     = sBtInterface->get_profile_interface(BT_PROFILE_GATT_ID);
+    sGattIfaceScan     = (btgatt_interface_t *)sBtInterface->get_profile_interface(BT_PROFILE_GATT_ID);
 
     bdt_log("Get L2CAP IF");
     sL2capInterface        = (btl2cap_interface_t *)btvendorInterface->get_testapp_interface(TEST_APP_L2CAP);
@@ -2367,7 +2411,7 @@ int main (int argc, char * argv[])
 }
 
 
-int GetBdAddr(char *p, bt_bdaddr_t *pbd_addr)
+int GetBdAddr(char *p, RawAddress* pbd_addr)
 {
     char Arr[13] = {0};
     char *pszAddr = NULL;

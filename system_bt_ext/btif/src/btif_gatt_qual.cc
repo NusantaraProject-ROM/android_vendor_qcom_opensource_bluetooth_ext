@@ -43,9 +43,11 @@
 #ifdef TEST_APP_INTERFACE
 #include <bt_testapp.h>
 
-UINT16    g_conn_id = 0;
+using bluetooth::Uuid;
 
-tGATT_IF Gatt_Register (tBT_UUID *p_app_uuid128, tGATT_CBACK *p_cb_info)
+uint16_t    g_conn_id = 0;
+
+tGATT_IF Gatt_Register (Uuid& p_app_uuid128, tGATT_CBACK *p_cb_info)
 {
     tGATT_IF    Gatt_if = 0;
     Gatt_if = GATT_Register (p_app_uuid128, p_cb_info);
@@ -71,14 +73,14 @@ void Gatt_StartIf(tGATT_IF gatt_if)
     printf("%s::\n", __FUNCTION__);
 }
 
-BOOLEAN Gatt_Connect (tGATT_IF gatt_if, BD_ADDR bd_addr, BOOLEAN is_direct,tBT_TRANSPORT transport)
+bool Gatt_Connect (tGATT_IF gatt_if, RawAddress bd_addr, bool is_direct,tBT_TRANSPORT transport)
 {
-    BOOLEAN     Ret = 0;
-    Ret = GATT_Connect(gatt_if, bd_addr, is_direct,BT_TRANSPORT_LE);
+    bool     Ret = 0;
+    Ret = GATT_Connect(gatt_if, bd_addr, is_direct,BT_TRANSPORT_LE, false);
     printf("%s::Ret=%d,gatt_if=%d, is_direct=%d \n", __FUNCTION__, Ret, gatt_if, is_direct);
     return Ret;
 }
-tGATT_STATUS Gatt_Disconnect (UINT16 conn_id)
+tGATT_STATUS Gatt_Disconnect (uint16_t conn_id)
 {
     tGATT_STATUS Ret = 0;
     Ret = GATT_Disconnect(conn_id);
@@ -86,15 +88,15 @@ tGATT_STATUS Gatt_Disconnect (UINT16 conn_id)
     return Ret;
 }
 
-BOOLEAN Gatt_Listen (tGATT_IF gatt_if, BOOLEAN start, BD_ADDR_PTR bd_addr)
+bool Gatt_Listen (tGATT_IF gatt_if, bool start, RawAddress& bd_addr)
 {
-    BOOLEAN Ret = 0;
-    Ret = GATT_Listen(gatt_if, start, bd_addr);
-    printf("%s::Ret=%d, gatt_if=%d, start=%d \n", __FUNCTION__, Ret, gatt_if, start);
+    bool Ret = 0;
+    /*Ret = GATT_Listen(gatt_if, start, bd_addr);
+    printf("%s::Ret=%d, gatt_if=%d, start=%d \n", __FUNCTION__, Ret, gatt_if, start);*/
     return Ret;
 }
     //GATT Client APIs
-    tGATT_STATUS Gatt_ConfigureMTU (UINT16 conn_id, UINT16  mtu)
+    tGATT_STATUS Gatt_ConfigureMTU (uint16_t conn_id, uint16_t  mtu)
     {
         tGATT_STATUS Ret =0;
         Ret = GATTC_ConfigureMTU(conn_id, mtu);
@@ -102,7 +104,7 @@ BOOLEAN Gatt_Listen (tGATT_IF gatt_if, BOOLEAN start, BD_ADDR_PTR bd_addr)
         return Ret;
     }
 
-    tGATT_STATUS Gatt_Discover (UINT16 conn_id, tGATT_DISC_TYPE disc_type, tGATT_DISC_PARAM *p_param )
+    tGATT_STATUS Gatt_Discover (uint16_t conn_id, tGATT_DISC_TYPE disc_type, tGATT_DISC_PARAM *p_param )
     {
         tGATT_STATUS Ret = 0;
         Ret = GATTC_Discover(conn_id, disc_type, p_param);
@@ -110,7 +112,7 @@ BOOLEAN Gatt_Listen (tGATT_IF gatt_if, BOOLEAN start, BD_ADDR_PTR bd_addr)
         return Ret;
     }
 
-    tGATT_STATUS Gatt_Read (UINT16 conn_id, tGATT_READ_TYPE type, tGATT_READ_PARAM *p_read)
+    tGATT_STATUS Gatt_Read (uint16_t conn_id, tGATT_READ_TYPE type, tGATT_READ_PARAM *p_read)
     {
         tGATT_STATUS Ret = 0;
         Ret = GATTC_Read(conn_id, type, p_read);
@@ -118,21 +120,21 @@ BOOLEAN Gatt_Listen (tGATT_IF gatt_if, BOOLEAN start, BD_ADDR_PTR bd_addr)
         return Ret;
     }
 
-    tGATT_STATUS Gatt_Write (UINT16 conn_id, tGATT_WRITE_TYPE type, tGATT_VALUE *p_write)
+    tGATT_STATUS Gatt_Write (uint16_t conn_id, tGATT_WRITE_TYPE type, tGATT_VALUE *p_write)
     {
         tGATT_STATUS Ret = 0;
         Ret = GATTC_Write(conn_id, type, p_write);
         printf("%s::Ret=%d, conn_id=%d, type=%d \n", __FUNCTION__, Ret, conn_id, type);
         return Ret;
     }
-    tGATT_STATUS Gatt_ExecuteWrite (UINT16 conn_id, BOOLEAN is_execute)
+    tGATT_STATUS Gatt_ExecuteWrite (uint16_t conn_id, bool is_execute)
     {
         tGATT_STATUS Ret = 0;
         Ret = GATTC_ExecuteWrite(conn_id, is_execute);
         printf("%s::Ret=%d, conn_id=%d, is_execute=%d \n", __FUNCTION__, Ret, conn_id, is_execute);
         return Ret;
     }
-    tGATT_STATUS Gatt_SendHandleValueConfirm (UINT16 conn_id, UINT16 handle)
+    tGATT_STATUS Gatt_SendHandleValueConfirm (uint16_t conn_id, uint16_t handle)
     {
         tGATT_STATUS Ret = 0;
         Ret = GATTC_SendHandleValueConfirm(conn_id, handle);
@@ -140,7 +142,7 @@ BOOLEAN Gatt_Listen (tGATT_IF gatt_if, BOOLEAN start, BD_ADDR_PTR bd_addr)
         return Ret;
     }
 
-    void Gatt_SetIdleTimeout (BD_ADDR bd_addr, UINT16 idle_tout)
+    void Gatt_SetIdleTimeout (RawAddress bd_addr, uint16_t idle_tout)
     {
         GATT_SetIdleTimeout (bd_addr, idle_tout,BT_TRANSPORT_LE);
         printf("%s::\n", __FUNCTION__);

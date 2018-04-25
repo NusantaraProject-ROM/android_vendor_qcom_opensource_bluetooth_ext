@@ -53,6 +53,7 @@
 #include "mca_api.h"
 #include <hardware/hardware.h>
 #include "btm_api.h"
+#include "bt_types.h"
 
 __BEGIN_DECLS
 
@@ -209,49 +210,6 @@ typedef struct
     void (*Gap_BleAttrDBUpdate)(RawAddress bd_addr, uint16_t int_min, uint16_t int_max, uint16_t latency, uint16_t sp_tout);
 }btgap_interface_t;
 
-typedef struct
-{
-    size_t    size;
-    //GATT common APIs (Both client and server)
-    tGATT_IF (*Register) (tBT_UUID *p_app_uuid128, tGATT_CBACK *p_cb_info);
-    void (*Deregister) (tGATT_IF gatt_if);
-    void (*StartIf) (tGATT_IF gatt_if);
-    BOOLEAN (*Connect) (tGATT_IF gatt_if, BD_ADDR bd_addr, BOOLEAN is_direct,tBT_TRANSPORT transport);
-    tGATT_STATUS (*Disconnect) (UINT16 conn_id);
-    BOOLEAN (*Listen) (tGATT_IF gatt_if, BOOLEAN start, BD_ADDR_PTR bd_addr);
-
-    //GATT Client APIs
-    tGATT_STATUS (*cConfigureMTU) (UINT16 conn_id, UINT16  mtu);
-    tGATT_STATUS (*cDiscover) (UINT16 conn_id, tGATT_DISC_TYPE disc_type, tGATT_DISC_PARAM *p_param );
-    tGATT_STATUS (*cRead) (UINT16 conn_id, tGATT_READ_TYPE type, tGATT_READ_PARAM *p_read);
-    tGATT_STATUS (*cWrite) (UINT16 conn_id, tGATT_WRITE_TYPE type, tGATT_VALUE *p_write);
-    tGATT_STATUS (*cExecuteWrite) (UINT16 conn_id, BOOLEAN is_execute);
-    tGATT_STATUS (*cSendHandleValueConfirm) (UINT16 conn_id, UINT16 handle);
-    void (*cSetIdleTimeout)(BD_ADDR bd_addr, UINT16 idle_tout);
-    void (*cSetVisibility) (UINT16 disc_mode, UINT16 conn_mode);
-
-    //GATT Server APIs
-    //TODO - Add api on the need basis
-
-}btgatt_test_interface_t;
-
-typedef struct
-{
-    size_t    size;
-    void (*init)(void);
-    BOOLEAN (*Register) (tSMP_CALLBACK *p_cback);
-    tSMP_STATUS (*Pair) (BD_ADDR bd_addr);
-    BOOLEAN (*PairCancel) (BD_ADDR bd_addr);
-    void (*SecurityGrant)(BD_ADDR bd_addr, UINT8 res);
-    void (*PasskeyReply) (BD_ADDR bd_addr, UINT8 res, UINT32 passkey);
-    BOOLEAN (*Encrypt) (UINT8 *key, UINT8 key_len, UINT8 *plain_text, UINT8 pt_len, tSMP_ENC *p_out);
-}btsmp_interface_t;
-typedef struct
-{
-    size_t    size;
-    void (*Gap_AttrInit)();
-    void (*Gap_BleAttrDBUpdate)(BD_ADDR bd_addr, UINT16 int_min, UINT16 int_max, UINT16 latency, UINT16 sp_tout);
-}btgap_interface_t;
 
 /** Bluetooth RFC tool commands */
 typedef enum {
