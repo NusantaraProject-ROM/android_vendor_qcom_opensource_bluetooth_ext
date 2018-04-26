@@ -3576,9 +3576,11 @@ public final class Avrcp_ext {
             return "";
         }
 
-        String packageName = player.getPackageName();
-        if (DEBUG) Log.v(TAG, "Player " + id + " package: " + packageName);
-        return packageName;
+        synchronized (this) {
+            String packageName = player.getPackageName();
+            if (DEBUG) Log.v(TAG, "Player " + id + " package: " + packageName);
+            return packageName;
+        }
     }
 
     /* from the global object, getting the current browsed player's package name */
