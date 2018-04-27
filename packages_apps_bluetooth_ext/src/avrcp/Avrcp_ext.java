@@ -1791,7 +1791,8 @@ public final class Avrcp_ext {
                         }
 
                         if (!device.equals(deviceFeatures[i].mCurrentDevice) &&
-                            deviceFeatures[i].isActiveDevice && isPlaying) {
+                            deviceFeatures[i].isActiveDevice && isPlaying &&
+                            !isTwsPlusPair(deviceFeatures[i].mCurrentDevice, device)) {
                             deviceFeatures[i].isActiveDevice = false;
                             Log.v(TAG,"updateCurrentMediaState: Active device is set false at index = " + i);
                         }
@@ -2348,7 +2349,16 @@ public final class Avrcp_ext {
         if (DEBUG) Log.d(TAG, debugLine);
         Log.d(TAG, "Exit sendPlayPosNotificationRsp");
     }
-
+    private boolean isTwsPlusDeviceConnected() {
+        for (int i = 0; i < maxAvrcpConnections; i++) {
+            if (deviceFeatures[i].mCurrentDevice != null &&
+                deviceFeatures[i].mCurrentDevice.isTwsPlusDevice()) {
+                Log.d(TAG,"TWS+ Device Connected");
+                return true;
+            }
+        }
+        return false;
+    }
     /**
      * This is called from AudioService. It will return whether this device supports abs volume.
      * NOT USED AT THE MOMENT.
@@ -2763,7 +2773,14 @@ public final class Avrcp_ext {
         Message msg = mHandler.obtainMessage(MSG_SET_A2DP_AUDIO_STATE, state, 0, device);
         mHandler.sendMessage(msg);
     }
-
+    private boolean isTwsPlusPair(BluetoothDevice target_dev, BluetoothDevice curr_dev) {
+        if (target_dev.isTwsPlusDevice() && curr_dev.isTwsPlusDevice() &&
+            curr_dev.getTwsPlusPeerAddress().equals(target_dev.getAddress())) {
+            Log.i(TAG,"isTwsPlusPair = Yes");
+            return true;
+        }
+        return false;
+    }
     public void setAvrcpConnectedDevice(BluetoothDevice device) {
         Log.i(TAG,"setAvrcpConnectedDevice, Device added is " + device);
         boolean isPreviousDeviceActive = false;
@@ -2841,7 +2858,8 @@ public final class Avrcp_ext {
             }
             else if (deviceFeatures[i].mCurrentDevice != null &&
                     !(deviceFeatures[i].mCurrentDevice.equals(device)) &&
-                    deviceFeatures[i].isActiveDevice) {
+                    deviceFeatures[i].isActiveDevice &&
+                    !isTwsPlusPair(deviceFeatures[i].mCurrentDevice, device)) {
                 deviceFeatures[i].isActiveDevice = false;
                 Log.i(TAG,"Active device set to false at index =  " + i);
             }
