@@ -3917,6 +3917,10 @@ public final class Avrcp_ext {
             if (DEBUG) Log.d(TAG, "handleGetTotalNumOfItemsResponse: " + numPlayers + " players.");
             getTotalNumOfItemsRspNative(bdaddr, AvrcpConstants.RSP_NO_ERROR, 0, numPlayers);
         } else if (scope == AvrcpConstants.BTRC_SCOPE_NOW_PLAYING) {
+            if (mCurrAddrPlayerID == NO_PLAYER_ID) {
+                getTotalNumOfItemsRspNative(bdaddr, AvrcpConstants.RSP_NO_AVBL_PLAY, 0, 0);
+                return;
+            }
             mAddressedMediaPlayer.getTotalNumOfItems(bdaddr, mMediaController);
         } else {
             // for FileSystem browsing scopes as VFS, Now Playing
