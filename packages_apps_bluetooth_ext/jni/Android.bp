@@ -5,7 +5,7 @@ cc_defaults {
         "libnativehelper/include/nativehelper",
         "system/bt/types",
         "packages/apps/Bluetooth/jni",
-        "vendor/qcom/opensource/bluetooth_ext/vhal/include",
+        "vendor/qcom/opensource/commonsys/bluetooth_ext/vhal/include",
     ],
     shared_libs: [
         "libandroid_runtime",

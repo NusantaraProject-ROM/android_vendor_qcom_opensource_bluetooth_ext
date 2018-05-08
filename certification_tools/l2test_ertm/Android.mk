@@ -5,16 +5,16 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES:= l2test_ertm.cpp
 
 LOCAL_C_INCLUDES += . \
-    vendor/qcom/opensource/system/bt/stack/include \
-    vendor/qcom/opensource/system/bt/include \
+    vendor/qcom/opensource/commonsys/system/bt/stack/include \
+    vendor/qcom/opensource/commonsys/system/bt/include \
     system/bt/types \
-    vendor/qcom/opensource/system/bt/internal_include \
-    vendor/qcom/opensource/system/bt/stack/l2cap \
-    vendor/qcom/opensource/system/bt/utils/include \
-    vendor/qcom/opensource/system/bt/ \
-    vendor/qcom/opensource/system/bt/btif/include \
-    vendor/qcom/opensource/bluetooth_ext/system_bt_ext/include \
-    vendor/qcom/opensource/bluetooth_ext/vhal/include \
+    vendor/qcom/opensource/commonsys/system/bt/internal_include \
+    vendor/qcom/opensource/commonsys/system/bt/stack/l2cap \
+    vendor/qcom/opensource/commonsys/system/bt/utils/include \
+    vendor/qcom/opensource/commonsys/system/bt/ \
+    vendor/qcom/opensource/commonsys/system/bt/btif/include \
+    vendor/qcom/opensource/commonsys/bluetooth_ext/system_bt_ext/include \
+    vendor/qcom/opensource/commonsys/bluetooth_ext/vhal/include \
     external/libchrome \
 
 LOCAL_CFLAGS += -DHAS_NO_BDROID_BUILDCFG
