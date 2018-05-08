@@ -27,7 +27,6 @@ LOCAL_SHARED_LIBRARIES += libcutils   \
                           libutils    \
 
 LOCAL_STATIC_LIBRARIES += libbluetooth-types
-LOCAL_MULTILIB := 32
 
 include $(BUILD_EXECUTABLE)
 
