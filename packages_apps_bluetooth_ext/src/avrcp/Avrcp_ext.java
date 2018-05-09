@@ -2390,7 +2390,19 @@ public final class Avrcp_ext {
      * requesting our handler to call setVolumeNative()
      */
     public void adjustVolume(int direction) {
-        Log.d(TAG, "pts_test = " + pts_test + " direction = " + direction);
+        Log.d(TAG, "MSG_ADJUST_VOLUME");
+        Message msg = mHandler.obtainMessage(MSG_ADJUST_VOLUME, direction, 0);
+        mHandler.sendMessage(msg);
+    }
+
+    public void setAbsoluteVolume(int volume) {
+        Log.v(TAG, "Enter setAbsoluteVolume");
+        if (volume == mLocalVolume) {
+            if (DEBUG) Log.v(TAG, "setAbsoluteVolume is setting same index, ignore " + volume);
+            return;
+        }
+        Log.d(TAG, "pts_test = " + pts_test + " volume = " + volume +
+                " local volume = " + mLocalVolume);
         if (pts_test) {
             AvrcpControllerService avrcpCtrlService =
                     AvrcpControllerService.getAvrcpControllerService();
@@ -2400,14 +2412,16 @@ public final class Avrcp_ext {
                     if (deviceFeatures[i].mCurrentDevice != null) {
                         Log.d(TAG, "SendPassThruPlay command sent for = "
                                 + deviceFeatures[i].mCurrentDevice);
-                        if (direction == 1) {
+                        if (volume > mLocalVolume) {
+                            Log.d(TAG, "Vol Passthrough Up");
                             avrcpCtrlService.sendPassThroughCmd(
                                 deviceFeatures[i].mCurrentDevice, AVRC_ID_VOL_UP,
                                 AvrcpConstants.KEY_STATE_PRESS);
                             avrcpCtrlService.sendPassThroughCmd(
                                 deviceFeatures[i].mCurrentDevice, AVRC_ID_VOL_UP,
                                 AvrcpConstants.KEY_STATE_RELEASE);
-                        } else if (direction == -1) {
+                        } else if (volume < mLocalVolume) {
+                           Log.d(TAG, "Vol Passthrough Down");
                            avrcpCtrlService.sendPassThroughCmd(
                                 deviceFeatures[i].mCurrentDevice, AVRC_ID_VOL_DOWN,
                                 AvrcpConstants.KEY_STATE_PRESS);
@@ -2415,29 +2429,18 @@ public final class Avrcp_ext {
                                 deviceFeatures[i].mCurrentDevice, AVRC_ID_VOL_DOWN,
                                 AvrcpConstants.KEY_STATE_RELEASE);
                         }
+                        mLocalVolume = volume;
                     }
                 }
             } else {
                 Log.d(TAG, "passthru command not sent, connection unavailable");
             }
         } else {
-            Log.d(TAG, "MSG_ADJUST_VOLUME");
-            Message msg = mHandler.obtainMessage(MSG_ADJUST_VOLUME, direction, 0);
+            mHandler.removeMessages(MSG_ADJUST_VOLUME);
+            Message msg = mHandler.obtainMessage(MSG_SET_ABSOLUTE_VOLUME, volume, 0);
             mHandler.sendMessage(msg);
+            Log.v(TAG, "Exit setAbsoluteVolume");
         }
-    }
-
-    public void setAbsoluteVolume(int volume) {
-        Log.v(TAG, "Enter setAbsoluteVolume");
-        if (volume == mLocalVolume) {
-            if (DEBUG) Log.v(TAG, "setAbsoluteVolume is setting same index, ignore "+volume);
-            return;
-        }
-
-        mHandler.removeMessages(MSG_ADJUST_VOLUME);
-        Message msg = mHandler.obtainMessage(MSG_SET_ABSOLUTE_VOLUME, volume, 0);
-        mHandler.sendMessage(msg);
-        Log.v(TAG, "Exit setAbsoluteVolume");
     }
 
     /* Called in the native layer as a btrc_callback to return the volume set on the carkit in the
