@@ -67,6 +67,7 @@ import android.app.NotificationChannel;
 import com.android.bluetooth.btservice.AdapterService;
 import com.android.bluetooth.btservice.ProfileService;
 import com.android.bluetooth.btservice.AbstractionLayer;
+import com.android.bluetooth.ba.BATService;
 import com.android.bluetooth.R;
 import com.android.bluetooth.Utils;
 import com.android.bluetooth.avrcpcontroller.AvrcpControllerService;
@@ -766,10 +767,18 @@ public final class Avrcp_ext {
                 deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice =
                         ((deviceFeatures[deviceIndex].mFeatures &
                         BTRC_FEAT_ABSOLUTE_VOLUME) != 0);
-                mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
+                BATService mBatService = BATService.getBATService();
+                if ((mBatService != null) && mBatService.isBATActive()) {
+                    Log.d(TAG," MSG_NATIVE_REQ_GET_RC_FEATURES BA Active, update absvol support as true  ");
+                    mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
+                            true);
+                }
+                else {
+                    mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
                         isAbsoluteVolumeSupported());
-                Log.v(TAG," update audio manager for abs vol state = "
-                        + isAbsoluteVolumeSupported());
+                    Log.v(TAG," update audio manager for abs vol state = "
+                            + isAbsoluteVolumeSupported());
+                }
                 deviceFeatures[deviceIndex].mLastLocalVolume = -1;
                 deviceFeatures[deviceIndex].mRemoteVolume = -1;
                 deviceFeatures[deviceIndex].mLocalVolume = -1;
@@ -1233,8 +1242,15 @@ public final class Avrcp_ext {
                     Log.e(TAG,"Set A2DP state: invalid index for device");
                     break;
                 }
-                updateCurrentMediaState((BluetoothDevice)msg.obj);
-            }   break;
+                // if BA streaming is ongoing, don't update AVRCP state based on A2DP State.
+                // This is for some remote devices, which send PLAY/PAUSE based on AVRCP State.
+                BATService mBatService = BATService.getBATService();
+                if ((mBatService != null) && !mBatService.isA2dpSuspendFromBA())  {
+                  // if this suspend was triggered by BA, then don't update AVRCP state
+                  updateCurrentMediaState((BluetoothDevice)msg.obj);
+                }
+              }
+              break;
 
             case MESSAGE_DEVICE_RC_CLEANUP:
                 if (DEBUG)
@@ -2262,6 +2278,10 @@ public final class Avrcp_ext {
         return (state != null) && (state.getState() == PlaybackState.STATE_PLAYING);
     }
 
+    private boolean isPausedState(@Nullable PlaybackState state) {
+        if (state == null) return false;
+        return (state != null) && (state.getState() == PlaybackState.STATE_PAUSED);
+    }
     /**
      * Sends a play position notification, or schedules one to be
      * sent later at an appropriate time. If |requested| is true,
@@ -2696,7 +2716,14 @@ public final class Avrcp_ext {
         }
         mAddress  = deviceFeatures[i].mCurrentDevice.getAddress();
         deviceFeatures[i].mFeatures &= ~BTRC_FEAT_ABSOLUTE_VOLUME;
-        mAudioManager.avrcpSupportsAbsoluteVolume(mAddress, isAbsoluteVolumeSupported());
+        BATService mBatService = BATService.getBATService();
+        if ((mBatService != null) && mBatService.isBATActive()) {
+            Log.d(TAG," blackListCurrentDevice BA Active, update absvol support as true  ");
+            mAudioManager.avrcpSupportsAbsoluteVolume(mAddress, true);
+        }
+        else {
+            mAudioManager.avrcpSupportsAbsoluteVolume(mAddress, isAbsoluteVolumeSupported());
+        }
 
         SharedPreferences pref = mContext.getSharedPreferences(ABSOLUTE_VOLUME_BLACKLIST,
                 Context.MODE_PRIVATE);
@@ -2856,8 +2883,16 @@ public final class Avrcp_ext {
                 Log.i(TAG,"setAvrcpDisconnectedDevice : Active device changed to index = " + i);
             }
         }
-        mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
-                isAbsoluteVolumeSupported());
+
+        BATService mBatService = BATService.getBATService();
+        if ((mBatService != null) && mBatService.isBATActive()) {
+            Log.d(TAG," setAvrcpDisconnectedDevice BA Active, update absvol support as true  ");
+            mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), true);
+        }
+        else {
+            mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), isAbsoluteVolumeSupported());
+        }
+
         Log.v(TAG," update audio manager for abs vol state = "
                 + isAbsoluteVolumeSupported());
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
@@ -4382,7 +4417,29 @@ public final class Avrcp_ext {
         }
         int action = KeyEvent.ACTION_DOWN;
         if (state == AvrcpConstants.KEY_STATE_RELEASE) action = KeyEvent.ACTION_UP;
+
+        BATService mBatService = BATService.getBATService();
+        if ((mBatService != null) && mBatService.isBATActive()) {
+            Log.d(TAG," BA-Active PassThrough cmd " + code + " isPlayerPlaying = "
+                                                 +isPlayingState(mCurrentPlayerState));
+            switch (code) {
+                case KeyEvent.KEYCODE_MEDIA_PLAY:
+                   if (isPlayingState(mCurrentPlayerState)) {
+                        // we are not going to make a fix for device which depend on A2DP State to send
+                        // AVRCP Command
+                        return;
+                    }
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                    if (isPausedState(mCurrentPlayerState)) {
+                        return;
+                    }
+                    break;
+            }
+        }
+
         KeyEvent event = new KeyEvent(action, code);
+
         if (!KeyEvent.isMediaKey(code)) {
             Log.w(TAG, "Passthrough non-media key " + op + " (code " + code + ") state " + state);
         } else {
