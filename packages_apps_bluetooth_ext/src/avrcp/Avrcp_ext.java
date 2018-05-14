@@ -4120,19 +4120,21 @@ public final class Avrcp_ext {
         }
 
         public void SendSetPlayerAppRsp(int attr_status, byte[] address) {
-            for (int i = 0; i < maxAvrcpConnections; i++) {
-                if (deviceFeatures[i].mCurrentDevice != null &&
-                    deviceFeatures[i].mPlayerStatusChangeNT ==
-                        AvrcpConstants.NOTIFICATION_TYPE_INTERIM) {
-                    Log.v(TAG,"device has registered for mPlayerAppSettingStatusChangeNT");
-                    deviceFeatures[i].mPlayerStatusChangeNT =
-                            AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
-                    mAvrcpPlayerAppSettings.sendPlayerAppChangedRsp(
-                            deviceFeatures[i].mPlayerStatusChangeNT,
-                            deviceFeatures[i].mCurrentDevice);
-                 } else {
-                    Log.v(TAG,"Drop Set Attr Val update from media player");
-                 }
+            if (attr_status != AvrcpConstants.RSP_INTERNAL_ERR) {
+                for (int i = 0; i < maxAvrcpConnections; i++) {
+                    if (deviceFeatures[i].mCurrentDevice != null &&
+                        deviceFeatures[i].mPlayerStatusChangeNT ==
+                            AvrcpConstants.NOTIFICATION_TYPE_INTERIM) {
+                        Log.v(TAG,"device has registered for mPlayerAppSettingStatusChangeNT");
+                        deviceFeatures[i].mPlayerStatusChangeNT =
+                                AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
+                        mAvrcpPlayerAppSettings.sendPlayerAppChangedRsp(
+                                deviceFeatures[i].mPlayerStatusChangeNT,
+                                deviceFeatures[i].mCurrentDevice);
+                    } else {
+                        Log.v(TAG,"Drop Set Attr Val update from media player");
+                    }
+                }
             }
             if ((address != null) && (!SendSetPlayerAppRspNative(attr_status, address))) {
                 Log.e(TAG, "SendSetPlayerAppRspNative failed!");
