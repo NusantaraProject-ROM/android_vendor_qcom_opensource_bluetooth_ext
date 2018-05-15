@@ -40,6 +40,7 @@
 #include <fcntl.h>
 #include <sys/prctl.h>
 #include <sys/capability.h>
+#include <map>
 //#include <sys/time.h>
 //#include <signal.h>
 //#include <time.h>
@@ -110,6 +111,11 @@ typedef struct {
 #endif
 
 #define CASE_RETURN_STR(const) case const: return #const;
+
+
+#define INTERVAL_LOW     1
+#define INTERVAL_MEDIUM  2
+#define INTERVAL_HIGH    3
 
 /************************************************************************************
 **  Local type definitions
@@ -200,6 +206,84 @@ static bool g_Fcr_Present = FALSE;
 static uint8_t g_Fcr_Mode = L2CAP_FCR_BASIC_MODE;
 static uint8_t g_Ertm_AllowedMode = (L2CAP_FCR_CHAN_OPT_BASIC | L2CAP_FCR_CHAN_OPT_ERTM | L2CAP_FCR_CHAN_OPT_STREAM);
 
+//GATT server UUIDs
+std::string IMMEDIATE_ALERT_UUID = "00001802-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID = "00002a06-0000-1000-8000-00805f9b34fb";
+
+
+//Services
+// std::string IMMEDIATE_ALERT_UUID = UUID.fromString("00001200-0000-1000-8000-00805f9b34fb");
+std::string IMMEDIATE_ALERT_UUID1 = "00001201-0000-1000-8000-00805f9b34fb";
+std::string IMMEDIATE_ALERT_UUID2 = "00001202-0000-1000-8000-00805f9b34fb";
+std::string IMMEDIATE_ALERT_UUID3 = "00001203-0000-1000-8000-00805f9b34fb";
+std::string IMMEDIATE_ALERT_UUID4 = "00001204-0000-1000-8000-00805f9b34fb";
+std::string IMMEDIATE_ALERT_UUID5 = "00001205-0000-1000-8000-00805f9b34fb";
+std::string IMMEDIATE_ALERT_UUID6 = "00001206-0000-1000-8000-00805f9b34fb";
+
+//Characterstics
+std::string ALERT_LEVEL_UUID1 = "00001100-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID2 = "00001101-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID3 = "00001102-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID4 = "00001103-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID5 = "00001104-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID6 = "00001105-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID7 = "00001106-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID8 = "00001107-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID9 = "00001108-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID10 = "00001109-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID11 = "00001110-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID12 = "00001111-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID13 = "00001112-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID14 = "00001113-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID15 = "00001114-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID16 = "00001115-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID17 = "00001116-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_WRITENORESPONSEWITHREADABLE = "00001117-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_WRITENORESPONSEWITHREADABLE2 = "00001118-0000-1000-8000-00805f9b34fb";
+std::string AUTHENTICATION_LEVEL_UUID1 = "00001119-0000-1000-8000-00805f9b34fb";
+std::string AUTHENTICATION_LEVEL_UUID2 = "00001120-0000-1000-8000-00805f9b34fb";
+std::string AUTHENTICATION_LEVEL_UUID3 = "00001121-0000-1000-8000-00805f9b34fb";
+std::string AUTHENTICATION_LEVEL_UUID4 = "00001122-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID18 = "00001123-0000-1000-8000-00805f9b34fb";
+std::string ALERT_LEVEL_UUID19 = "00001124-0000-1000-8000-00805f9b34fb";
+
+//Decscriptors
+std::string ClientCharConfigUUID = "00002902-0000-1000-8000-00805f9b34fb";
+std::string DISC_LEVEL_UUID1 = "00001301-0000-1000-8000-00805f9b34fb";
+std::string DISC_LEVEL_UUID2 = "00001302-0000-1000-8000-00805f9b34fb";
+std::string DISC_LEVEL_UUID3 = "00001303-0000-1000-8000-00805f9b34fb";
+std::string DISC_LEVEL_UUID4 = "00001304-0000-1000-8000-00805f9b34fb";
+std::string DISC_LEVEL_UUID5 = "00001305-0000-1000-8000-00805f9b34fb";
+std::string DISC_LEVEL_UUID6 = "00001306-0000-1000-8000-00805f9b34fb";
+std::string DISC_LEVEL_UUID7 = "00001307-0000-1000-8000-00805f9b34fb";
+std::string AUTHENTICATION_LEVEL_DESC_UUID1 = "00001400-0000-1000-8000-00805f9b34fb";
+std::string AUTHENTICATION_LEVEL_DESC_UUID2 = "00001401-0000-1000-8000-00805f9b34fb";
+std::string AUTHENTICATION_LEVEL_DESC_UUID3 = "00001402-0000-1000-8000-00805f9b34fb";
+std::string AUTHENTICATION_LEVEL_DESC_UUID4 = "00001403-0000-1000-8000-00805f9b34fb";
+
+std::string CharacteristicExtendedProperties = "00002900-0000-1000-8000-00805f9b34fb";
+std::string CharacteristicUserDescription = "00002901-0000-1000-8000-00805f9b34fb";
+std::string ServerCharacteristicConfiguration = "00002903-0000-1000-8000-00805f9b34fb";
+std::string CharacteristicFormat = "00002904-0000-1000-8000-00805f9b34fb";
+std::string CharacteristicAggregateFormat = "00002905-0000-1000-8000-00805f9b34fb";
+
+static uint8_t attr_value[BTGATT_MAX_ATTR_LEN];//600
+
+uint8_t long_byte_value[] = {31, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
+uint8_t short_byte_value[] = {31, 2};
+
+int len_long_char = 512;
+int len_short_char = 2;
+
+int curr_char_val_len =0;
+int curr_handle = 0;
+
+std::map<int, std::vector<uint8_t>> cccd_value_map;
+
+int exec_write_status = BT_STATUS_SUCCESS;
+int invalid_offset = 0x07;
+int invalid_attribute_value_len = 0x0D;
+int application_error = 0x80;
 
 /* Default mtu */
 static int g_imtu = 672;
@@ -361,12 +445,722 @@ static void register_server_cb(int status, int server_if, const Uuid& app_uuid)
 {
     printf("%s:: status=%d, server_if=%d \n", __FUNCTION__, status, server_if);
     if(0 == status)    g_server_if_scan = server_if;
+
+    int  Ret = 0;
+    bool is_valid = false;
+
+    std::vector<btgatt_db_element_t> service1;
+    //1st service
+    btgatt_db_element_t svc1;
+    svc1.uuid = Uuid::FromString(IMMEDIATE_ALERT_UUID, &is_valid);
+    svc1.type = BTGATT_DB_PRIMARY_SERVICE;
+    service1.push_back(svc1);
+
+    //1st char
+    btgatt_db_element_t char1;
+    char1.uuid = Uuid::FromString(ALERT_LEVEL_UUID1, &is_valid);
+    char1.type = BTGATT_DB_CHARACTERISTIC;
+    char1.properties = 58;
+    char1.permissions = 17;
+    //use shortByteValue byte array for this char
+    service1.push_back(char1);
+
+    //1st desc
+    btgatt_db_element_t desc1;
+    desc1.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc1.type = BTGATT_DB_DESCRIPTOR;
+    desc1.permissions = 17;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc1);
+
+    //2nd char
+    btgatt_db_element_t char2;
+    char2.uuid = Uuid::FromString(ALERT_LEVEL_UUID2, &is_valid);
+    char2.type = BTGATT_DB_CHARACTERISTIC;
+    char2.properties = 58;
+    char2.permissions = 34;
+    //use shortByteValue byte array for this char
+    service1.push_back(char2);
+
+    //2nd desc
+    btgatt_db_element_t desc2;
+    desc2.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc2.type = BTGATT_DB_DESCRIPTOR;
+    desc2.permissions = 34;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc2);
+
+
+    //3rd char
+    btgatt_db_element_t char3;
+    char3.uuid = Uuid::FromString(ALERT_LEVEL_UUID3, &is_valid);
+    char3.type = BTGATT_DB_CHARACTERISTIC;
+    char3.properties = 58;
+    char3.permissions = 68;
+    //use shortByteValue byte array for this char
+    service1.push_back(char3);
+
+    //3rd desc
+    btgatt_db_element_t desc3;
+    desc3.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc3.type = BTGATT_DB_DESCRIPTOR;
+    desc3.permissions = 68;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc3);
+
+
+    //4th char
+    btgatt_db_element_t char4;
+    char4.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_UUID1, &is_valid);
+    char4.type = BTGATT_DB_CHARACTERISTIC;
+    char4.properties = 58;
+    char4.permissions = 34;
+    //use shortByteValue byte array for this char
+    service1.push_back(char4);
+
+    //4th desc
+    btgatt_db_element_t desc4;
+    desc4.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_DESC_UUID1, &is_valid);
+    desc4.type = BTGATT_DB_DESCRIPTOR;
+    desc4.permissions = 34;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc4);
+
+
+    //5th char
+    btgatt_db_element_t char5;
+    char5.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_UUID2, &is_valid);
+    char5.type = BTGATT_DB_CHARACTERISTIC;
+    char5.properties = 58;
+    char5.permissions = 68;
+    //use shortByteValue byte array for this char
+    service1.push_back(char5);
+
+    //5th desc
+    btgatt_db_element_t desc5;
+    desc5.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_DESC_UUID2, &is_valid);
+    desc5.type = BTGATT_DB_DESCRIPTOR;
+    desc5.permissions = 68;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc5);
+
+    //6th char
+    btgatt_db_element_t char6;
+    char6.uuid = Uuid::FromString(ALERT_LEVEL_UUID4, &is_valid);
+    char6.type = BTGATT_DB_CHARACTERISTIC;
+    char6.properties = 4;
+    char6.permissions = 16;
+    //use shortByteValue byte array for this char
+    service1.push_back(char6);
+
+    //6th desc
+    btgatt_db_element_t desc6;
+    desc6.uuid = Uuid::FromString(DISC_LEVEL_UUID1, &is_valid);
+    desc6.type = BTGATT_DB_DESCRIPTOR;
+    desc6.permissions = 16;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc6);
+
+    //7th char
+    btgatt_db_element_t char7;
+    char7.uuid = Uuid::FromString(ALERT_LEVEL_UUID5, &is_valid);
+    char7.type = BTGATT_DB_CHARACTERISTIC;
+    char7.properties = 114;
+    char7.permissions = 129;
+    //use shortByteValue byte array for this char
+    service1.push_back(char7);
+
+    //7th desc
+    btgatt_db_element_t desc7;
+    desc7.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc7.type = BTGATT_DB_DESCRIPTOR;
+    desc7.permissions = 129;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc7);
+
+    //8th char
+    btgatt_db_element_t char8;
+    char8.uuid = Uuid::FromString(ALERT_LEVEL_UUID6, &is_valid);
+    char8.type = BTGATT_DB_CHARACTERISTIC;
+    char8.properties = 66;
+    char8.permissions = 129;
+    //use shortByteValue byte array for this char
+    service1.push_back(char8);
+
+    //8th desc
+    btgatt_db_element_t desc8;
+    desc8.uuid = Uuid::FromString(DISC_LEVEL_UUID2, &is_valid);
+    desc8.type = BTGATT_DB_DESCRIPTOR;
+    desc8.permissions = 129;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc8);
+
+    //9th char
+    btgatt_db_element_t char9;
+    char9.uuid = Uuid::FromString(ALERT_LEVEL_WRITENORESPONSEWITHREADABLE2, &is_valid);
+    char9.type = BTGATT_DB_CHARACTERISTIC;
+    char9.properties = 6;
+    char9.permissions = 17;
+    //use shortByteValue byte array for this char
+    service1.push_back(char9);
+
+    //9th desc
+    btgatt_db_element_t desc9;
+    desc9.uuid = Uuid::FromString(DISC_LEVEL_UUID7, &is_valid);
+    desc9.type = BTGATT_DB_DESCRIPTOR;
+    desc9.permissions = 17;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc9);
+
+    //10th char
+    btgatt_db_element_t char10;
+    char10.uuid = Uuid::FromString(ALERT_LEVEL_UUID18, &is_valid);
+    char10.type = BTGATT_DB_CHARACTERISTIC;
+    char10.properties = 58;
+    char10.permissions = 17;
+    //use shortByteValue byte array for this char
+    service1.push_back(char10);
+
+    //10th desc
+    btgatt_db_element_t desc10;
+    desc10.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc10.type = BTGATT_DB_DESCRIPTOR;
+    desc10.permissions = 17;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc10);
+
+    //11th char
+    btgatt_db_element_t char11;
+    char11.uuid = Uuid::FromString(ALERT_LEVEL_UUID19, &is_valid);
+    char11.type = BTGATT_DB_CHARACTERISTIC;
+    char11.properties = 58;
+    char11.permissions = 17;
+    //use shortByteValue byte array for this char
+    service1.push_back(char11);
+
+    //11th desc
+    btgatt_db_element_t desc11;
+    desc11.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc11.type = BTGATT_DB_DESCRIPTOR;
+    desc11.permissions = 17;
+    //use shortByteValue byte array for this desc
+    service1.push_back(desc11);
+
+    Ret = sGattIfaceScan->server->add_service(g_server_if_scan, service1);
+    printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
+
+
+    //Second Service - longvalue service
+    std::vector<btgatt_db_element_t> service2;
+    //2nd service
+    btgatt_db_element_t svc2;
+    svc2.uuid = Uuid::FromString(IMMEDIATE_ALERT_UUID1, &is_valid);
+    svc2.type = BTGATT_DB_PRIMARY_SERVICE;
+    service2.push_back(svc2);
+
+    //1st char
+    char1.uuid = Uuid::FromString(ALERT_LEVEL_UUID7, &is_valid);
+    char1.type = BTGATT_DB_CHARACTERISTIC;
+    char1.properties = 58;
+    char1.permissions = 17;
+    //use longByteValue byte array for this char
+    service2.push_back(char1);
+
+    //1st desc
+    desc1.uuid = Uuid::FromString(DISC_LEVEL_UUID3, &is_valid);
+    desc1.type = BTGATT_DB_DESCRIPTOR;
+    desc1.permissions = 17;
+    //use longByteValue byte array for this desc
+    service2.push_back(desc1);
+
+
+    //2nd char
+    char2.uuid = Uuid::FromString(ALERT_LEVEL_UUID8, &is_valid);
+    char2.type = BTGATT_DB_CHARACTERISTIC;
+    char2.properties = 58;
+    char2.permissions = 34;
+    //use longByteValue byte array for this char
+    service2.push_back(char2);
+
+    //2nd desc
+    desc2.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc2.type = BTGATT_DB_DESCRIPTOR;
+    desc2.permissions = 34;
+    //use longByteValue byte array for this desc
+    service2.push_back(desc2);
+
+
+
+    //3rd char
+    char3.uuid = Uuid::FromString(ALERT_LEVEL_UUID9, &is_valid);
+    char3.type = BTGATT_DB_CHARACTERISTIC;
+    char3.properties = 58;
+    char3.permissions = 68;
+    //use longByteValue byte array for this char
+    service2.push_back(char3);
+
+    //3rd desc
+    desc3.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc3.type = BTGATT_DB_DESCRIPTOR;
+    desc3.permissions = 68;
+    //use longByteValue byte array for this desc
+    service2.push_back(desc3);
+
+
+    //4th char
+    char4.uuid = Uuid::FromString(ALERT_LEVEL_UUID10, &is_valid);
+    char4.type = BTGATT_DB_CHARACTERISTIC;
+    char4.properties = 4;
+    char4.permissions = 16;
+    //use longByteValue byte array for this char
+    service2.push_back(char4);
+
+    //4th desc
+    desc4.uuid = Uuid::FromString(DISC_LEVEL_UUID3, &is_valid);
+    desc4.type = BTGATT_DB_DESCRIPTOR;
+    desc4.permissions = 16;
+    //use longByteValue byte array for this desc
+    service2.push_back(desc4);
+
+
+    //5th char
+    char5.uuid = Uuid::FromString(ALERT_LEVEL_UUID11, &is_valid);
+    char5.type = BTGATT_DB_CHARACTERISTIC;
+    char5.properties = 114;
+    char5.permissions = 129;
+    //use longByteValue byte array for this char
+    service2.push_back(char5);
+
+    //5th desc
+    desc5.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc5.type = BTGATT_DB_DESCRIPTOR;
+    desc5.permissions = 129;
+    //use longByteValue byte array for this desc
+    service2.push_back(desc5);
+
+
+    //6th char
+    char6.uuid = Uuid::FromString(ALERT_LEVEL_UUID12, &is_valid);
+    char6.type = BTGATT_DB_CHARACTERISTIC;
+    char6.properties = 66;
+    char6.permissions = 129;
+    //use longByteValue byte array for this char
+    service2.push_back(char6);
+
+    //6th desc
+    desc6.uuid = Uuid::FromString(DISC_LEVEL_UUID4, &is_valid);
+    desc6.type = BTGATT_DB_DESCRIPTOR;
+    desc6.permissions = 129;
+    //use longByteValue byte array for this desc
+    service2.push_back(desc6);
+
+    //7th char
+    char7.uuid = Uuid::FromString(ALERT_LEVEL_WRITENORESPONSEWITHREADABLE, &is_valid);
+    char7.type = BTGATT_DB_CHARACTERISTIC;
+    char7.properties = 6;
+    char7.permissions = 17;
+    //use longByteValue byte array for this char
+    service2.push_back(char7);
+
+    //7th desc
+    desc7.uuid = Uuid::FromString(DISC_LEVEL_UUID6, &is_valid);
+    desc7.type = BTGATT_DB_DESCRIPTOR;
+    desc7.permissions = 17;
+    //use longByteValue byte array for this desc
+    service2.push_back(desc7);
+
+    //8th char
+    char8.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_UUID3, &is_valid);
+    char8.type = BTGATT_DB_CHARACTERISTIC;
+    char8.properties = 58;
+    char8.permissions = 34;
+    //use longByteValue byte array for this char
+    service2.push_back(char8);
+
+    //8th desc
+    desc8.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_DESC_UUID3, &is_valid);
+    desc8.type = BTGATT_DB_DESCRIPTOR;
+    desc8.permissions = 34;
+    //use longByteValue byte array for this desc
+    service2.push_back(desc8);
+
+    //9th char
+    char9.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_UUID4, &is_valid);
+    char9.type = BTGATT_DB_CHARACTERISTIC;
+    char9.properties = 58;
+    char9.permissions = 68;
+    //use longByteValue byte array for this char
+    service2.push_back(char9);
+
+    //9th desc
+    desc9.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_DESC_UUID4, &is_valid);
+    desc9.type = BTGATT_DB_DESCRIPTOR;
+    desc9.permissions = 68;
+    //use longByteValue byte array for this desc
+    service2.push_back(desc9);
+
+
+    Ret = sGattIfaceScan->server->add_service(g_server_if_scan, service2);
+    printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
+
+
+
+    //3rd service
+    std::vector<btgatt_db_element_t> service3;
+
+    btgatt_db_element_t svc3;
+    svc3.uuid = Uuid::FromString(IMMEDIATE_ALERT_UUID2, &is_valid);
+    svc3.type = BTGATT_DB_PRIMARY_SERVICE;
+    service3.push_back(svc3);
+
+    //1st char
+    char1.uuid = Uuid::FromString(ALERT_LEVEL_UUID13, &is_valid);
+    char1.type = BTGATT_DB_CHARACTERISTIC;
+    char1.properties = 10;
+    char1.permissions = 17;
+    //use shortByteValue byte array for this char
+    service3.push_back(char1);
+
+    //1st desc
+    desc1.uuid = Uuid::FromString(DISC_LEVEL_UUID5, &is_valid);
+    desc1.type = BTGATT_DB_DESCRIPTOR;
+    desc1.permissions = 17;
+    //use shortByteValue byte array for this desc
+    service3.push_back(desc1);
+
+
+    //Added this characteristic for Insufficient Encryption key size test case
+    //2nd char
+    char2.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_UUID4, &is_valid);
+    char2.type = BTGATT_DB_CHARACTERISTIC;
+    char2.properties = 58;
+    char2.permissions = 0x2007;
+    //use shortByteValue byte array for this char
+    service3.push_back(char2);
+
+    //2nd desc
+    desc2.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_DESC_UUID4, &is_valid);
+    desc2.type = BTGATT_DB_DESCRIPTOR;
+    desc2.permissions = 0x2007;
+    //use shortByteValue byte array for this desc
+    service3.push_back(desc2);
+
+
+    Ret = sGattIfaceScan->server->add_service(g_server_if_scan, service3);
+    printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
+
+
+
+    //4th service with no value set
+    std::vector<btgatt_db_element_t> service4;
+
+    btgatt_db_element_t svc4;
+    svc4.uuid = Uuid::FromString(IMMEDIATE_ALERT_UUID3, &is_valid);
+    svc4.type = BTGATT_DB_PRIMARY_SERVICE;
+    service4.push_back(svc4);
+
+    //1st char
+    char1.uuid = Uuid::FromString(ALERT_LEVEL_UUID14, &is_valid);
+    char1.type = BTGATT_DB_CHARACTERISTIC;
+    char1.properties = 10;
+    char1.permissions = 17;
+    //use shortByteValue byte array for this char
+    service4.push_back(char1);
+
+
+    Ret = sGattIfaceScan->server->add_service(g_server_if_scan, service4);
+    printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
+
+
+    //5th service will all kinds of descriptors
+    std::vector<btgatt_db_element_t> service5;
+
+    btgatt_db_element_t svc5;
+    svc5.uuid = Uuid::FromString(IMMEDIATE_ALERT_UUID6, &is_valid);
+    svc5.type = BTGATT_DB_PRIMARY_SERVICE;
+    service5.push_back(svc5);
+
+    //1st char
+    char1.uuid = Uuid::FromString(ALERT_LEVEL_UUID17, &is_valid);
+    char1.type = BTGATT_DB_CHARACTERISTIC;
+    char1.properties = 58;
+    char1.permissions = 17;
+    service5.push_back(char1);
+
+    //1st desc
+    desc1.uuid = Uuid::FromString(CharacteristicExtendedProperties, &is_valid);
+    desc1.type = BTGATT_DB_DESCRIPTOR;
+    desc1.permissions = 17;
+    //use shortByteValue byte array for this char
+    service5.push_back(desc1);
+
+    //2nd desc
+    desc2.uuid = Uuid::FromString(CharacteristicUserDescription, &is_valid);
+    desc2.type = BTGATT_DB_DESCRIPTOR;
+    desc2.permissions = 17;
+    //use shortByteValue byte array for this desc
+    service5.push_back(desc2);
+
+    //3rd desc
+    desc3.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc3.type = BTGATT_DB_DESCRIPTOR;
+    desc3.permissions = 17;
+    //use shortByteValue byte array for this desc
+    service5.push_back(desc3);
+
+    //4th desc
+    desc4.uuid = Uuid::FromString(ServerCharacteristicConfiguration, &is_valid);
+    desc4.type = BTGATT_DB_DESCRIPTOR;
+    desc4.permissions = 17;
+    //use shortByteValue byte array for this desc
+    service5.push_back(desc4);
+
+    //5th desc
+    desc5.uuid = Uuid::FromString(CharacteristicFormat, &is_valid);
+    desc5.type = BTGATT_DB_DESCRIPTOR;
+    desc5.permissions = 17;
+    //use shortByteValue byte array for this desc
+    service5.push_back(desc5);
+
+    //6th desc
+    desc6.uuid = Uuid::FromString(CharacteristicAggregateFormat, &is_valid);
+    desc6.type = BTGATT_DB_DESCRIPTOR;
+    desc6.permissions = 17;
+    //use shortByteValue byte array for this desc
+    service5.push_back(desc6);
+
+    //7th desc
+    desc7.uuid = Uuid::FromString(CharacteristicExtendedProperties, &is_valid);
+    desc7.type = BTGATT_DB_DESCRIPTOR;
+    desc7.permissions = 17;
+    //use longByteValue byte array for this desc
+    service5.push_back(desc7);
+
+    //8th desc
+    desc8.uuid = Uuid::FromString(CharacteristicUserDescription, &is_valid);
+    desc8.type = BTGATT_DB_DESCRIPTOR;
+    desc8.permissions = 17;
+    //use longByteValue byte array for this desc
+    service5.push_back(desc8);
+
+    //9th desc
+    desc9.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
+    desc9.type = BTGATT_DB_DESCRIPTOR;
+    desc9.permissions = 17;
+    //use longByteValue byte array for this desc
+    service5.push_back(desc9);
+
+    //10th desc
+    desc10.uuid = Uuid::FromString(ServerCharacteristicConfiguration, &is_valid);
+    desc10.type = BTGATT_DB_DESCRIPTOR;
+    desc10.permissions = 17;
+    //use longByteValue byte array for this desc
+    service5.push_back(desc10);
+
+    //11th desc
+    desc11.uuid = Uuid::FromString(CharacteristicFormat, &is_valid);
+    desc11.type = BTGATT_DB_DESCRIPTOR;
+    desc11.permissions = 17;
+    //use longByteValue byte array for this desc
+    service5.push_back(desc11);
+
+    //12th desc
+    btgatt_db_element_t desc12;
+    desc12.uuid = Uuid::FromString(CharacteristicAggregateFormat, &is_valid);
+    desc12.type = BTGATT_DB_DESCRIPTOR;
+    desc12.permissions = 17;
+    //use longByteValue byte array for this desc
+    service5.push_back(desc12);
+
+    Ret = sGattIfaceScan->server->add_service(g_server_if_scan, service5);
+    printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
+
+    for(int i=0; i< 512; i++)
+    {
+        attr_value[i] = 0x02;
+    }
 }
 
 static void server_connection_cb(int conn_id, int server_if, int connected, const RawAddress& bda)
 {
     printf("%s:: conn_id=%d, server_if=%d \n", __FUNCTION__, conn_id, server_if);
     g_conn_id = conn_id;
+}
+
+static void request_read_cb(int conn_id, int trans_id, const RawAddress& bda,
+                            int attr_handle, int offset, bool is_long)
+{
+    printf("%s:: conn_id=%d, attr_handle=%d \n", __FUNCTION__, conn_id, attr_handle);
+    bt_status_t        Ret;
+    int len = len_short_char;
+    btgatt_response_t  gatt_resp;
+    int status = BT_STATUS_SUCCESS;
+    std::vector<uint8_t> cccd_val;
+    uint8_t val[2];
+    gatt_resp.handle = attr_handle;
+    gatt_resp.attr_value.handle = attr_handle;
+    gatt_resp.attr_value.offset = offset;
+    gatt_resp.attr_value.auth_req = 0;
+    gatt_resp.attr_value.len = 1;
+
+    printf("%s:: offset=%d, is_long =%d \n", __FUNCTION__, offset, is_long);
+
+    if(attr_handle == 66)
+    {
+        printf("%s:: Invalid transport access over LE \n", __FUNCTION__);
+        status = application_error;
+    }
+    else if(attr_handle == 104)
+    {
+        printf("%s:: Invalid transport access over BR/EDR \n", __FUNCTION__);
+        status = application_error;
+    }
+    else if((attr_handle >=74 && attr_handle <=101) || is_long)
+    {
+        len = len_long_char;
+        if(offset > len)
+        {
+            printf("%s:: Invalid offset\n", __FUNCTION__);
+            status = invalid_offset;
+        }
+        else
+        {
+            memcpy(gatt_resp.attr_value.value, &attr_value[offset] , (len - offset));
+            gatt_resp.attr_value.len = (len - offset);
+        }
+    }
+    //Client char configuration descriptor
+    else if(attr_handle == 43)
+    {
+        cccd_val = cccd_value_map[conn_id];
+        for(int i=0; i< cccd_val.size(); i++) {
+            val[i] = cccd_val[i];
+        }
+        memcpy(gatt_resp.attr_value.value, &val, 2);
+        gatt_resp.attr_value.len = 2;
+    }
+    else
+    {
+        memcpy(gatt_resp.attr_value.value, attr_value, 300);
+    }
+
+    g_conn_id = conn_id;
+    Ret = sGattIfaceScan->server->send_response(conn_id, trans_id, status, gatt_resp);
+}
+
+
+static void request_write_cb(int conn_id, int trans_id, const RawAddress& bda,
+                             int attr_handle, int offset, bool need_rsp,
+                             bool is_prep, std::vector<uint8_t> value)
+{
+    printf("%s:: conn_id=%d, trans_id=%d, attr_handle=%d \n", __FUNCTION__, conn_id, trans_id, attr_handle);
+    bt_status_t        Ret;
+    int status = BT_STATUS_SUCCESS;
+    uint8_t cccd_val[2];
+    btgatt_response_t  gatt_resp;
+    gatt_resp.handle = attr_handle;
+    gatt_resp.attr_value.handle = attr_handle;
+    gatt_resp.attr_value.offset = offset;
+    gatt_resp.attr_value.auth_req = 0;
+    gatt_resp.attr_value.len = 1;
+    exec_write_status = BT_STATUS_SUCCESS;
+
+    printf("%s:: value size=%d, offset=%d \n", __FUNCTION__, value.size(), offset);
+
+    if(is_prep)
+    {
+        if((value.size()+offset) > len_long_char)
+        {
+            printf("%s:: Invalid attribute value length for long char/desc \n", __FUNCTION__);
+            exec_write_status = invalid_attribute_value_len;
+        }
+        if(offset > len_long_char)
+        {
+            printf("%s:: Invalid offset for long char/desc \n", __FUNCTION__);
+            exec_write_status = invalid_offset;
+        }
+    }
+    else
+    {
+        if((curr_handle == attr_handle) && ((value.size()+offset) > curr_char_val_len))
+        {
+            printf("%s:: Invalid attribute value length for short char/desc \n", __FUNCTION__);
+            status = invalid_attribute_value_len;
+        }
+    }
+
+    for(int i=0; i< value.size(); i++) {
+        attr_value[i+offset] = value[i];
+    }
+
+    //Client char configuration descriptor
+    if(attr_handle == 43)
+    {
+        for(int i=0; i< value.size(); i++) {
+            cccd_val[i] = value[i];
+        }
+        //cccd_value_map.insert(std::make_pair(conn_id, cccd_val));
+        cccd_value_map[conn_id] = value;
+        memcpy(gatt_resp.attr_value.value, &cccd_val, value.size());
+        gatt_resp.attr_value.len = value.size();
+    }
+    else
+    {
+        memcpy(gatt_resp.attr_value.value, &attr_value[offset] , value.size());
+        gatt_resp.attr_value.len = value.size();
+    }
+
+    curr_char_val_len = value.size();
+    curr_handle = attr_handle;
+
+    g_conn_id = conn_id;
+
+    Ret = sGattIfaceScan->server->send_response(conn_id, trans_id, status, gatt_resp);
+}
+
+static void request_exec_write_cb(int conn_id, int trans_id, const RawAddress& bda,
+                                  int exec_write)
+{
+    printf("%s:: conn_id=%d, trans_id=%d \n", __FUNCTION__, conn_id, trans_id);
+    bt_status_t        Ret;
+    int status = BT_STATUS_SUCCESS;
+    btgatt_response_t  gatt_resp;
+
+    gatt_resp.handle = 1;
+    gatt_resp.attr_value.handle = 1;
+    gatt_resp.attr_value.offset = 0;
+    gatt_resp.attr_value.auth_req = 0;
+    gatt_resp.attr_value.len = 1;
+    gatt_resp.attr_value.value[0] = 1;
+
+    if(g_conn_id == conn_id)
+    {
+        status = exec_write_status;
+    }
+    g_conn_id = conn_id;
+
+    //cancel all prepare writes
+    if(exec_write == 0)
+    {
+        /*assign the attr value to the old value(0x02) which will be read later by PTS
+        and not the value written in the previous prepare write request by PTS*/
+        for(int i=0; i< 300; i++)
+        {
+            attr_value[i] = 0x02;
+        }
+    }
+
+    Ret = sGattIfaceScan->server->send_response(conn_id, trans_id, status, gatt_resp);
+}
+
+static void response_confirmation_cb(int status, int handle)
+{
+    printf("%s:: status=%d, handle =%d\n", __FUNCTION__, status, handle);
+}
+
+static void indication_sent_cb(int conn_id, int status)
+{
+    printf("%s:: status=%d, conn_id =%d\n", __FUNCTION__, status, conn_id);
 }
 
 static btgatt_server_callbacks_t     sGattServer_cb =
@@ -376,14 +1170,14 @@ static btgatt_server_callbacks_t     sGattServer_cb =
     NULL, //service_added_callback          service_added_cb;
     NULL, //included_service_added_callback included_service_added_cb;
     NULL, //characteristic_added_callback   characteristic_added_cb;
-    NULL, //descriptor_added_callback       descriptor_added_cb;
-    NULL, //service_started_callback        service_started_cb;
-    NULL, //service_stopped_callback        service_stopped_cb;
-    NULL, //service_deleted_callback        service_deleted_cb;
-    NULL, //request_read_callback           request_read_cb;
-    NULL, //request_write_callback          request_write_cb;
-    NULL, //request_exec_write_callback     request_exec_write_cb;
-    NULL, //response_confirmation_callback  response_confirmation_cb;
+    request_read_cb, // request_read_callback           request_read_characteristic_cb
+    request_read_cb, // request_read_callback           request_read_characteristic_cb
+    request_write_cb, //request_write_callback          request_write_cb;
+    request_write_cb, //request_write_callback          request_write_cb;
+    request_exec_write_cb, // request_exec_write_callback     request_exec_write_cb;
+    response_confirmation_cb, //response_confirmation_callback  response_confirmation_cb;
+    indication_sent_cb, // indication_sent_callback        indication_sent_cb;
+    NULL,
     NULL,
     NULL,
     NULL
@@ -707,12 +1501,14 @@ uint32_t get_hex_byte(char **p, int DefaultValue)
 std::string get_uuid_str(char **p, int uuid_len_bytes)
 {
     std::string uuid_str, temp;
+    skip_blanks(p);
     switch(uuid_len_bytes)
     {
         case 2: //16 bit uuid
             for(int i=0; i<4; i++)
             {
                 temp = temp + (**p);
+                (*p)++;
             }
             uuid_str = "0000"+temp+"-0000-1000-8000-00805F9B34FB";
             break;
@@ -721,6 +1517,7 @@ std::string get_uuid_str(char **p, int uuid_len_bytes)
             for(int i=0; i<8; i++)
             {
                 temp = temp + (**p);
+                (*p)++;
             }
             uuid_str = temp+"-0000-1000-8000-00805F9B34FB";
             break;
@@ -729,6 +1526,9 @@ std::string get_uuid_str(char **p, int uuid_len_bytes)
             for(int i=0; i<32; i++)
             {
                 temp = temp + (**p);
+                (*p)++;
+                if (i == 7 || i == 11 || i == 15 || i == 19)
+                    temp = temp + "-";
             }
             uuid_str = temp;
             break;
@@ -736,6 +1536,7 @@ std::string get_uuid_str(char **p, int uuid_len_bytes)
         default:
             printf("%s:: ERROR: no matching uuid \n", __FUNCTION__);
     }
+    printf("%s:: uuid_str = %s \n", __FUNCTION__, uuid_str.c_str());
     return uuid_str;
 }
 
@@ -787,6 +1588,7 @@ void do_le_server_add_service(char *p);
 void do_le_server_connect (char *p);
 void do_le_server_connect_auto (char *p);
 void do_le_server_disconnect (char *p);
+void do_le_server_send_indication(char *p);
 void do_smp_init(char *p);
 void do_smp_pair(char *p);
 void do_smp_pair_cancel(char *p);
@@ -829,10 +1631,10 @@ const t_cmd console_cmd_list[] =
     { "c_deregister", do_le_client_deregister, "::UUID: 1<1111..> 2<12323..> 3<321111..>", 0 },
     { "c_connect", do_le_client_connect, ":: transport-type<0,1...> , BdAddr<00112233445566>", 0 },
     { "c_refresh", do_le_client_refresh, ":: BdAddr<00112233445566>", 0 },
-    { "c_conn_param_update", do_le_conn_param_update, ":: int min_interval, int max_interval,int latency, BdAddr<00112233445566>", 0 },
-    { "c_connect_auto", do_le_client_connect_auto, ":: BdAddr<00112233445566>", 0 },
-    { "c_disconnect", do_le_client_disconnect, ":: BdAddr<00112233445566>", 0 },
-    { "c_configureMTU", do_le_client_configureMTU, ":: 23", 0 },
+    { "c_conn_param_update", do_le_conn_param_update, ":: min_interval(hex), max_interval(hex), latency(hex), timeout(hex), BdAddr<00112233445566>", 0 },
+    { "c_connect_auto", do_le_client_connect_auto, ":: transport-type<0,1...> , BdAddr<00112233445566>", 0 },
+    { "c_disconnect", do_le_client_disconnect, ":: transport-type<0,1...>, BdAddr<00112233445566>", 0 },
+    { "c_configureMTU", do_le_client_configureMTU, ":: int mtu_size", 0 },
     { "c_discover", do_le_client_discover, "type(1-PrimaryService, 2-PrimaryService using UUID, 3-Included Service, 4-Characteristic, 5-Characteristic Descriptor) \
                                             \n\t s.handle(hex) e.handle(hex) UUIDLen(16/32/128) UUID(hex)", 0 },
     { "c_read", do_le_client_read, "Type(1-ByType, 2-ByHandle, 3-ByMultiple, 4-CharValue, 5-Partial (blob)) Auth_Req \
@@ -841,7 +1643,7 @@ const t_cmd console_cmd_list[] =
                                     \n\t ByMultiple   :: NumOfHandle<1-10> Handle_1(hex) Handle_2(hex) ... Handle_N(hex) \
                                     \n\t CharValue    :: s.handle(hex) e.handle(hex) UUIDLen(16/32/128) UUID(hex) \
                                     \n\t Partial/Blob :: Handle(hex) Offset(hex)", 0 },
-    { "c_write", do_le_client_write, "Type(1-No response, 2-write, 3-prepare write), Auth_req, Handle, Offset, Len(0-600), Value(hex)", 0 },
+    { "c_write", do_le_client_write, "Type(1-No response, 2-write, 3-prepare write) Auth_req Handle Offset Len(0-600) Value(hex)", 0 },
     { "c_execute_write", do_le_execute_write, "is_execute", 0 },
     { "c_scan_start", do_le_client_scan_start, "::", 0 },
     { "c_scan_stop", do_le_client_scan_stop, "::", 0 },
@@ -858,10 +1660,11 @@ const t_cmd console_cmd_list[] =
     { "c_gap_conn_param_update", do_le_gap_conn_param_update, "::", 0 },
 
     { "s_register", do_le_server_register, "::UUID: 1<1111..> 2<12323..> 3<321111..>", 0 },
-    { "s_connect", do_le_server_connect, ":: BdAddr<00112233445566>", 0 },
+    { "s_connect", do_le_server_connect, ":: transport, BdAddr<00112233445566>", 0 },
     { "s_connect_auto", do_le_server_connect_auto, ":: BdAddr<00112233445566>", 0 },
-    { "s_disconnect", do_le_server_disconnect, ":: BdAddr<00112233445566>", 0 },
+    { "s_disconnect", do_le_server_disconnect, ":: transport, BdAddr<00112233445566>", 0 },
     { "s_add_service", do_le_server_add_service, "::", 0 },
+    { "s_send_indication", do_le_server_send_indication, "::handle(hex), confirm (1 for indication, 0 for notification)", 0 },
 
     { "pair", do_pairing, ":: BdAddr<00112233445566>", 0 },
 
@@ -876,7 +1679,10 @@ const t_cmd console_cmd_list[] =
     { "set_local_name", do_set_localname, ":: setName<name>", 0 },
     /* add here */
     //{ "register_advertiser", do_register_adv, ":: RegisterAdvertiser", 0 },
-    { "start_adv_set", do_start_adv_set, ":: startAdvertisingSet", 0 },
+    { "start_adv_set", do_start_adv_set, ":: adv_evt_properties(hex eg:13 for connectable and scannable legacy adv), "
+            "\n interval(1-interval low, 2-interval medium, 3-interval high),"
+            "\n primary phy(1 for LE 1M, 3 for LE Coded),"
+            "\n secondary phy (1 for LE 1M, 2 for LE 2M and 3 for LE Coded)", 0 },
     { "unregister_advertiser", do_unregister_adv_set, ":: UnregisterAdvertiser", 0 },
 
      /* LE-L2CAP cmds */
@@ -1665,8 +2471,12 @@ void do_le_client_connect (char *p)
     transport = get_int(&p, -1);
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
 
-    if(transport == BT_TRANSPORT_BR_EDR)
+    if(Btif_gatt_layer)
     {
+        //TODO need to add phy parameter as 0x07 for connection to all types of Phys
+        Ret = sGattIfaceScan->client->connect(g_client_if_scan, bd_addr, TRUE, transport, FALSE, 0x01);
+    }
+    else if(transport == BT_TRANSPORT_BR_EDR) {
         //Outgoing Connection
 
         //    g_SecLevel |= BTM_SEC_OUT_AUTHENTICATE;
@@ -1674,15 +2484,10 @@ void do_le_client_connect (char *p)
         g_PSM= 1;
         g_SecLevel = 0;
         printf("g_SecLevel = %d \n", g_SecLevel);
-        sL2capInterface->RegisterPsm(g_PSM, g_ConnType, g_SecLevel /*BTM_SEC_IN_AUTHORIZE */);
+        sL2capInterface->RegisterPsm(g_PSM, g_ConnType, g_SecLevel );
         sleep(3);
 
         l2c_connect(bd_addr);
-    }
-    else if(Btif_gatt_layer)
-    {
-        //TODO need to add phy parameter as 0x07 for connection to all types of Phys
-        Ret = sGattIfaceScan->client->connect(g_client_if_scan, bd_addr, TRUE, transport, FALSE, 0x01);
     }
     else
     {
@@ -1712,15 +2517,14 @@ void do_le_conn_param_update(char *p)
     int max_interval = 40;
     int latency = 0;
     int timeout = 2000;
-    min_interval =  get_int(&p, -1);
-    max_interval =  get_int(&p, -1);
-    latency      =  get_int(&p, -1);
-    if(!min_interval)
-        min_interval = 24;
-    if(!max_interval)
-        max_interval = 40;
+
+    min_interval =  get_hex(&p, -1);
+    max_interval =  get_hex(&p, -1);
+    latency      =  get_hex(&p, -1);
+    timeout      =  get_hex(&p, -1);
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
-    Ret = sGattIfaceScan->client->conn_parameter_update(bd_addr,min_interval,max_interval,latency,timeout);
+
+    Ret = sGattIfaceScan->client->conn_parameter_update(bd_addr, min_interval, max_interval, latency, timeout);
     printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
 
 }
@@ -1729,11 +2533,13 @@ void do_le_client_connect_auto (char *p)
 {
     bool        Ret;
     RawAddress bd_addr = {{0}};
+    int transport = BT_TRANSPORT_BR_EDR;
+    transport = get_int(&p, -1);
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
 
     if(Btif_gatt_layer)
     {
-        Ret = sGattIfaceScan->client->connect(g_client_if_scan, bd_addr, FALSE,BT_TRANSPORT_LE, FALSE, 0x07);
+        Ret = sGattIfaceScan->client->connect(g_client_if_scan, bd_addr, FALSE, transport, FALSE, 0x01);
     }
     else
     {
@@ -1752,13 +2558,13 @@ void do_le_client_disconnect (char *p)
     transport = get_int(&p, -1);
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
 
-    if(transport == BT_TRANSPORT_BR_EDR)
-    {
-        return_status = sL2capInterface->DisconnectReq(g_lcid);
-    }
-    else if(Btif_gatt_layer)
+    if(Btif_gatt_layer)
     {
         Ret = sGattIfaceScan->client->disconnect(g_client_if_scan, bd_addr, g_conn_id);
+    }
+    else if(transport == BT_TRANSPORT_BR_EDR)
+    {
+        return_status = sL2capInterface->DisconnectReq(g_lcid);
     }
     else
     {
@@ -1895,15 +2701,33 @@ void do_start_adv_set(char *p)
     PeriodicAdvertisingParameters periodic_params;
     periodic_params.enable = false;
     std::vector<uint8_t> periodic_data;
+    int interval;
 
     //Adv params
-    params.advertising_event_properties = 0x13;
-    params.min_interval = 0xA00;
-    params.max_interval = 0xA32;
+    params.advertising_event_properties = get_hex(&p, -1);
+    interval = get_int(&p, -1);
+
+    switch(interval)
+    {
+        case INTERVAL_LOW:
+            params.min_interval = 160;
+            params.max_interval = 210;
+            break;
+        case INTERVAL_MEDIUM:
+            params.min_interval = 400;
+            params.max_interval = 450;
+            break;
+        case INTERVAL_HIGH:
+            params.min_interval = 1600;
+            params.max_interval = 1650;
+            break;
+    }
+
+    params.primary_advertising_phy = get_int(&p, -1);
+    params.secondary_advertising_phy = get_int(&p, -1);
     params.channel_map = 0x07;
     params.tx_power = -7;
-    params.primary_advertising_phy =0x01;
-    params.secondary_advertising_phy =0x01;
+
     params.scan_request_notification_enable = false;
 
     //adv data
@@ -1924,6 +2748,7 @@ void do_le_client_configureMTU(char *p)
     tGATT_STATUS Ret =0;
     uint16_t mtu = 23;
 
+    mtu  = get_int(&p, -1);
     printf("%s:: mtu :%d\n", __FUNCTION__, mtu);
     Ret = sGattInterface->cConfigureMTU(g_conn_id, mtu);
     printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
@@ -1955,7 +2780,7 @@ void do_le_client_discover(char *p)
     std::string uuid_str = get_uuid_str(&p, uuid_len_bytes);
     param.service = Uuid::FromString(uuid_str, &is_valid);
 
-    printf("%s:: disc_type = %d \n", __FUNCTION__, disc_type);
+    printf("%s:: disc_type = %d is_valid = %d\n", __FUNCTION__, disc_type, is_valid);
 
     //if(FALSE == GetDiscType(p, &disc_type))    return;        //TODO - add the function if user input is needed
     Ret = sGattInterface->cDiscover(g_conn_id, disc_type, &param);
@@ -2000,6 +2825,7 @@ void do_le_client_read(char *p)
 
         uuid_str = get_uuid_str(&p, uuid_len_bytes);
         readBuf.service.uuid = Uuid::FromString(uuid_str, &is_valid);
+        printf("%s:: read_type = %d is_valid = %d\n", __FUNCTION__, read_type, is_valid);
         break;
 
 
@@ -2181,8 +3007,10 @@ void do_le_server_connect (char *p)
 {
     bool        Ret;
     RawAddress bd_addr = {{0}};
+    int transport = BT_TRANSPORT_BR_EDR;
+    transport = get_int(&p, -1);
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
-    Ret = sGattIfaceScan->server->connect(g_server_if_scan, bd_addr, TRUE, BT_TRANSPORT_LE);
+    Ret = sGattIfaceScan->server->connect(g_server_if_scan, bd_addr, TRUE, transport);
     printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
 }
 
@@ -2200,8 +3028,25 @@ void do_le_server_disconnect (char *p)
 {
     bt_status_t        Ret;
     RawAddress bd_addr = {{0}};
+    int transport = BT_TRANSPORT_BR_EDR;
+    transport = get_int(&p, -1);
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
     Ret = sGattIfaceScan->server->disconnect(g_server_if_scan, bd_addr, g_conn_id);
+    printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
+}
+
+void do_le_server_send_indication (char *p)
+{
+    bt_status_t        Ret;
+    int attr_handle;
+    int confirm = 0;
+    uint8_t arr[] = {1,2,3,4};
+    std::vector<uint8_t> value (arr, arr + sizeof(arr) / sizeof(arr[0]));
+
+    attr_handle = get_hex(&p, -1);
+    confirm = get_int(&p, -1);
+    Ret = sGattIfaceScan->server->send_indication(g_server_if_scan, attr_handle,
+                                                  g_conn_id, confirm, value);
     printf("%s:: Ret=%d \n", __FUNCTION__,Ret );
 }
 
