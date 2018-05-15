@@ -247,9 +247,9 @@ static uint16_t L2cap_LE_Connect (uint16_t le_psm , RawAddress address, tL2CAP_L
 static bool L2cap_LE_ConnectRsp (RawAddress p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result,
                              uint16_t status, tL2CAP_LE_CFG_INFO *p_cfg)
 {
-     p_cfg->credits = L2CAP_LE_DEFAULT_CREDIT;
-     p_cfg->mtu = L2CAP_LE_DEFAULT_MTU;
-     p_cfg->mps = L2CAP_LE_DEFAULT_MPS;
+     p_cfg->credits = L2CAP_LE_CREDIT_DEFAULT;
+     p_cfg->mtu = L2CAP_LE_MIN_MTU;
+     p_cfg->mps = L2CAP_LE_MIN_MPS;
 
     L2CA_CONNECT_COC_RSP (p_bd_addr, id, lcid, L2CAP_CONN_OK, L2CAP_CONN_OK, p_cfg);
 #if 0
