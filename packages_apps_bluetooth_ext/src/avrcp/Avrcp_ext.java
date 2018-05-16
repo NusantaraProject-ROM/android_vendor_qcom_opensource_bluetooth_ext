@@ -151,7 +151,7 @@ public final class Avrcp_ext {
     private int mLastDirection;
     private final int mVolumeStep;
     private final int mAudioStreamMax;
-
+    private boolean updateAbsVolume = false;
     private static final int NO_PLAYER_ID = 0;
 
     private int mCurrAddrPlayerID;
@@ -772,8 +772,11 @@ public final class Avrcp_ext {
                     Log.d(TAG," MSG_NATIVE_REQ_GET_RC_FEATURES BA Active, update absvol support as true  ");
                     mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
                             true);
-                }
-                else {
+                } else if (device.isTwsPlusDevice() && areMultipleDevicesConnected()) {
+                    Log.v(TAG,"TWS+ device, update abs vol as true ");
+                    mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
+                            true);
+                } else {
                     mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
                         isAbsoluteVolumeSupported());
                     Log.v(TAG," update audio manager for abs vol state = "
@@ -986,6 +989,23 @@ public final class Avrcp_ext {
                     deviceFeatures[deviceIndex].mAbsVolRetryTimes = 0;
                 }
 
+                if (msg.arg2 == AVRC_RSP_INTERIM && areMultipleDevicesConnected() &&
+                    deviceFeatures[deviceIndex].mInitialRemoteVolume == -1 &&
+                    deviceFeatures[deviceIndex].mCurrentDevice.isTwsPlusDevice()) {
+                    BluetoothDevice device = deviceFeatures[deviceIndex].mCurrentDevice;
+                    for(int i = 0; i < maxAvrcpConnections; i++) {
+                        BluetoothDevice conn_dev = deviceFeatures[i].mCurrentDevice;
+                        if (i != deviceIndex && deviceFeatures[i].mCurrentDevice != null &&
+                            deviceFeatures[i].mInitialRemoteVolume != -1 &&
+                            isTwsPlusPair(conn_dev, device)) {
+                            Log.v(TAG,"volume already set for tws pair");
+                            deviceFeatures[deviceIndex].mInitialRemoteVolume = absVol;
+                            deviceFeatures[deviceIndex].mRemoteVolume = absVol;
+                            deviceFeatures[deviceIndex].mLocalVolume = convertToAudioStreamVolume(absVol);
+                            break;
+                        }
+                    }
+                }
                 // convert remote volume to local volume
                 int volIndex = convertToAudioStreamVolume(absVol);
                 boolean isShowUI = true;
@@ -1785,6 +1805,11 @@ public final class Avrcp_ext {
                             if (isPlaying) {
                                 deviceFeatures[i].isActiveDevice = true;
                                 Log.v(TAG,"updateCurrentMediaState: Active device is set true at index = " + i);
+                                if (updateAbsVolume) {
+                                    mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
+                                           isAbsoluteVolumeSupported());
+                                    updateAbsVolume = false;
+                                }
                             }
                             updateA2dpPlayState = true;
                             deviceFeatures[i].mLastStateUpdate = SystemClock.elapsedRealtime();
@@ -2785,6 +2810,7 @@ public final class Avrcp_ext {
     public void setAvrcpConnectedDevice(BluetoothDevice device) {
         Log.i(TAG,"setAvrcpConnectedDevice, Device added is " + device);
         boolean isPreviousDeviceActive = false;
+        BluetoothDevice active_device = null;
         for (int i = 0; i < maxAvrcpConnections; i++) {
             if (deviceFeatures[i].mCurrentDevice != null) {
                 if(deviceFeatures[i].mCurrentDevice.equals(device)) {
@@ -2793,6 +2819,7 @@ public final class Avrcp_ext {
                 }
                 if(deviceFeatures[i].isActiveDevice == true) {
                    Log.i(TAG,"Another device " + deviceFeatures[i].mCurrentDevice.getAddress() + " is already active");
+                   active_device = deviceFeatures[i].mCurrentDevice;
                    isPreviousDeviceActive = true;
                 }
             }
@@ -2800,8 +2827,12 @@ public final class Avrcp_ext {
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
             if (deviceFeatures[i].mCurrentDevice == null) {
                 deviceFeatures[i].mCurrentDevice = device;
-                if(!isPreviousDeviceActive)
+                if (!isPreviousDeviceActive ||
+                    (device.isTwsPlusDevice() && active_device != null &&
+                    isTwsPlusPair(active_device, device))) {
                     deviceFeatures[i].isActiveDevice = true;
+                    updateAbsVolume = false;
+                }
                 /*Playstate is explicitly updated here to take care of cases
                         where play state update is missed because of that happening
                         even before Avrcp connects*/
@@ -2900,6 +2931,11 @@ public final class Avrcp_ext {
                     !(deviceFeatures[i].mCurrentDevice.equals(device))) {
                 deviceFeatures[i].isActiveDevice = true;
                 Log.i(TAG,"setAvrcpDisconnectedDevice : Active device changed to index = " + i);
+                if (device.isTwsPlusDevice() &&
+                    isTwsPlusPair(device,deviceFeatures[i].mCurrentDevice )) {
+                    Log.i(TAG,"TWS+ pair got disconnected,update absVolume");
+                    updateAbsVolume = true;
+                }
             }
         }
 
