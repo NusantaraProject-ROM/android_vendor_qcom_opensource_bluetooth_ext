@@ -2809,7 +2809,6 @@ public final class Avrcp_ext {
     }
     public void setAvrcpConnectedDevice(BluetoothDevice device) {
         Log.i(TAG,"setAvrcpConnectedDevice, Device added is " + device);
-        boolean isPreviousDeviceActive = false;
         BluetoothDevice active_device = null;
         for (int i = 0; i < maxAvrcpConnections; i++) {
             if (deviceFeatures[i].mCurrentDevice != null) {
@@ -2818,21 +2817,20 @@ public final class Avrcp_ext {
                     return;
                 }
                 if(deviceFeatures[i].isActiveDevice == true) {
-                   Log.i(TAG,"Another device " + deviceFeatures[i].mCurrentDevice.getAddress() + " is already active");
+                   Log.i(TAG,"Device " + deviceFeatures[i].mCurrentDevice.getAddress() + " is active");
                    active_device = deviceFeatures[i].mCurrentDevice;
-                   isPreviousDeviceActive = true;
                 }
             }
         }
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
             if (deviceFeatures[i].mCurrentDevice == null) {
                 deviceFeatures[i].mCurrentDevice = device;
-                if (!isPreviousDeviceActive ||
-                    (device.isTwsPlusDevice() && active_device != null &&
+                if ((device.isTwsPlusDevice() && active_device != null &&
                     isTwsPlusPair(active_device, device))) {
                     deviceFeatures[i].isActiveDevice = true;
                     updateAbsVolume = false;
                 }
+                deviceFeatures[i].isActiveDevice = true;
                 /*Playstate is explicitly updated here to take care of cases
                         where play state update is missed because of that happening
                         even before Avrcp connects*/

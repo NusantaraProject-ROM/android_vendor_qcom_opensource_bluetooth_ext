@@ -886,6 +886,11 @@ static jboolean getPlayStatusRspNative(JNIEnv* env, jobject object,
     return JNI_FALSE;
   }
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -918,6 +923,11 @@ static jboolean getListPlayerappAttrRspNative(JNIEnv *env ,jobject object , jbyt
     jbyte *attr;
 
     if (!sBluetoothAvrcpInterface) return JNI_FALSE;
+
+    if (!address) {
+        ALOGE("%s: device address is null", __func__);
+        return JNI_FALSE;
+    }
 
     addr = env->GetByteArrayElements(address, NULL);
     if (!addr) {
@@ -971,9 +981,13 @@ static jboolean getPlayerAppValueRspNative(JNIEnv *env ,jobject object , jbyte n
 
     if (!sBluetoothAvrcpInterface) return JNI_FALSE;
 
-    if( numvalue > BTRC_MAX_APP_ATTR_SIZE) {
-        ALOGE("get_element_attr_rsp: number of attributes exceed maximum");
+    if (!address) {
+        ALOGE("%s: device address is null", __func__);
         return JNI_FALSE;
+    }
+    if(numvalue > BTRC_MAX_APP_ATTR_SIZE) {
+       ALOGE("get_element_attr_rsp: number of attributes exceed maximum");
+       return JNI_FALSE;
     }
     pAttrs = new uint8_t[numvalue];
     /* Static Analysis Fix for below
@@ -1025,6 +1039,11 @@ static jboolean SendCurrentPlayerValueRspNative(JNIEnv *env, jobject object ,
 
     if (!sBluetoothAvrcpInterface) return JNI_FALSE;
 
+    if (!address) {
+        ALOGE("%s: device address is null", __func__);
+        return JNI_FALSE;
+    }
+
     addr = env->GetByteArrayElements(address, NULL);
     if (!addr) {
         jniThrowIOException(env, EINVAL);
@@ -1071,6 +1090,11 @@ static jboolean SendSetPlayerAppRspNative(JNIEnv *env, jobject object,
 
     if (!sBluetoothAvrcpInterface) return JNI_FALSE;
 
+    if (!address) {
+        ALOGE("%s: device address is null", __func__);
+        return JNI_FALSE;
+    }
+
     addr = env->GetByteArrayElements(address, NULL);
     if (!addr) {
         jniThrowIOException(env, EINVAL);
@@ -1097,6 +1121,11 @@ static jboolean sendSettingsTextRspNative(JNIEnv *env, jobject object, jint num_
     jbyte *arr ;
 
     if (!sBluetoothAvrcpInterface) return JNI_FALSE;
+
+    if (!address) {
+        ALOGE("%s: device address is null", __func__);
+        return JNI_FALSE;
+    }
 
     addr = env->GetByteArrayElements(address, NULL);
     if (!addr) {
@@ -1161,6 +1190,11 @@ static jboolean sendValueTextRspNative(JNIEnv *env, jobject object, jint num_att
     //ALOGE("sendValueTextRspNative");
     if (!sBluetoothAvrcpInterface) return JNI_FALSE;
 
+    if (!address) {
+        ALOGE("%s: device address is null", __func__);
+        return JNI_FALSE;
+    }
+
     addr = env->GetByteArrayElements(address, NULL);
     if (!addr) {
         jniThrowIOException(env, EINVAL);
@@ -1214,6 +1248,11 @@ static jboolean getElementAttrRspNative(JNIEnv* env, jobject object,
                                         jobjectArray textArray) {
   if (!sBluetoothAvrcpInterface) {
     ALOGE("%s: sBluetoothAvrcpInterface is null", __func__);
+    return JNI_FALSE;
+  }
+
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
     return JNI_FALSE;
   }
 
@@ -1284,6 +1323,11 @@ static jboolean getItemAttrRspNative(JNIEnv* env, jobject object,
     return JNI_FALSE;
   }
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -1349,6 +1393,11 @@ static jboolean registerNotificationPlayerAppRspNative(JNIEnv *env, jobject obje
 
     if (!sBluetoothAvrcpInterface) return JNI_FALSE;
 
+    if (!address) {
+        ALOGE("%s: device address is null", __func__);
+        return JNI_FALSE;
+    }
+
     addr = env->GetByteArrayElements(address, NULL);
     if (!addr) {
         jniThrowIOException(env, EINVAL);
@@ -1400,6 +1449,11 @@ static jboolean registerNotificationRspPlayStatusNative(JNIEnv* env,
     return JNI_FALSE;
   }
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -1427,6 +1481,11 @@ static jboolean registerNotificationRspTrackChangeNative(JNIEnv* env,
                                                          jbyteArray address) {
   if (!sBluetoothAvrcpInterface) {
     ALOGE("%s: sBluetoothAvrcpInterface is null", __func__);
+    return JNI_FALSE;
+  }
+
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
     return JNI_FALSE;
   }
 
@@ -1473,6 +1532,11 @@ static jboolean registerNotificationRspPlayPosNative(JNIEnv* env,
     return JNI_FALSE;
   }
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -1499,6 +1563,11 @@ static jboolean registerNotificationRspNowPlayingChangedNative(JNIEnv* env,
                                                                jbyteArray address) {
   if (!sBluetoothAvrcpInterface) {
     ALOGE("%s: sBluetoothAvrcpInterface is null", __func__);
+    return JNI_FALSE;
+  }
+
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
     return JNI_FALSE;
   }
 
@@ -1530,6 +1599,11 @@ static jboolean registerNotificationRspUIDsChangedNative(JNIEnv* env,
     return JNI_FALSE;
   }
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -1555,6 +1629,11 @@ static jboolean registerNotificationRspAddrPlayerChangedNative(
     jbyteArray address) {
   if (!sBluetoothAvrcpInterface) {
     ALOGE("%s: sBluetoothAvrcpInterface is null", __func__);
+    return JNI_FALSE;
+  }
+
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
     return JNI_FALSE;
   }
 
@@ -1589,6 +1668,11 @@ static jboolean registerNotificationRspAvalPlayerChangedNative(JNIEnv* env,
     return JNI_FALSE;
   }
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -1618,6 +1702,11 @@ static jboolean setVolumeNative(JNIEnv* env, jobject object, jint volume, jbyteA
 
   ALOGI("%s: volume: %u", __func__, volume, (uint8_t) volume);
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -1642,6 +1731,11 @@ static jboolean mediaPlayerListRspNative(
     jobjectArray textArray) {
   if (!sBluetoothAvrcpInterface) {
     ALOGE("%s: sBluetoothAvrcpInterface is null", __func__);
+    return JNI_FALSE;
+  }
+
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
     return JNI_FALSE;
   }
 
@@ -1745,6 +1839,11 @@ static jboolean getFolderItemsRspNative(
     jobjectArray attributesArray) {
   if (!sBluetoothAvrcpInterface) {
     ALOGE("%s: sBluetoothAvrcpInterface is null", __func__);
+    return JNI_FALSE;
+  }
+
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
     return JNI_FALSE;
   }
 
@@ -1882,6 +1981,11 @@ static jboolean setAddressedPlayerRspNative(JNIEnv* env, jobject object,
     return JNI_FALSE;
   }
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -1905,6 +2009,11 @@ static jboolean setBrowsedPlayerRspNative(JNIEnv* env, jobject object,
                                           jobjectArray textArray) {
   if (!sBluetoothAvrcpInterface) {
     ALOGE("%s: sBluetoothAvrcpInterface is null", __func__);
+    return JNI_FALSE;
+  }
+
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
     return JNI_FALSE;
   }
 
@@ -1972,6 +2081,11 @@ static jboolean changePathRspNative(JNIEnv* env, jobject object,
     return JNI_FALSE;
   }
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -1995,6 +2109,11 @@ static jboolean searchRspNative(JNIEnv* env, jobject object, jbyteArray address,
                                 jint numItems) {
   if (!sBluetoothAvrcpInterface) {
     ALOGE("%s: sBluetoothAvrcpInterface is null", __func__);
+    return JNI_FALSE;
+  }
+
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
     return JNI_FALSE;
   }
 
@@ -2024,6 +2143,11 @@ static jboolean playItemRspNative(JNIEnv* env, jobject object,
     return JNI_FALSE;
   }
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -2046,6 +2170,11 @@ static jboolean getTotalNumOfItemsRspNative(JNIEnv* env, jobject object,
                                             jint uidCounter, jint numItems) {
   if (!sBluetoothAvrcpInterface) {
     ALOGE("%s: sBluetoothAvrcpInterface is null", __func__);
+    return JNI_FALSE;
+  }
+
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
     return JNI_FALSE;
   }
 
@@ -2074,6 +2203,11 @@ static jboolean addToNowPlayingRspNative(JNIEnv* env, jobject object,
     return JNI_FALSE;
   }
 
+  if (!address) {
+    ALOGE("%s: device address is null", __func__);
+    return JNI_FALSE;
+  }
+
   jbyte* addr = env->GetByteArrayElements(address, NULL);
   if (!addr) {
     jniThrowIOException(env, EINVAL);
@@ -2098,6 +2232,11 @@ static jboolean isDeviceActiveInHandOffNative(JNIEnv *env,
     jbyte *addr;
 
     if (!sBluetoothAvrcpInterface) return JNI_FALSE;
+
+    if (!address) {
+        ALOGE("%s: device address is null", __func__);
+        return JNI_FALSE;
+    }
 
     addr = env->GetByteArrayElements(address, NULL);
     if (!addr) {
