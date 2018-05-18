@@ -339,7 +339,8 @@ static void btif_tws_plus_upstreams_evt(uint16_t event, char* p_param) {
   BTIF_TRACE_EVENT("%s:  event = %d", __func__, event);
   switch (event) {
     case BTA_TWS_PLUS_SDP_SEARCH_COMP_EVT: {
-      if(BTA_TWS_PLUS_SUCCESS == p_data->sdp_search_comp.status) {
+      if(BTA_TWS_PLUS_SUCCESS == p_data->sdp_search_comp.status &&
+         (p_data->sdp_search_comp.peer_eb_addr != RawAddress::kEmpty)) {
           btif_tws_plus_reverse_addr(( RawAddress* ) &p_data->sdp_search_comp.peer_eb_addr);
           BTIF_TRACE_DEBUG("%s() Bd addr found from SDP query : %s ", __func__,
           p_data->sdp_search_comp.peer_eb_addr.ToString().c_str());
@@ -351,6 +352,15 @@ static void btif_tws_plus_upstreams_evt(uint16_t event, char* p_param) {
                                           link_key, LK_DERIVATION_REASON_PAIR);
 
           }
+      } else {
+          // update bond state changed for first device
+          RawAddress eb_bd_addr = RawAddress::kEmpty;
+          bond_state_changed(BT_STATUS_SUCCESS,
+                p_data->lk_derived.bd_addr, BT_BOND_STATE_BONDED);
+          btif_tws_plus_update_rmt_dev_props( &p_data->lk_derived.bd_addr,
+                                            &p_data->lk_derived.bd_addr);
+          btif_tws_plus_set_peer_eb_addr(&p_data->lk_derived.bd_addr,
+                                         &eb_bd_addr);
       }
       break;
     }
