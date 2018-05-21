@@ -4467,11 +4467,11 @@ public final class Avrcp_ext {
         }
 
         if (DEBUG) Log.d(TAG, "Avrcp current play state: " +
-            convertPlayStateToPlayStatus(deviceFeatures[deviceIndex].mCurrentPlayState) +
+            convertPlayStateToPlayStatus(mCurrentPlayerState) +
             " isMusicActive: " + mAudioManager.isMusicActive() + " A2dp state: "  + mA2dpState +
             "Cached passthrough command:" + deviceFeatures[deviceIndex].mLastPassthroughcmd);
         if (deviceFeatures[deviceIndex].mLastPassthroughcmd == KeyEvent.KEYCODE_UNKNOWN) {
-            if (isPlayingState(deviceFeatures[deviceIndex].mCurrentPlayState) &&
+            if (isPlayingState(mCurrentPlayerState) &&
                      mAudioManager.isMusicActive() &&
                      (mA2dpState == BluetoothA2dp.STATE_PLAYING) &&
                      (code == KeyEvent.KEYCODE_MEDIA_PLAY)) {
@@ -4479,7 +4479,7 @@ public final class Avrcp_ext {
                          "in music playing");
                  return;
             }
-            if ((!isPlayingState(deviceFeatures[deviceIndex].mCurrentPlayState)) &&
+            if ((!isPlayingState(mCurrentPlayerState)) &&
                     (!mAudioManager.isMusicActive()) &&
                     (mA2dpState == BluetoothA2dp.STATE_NOT_PLAYING) &&
                     (code == KeyEvent.KEYCODE_MEDIA_PAUSE)) {
