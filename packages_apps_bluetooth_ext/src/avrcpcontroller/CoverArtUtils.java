@@ -110,16 +110,16 @@ public class CoverArtUtils {
     public void msgProcessRcFeatures(AvrcpControllerBipStateMachine bipStateMachine,
             RemoteDevice remoteDevice, int remotePsm) {
         if (bipStateMachine != null && remoteDevice != null
-                && remoteDevice.isCoverArtSupported()) {
-            remoteDevice.setRemoteBipPsm(remotePsm);
+               /* && remoteDevice.isCoverArtSupported() */) {
+            //remoteDevice.setRemoteBipPsm(remotePsm);
             bipStateMachine.sendMessage(AvrcpControllerBipStateMachine.MESSAGE_CONNECT_BIP,
-                remoteDevice.getRemoteBipPsm(), 0, remoteDevice.mBTDevice);
+                0 /*remoteDevice.getRemoteBipPsm() */, 0, remoteDevice.mBTDevice);
         }
     }
 
     public boolean msgTrackChanged(Context ctx, AvrcpControllerBipStateMachine bipStateMachine,
             AvrcpPlayer addressedPlayer, RemoteDevice remoteDevice) {
-        boolean isValidHandle = !addressedPlayer.getCurrentTrack().getCoverArtHandle().isEmpty();
+        boolean isValidHandle = false /*!addressedPlayer.getCurrentTrack().getCoverArtHandle().isEmpty() */;
         if (bipStateMachine != null && isValidHandle) {
             int imageOrThumbnail;
             if (AvrcpControllerBipStateMachine.mImageType.equalsIgnoreCase("thumbnail")) {
@@ -127,10 +127,10 @@ public class CoverArtUtils {
             } else {
                 imageOrThumbnail = AvrcpControllerBipStateMachine.MESSAGE_FETCH_IMAGE;
             }
-            bipStateMachine.sendMessage(imageOrThumbnail,
-                    addressedPlayer.getCurrentTrack().getCoverArtHandle());
+            //bipStateMachine.sendMessage(imageOrThumbnail,
+              //      addressedPlayer.getCurrentTrack().getCoverArtHandle());
         }
-        if (!isValidHandle && remoteDevice != null && remoteDevice.isCoverArtSupported()) {
+        if (!isValidHandle && remoteDevice != null /*&& remoteDevice.isCoverArtSupported()*/) {
             if (DBG) {
                 Log.d(TAG, " Cover Art Handle not valid ");
             }
@@ -147,39 +147,39 @@ public class CoverArtUtils {
         }
         switch (bipAction) {
             case MESSAGE_BIP_CONNECTED:
-                if (addressedPlayer.getCurrentTrack().getCoverArtHandle().isEmpty()
-                    && remoteDevice != null) {
+                if (/*addressedPlayer.getCurrentTrack().getCoverArtHandle().isEmpty()
+                    && */remoteDevice != null) {
                 /*
                  * track changed happened before BIP connection. should fetch cover art handle.
                  * NumAttributes = 0 and attributes list as null will fetch all attributes
                  */
-                    AvrcpControllerService.getElementAttributesNative(
-                            remoteDevice.getBluetoothAddress(), (byte) 0, null);
+                   /* AvrcpControllerService.getElementAttributesNative(
+                            remoteDevice.getBluetoothAddress(), (byte) 0, null); */
                 }
             break;
             case MESSAGE_BIP_DISCONNECTED:
                 // clear cover art related info for current track.
-                addressedPlayer.getCurrentTrack().clearCoverArtData();
+                //addressedPlayer.getCurrentTrack().clearCoverArtData();
             break;
             case MESSAGE_BIP_IMAGE_FETCHED:
-                boolean imageUpdated = addressedPlayer.getCurrentTrack().updateImageLocation(
+               /* boolean imageUpdated = addressedPlayer.getCurrentTrack().updateImageLocation(
                 msg.getData().getString(AvrcpControllerBipStateMachine.COVER_ART_HANDLE),
                 msg.getData()
                     .getString(AvrcpControllerBipStateMachine.COVER_ART_IMAGE_LOCATION));
                 if (imageUpdated) {
                     broadcastMetaDataChanged(ctx,
                         addressedPlayer.getCurrentTrack().getMediaMetaData());
-                }
+                } */
             break;
             case MESSAGE_BIP_THUMB_NAIL_FETCHED:
-                boolean thumbNailUpdated = addressedPlayer.getCurrentTrack().updateThumbNailLocation
+                /*boolean thumbNailUpdated = addressedPlayer.getCurrentTrack().updateThumbNailLocation
                     (msg.getData().getString(AvrcpControllerBipStateMachine.COVER_ART_HANDLE),
                      msg.getData()
                      .getString(AvrcpControllerBipStateMachine.COVER_ART_IMAGE_LOCATION));
             if (thumbNailUpdated) {
                 broadcastMetaDataChanged(ctx,
                     addressedPlayer.getCurrentTrack().getMediaMetaData());
-            }
+            } */
             break;
         }
     }

@@ -113,7 +113,7 @@ public class AvrcpControllerBipStateMachine extends StateMachine {
         addState(mDisconnecting);
         setInitialState(mDisconnected);
 
-        mImageType = SystemProperties.get("persist.service.bt.avrcpct.imgtype");
+        mImageType = SystemProperties.get("persist.service.bt.avrcpct.imgtype"); /*
         if (TextUtils.isEmpty(mImageType)) {
             mImageType = mContext.getResources().getString
                 (R.string.avrcp_cover_art_default_image_type);
@@ -129,7 +129,7 @@ public class AvrcpControllerBipStateMachine extends StateMachine {
                 mContext.getResources().getInteger(R.integer.avrcp_cover_art_default_width));
 
         mSupportedCoverArtMaxSize = SystemProperties.getInt("persist.service.bt.avrcpct.imgsize",
-                mContext.getResources().getInteger(R.integer.avrcp_cover_art_default_maxsize));
+                mContext.getResources().getInteger(R.integer.avrcp_cover_art_default_maxsize)); */
         if (DBG) {
             Log.d(TAG, " Type :" + mImageType + ", Mime :" + mSupportedCoverArtMimetype + " Height:"
                 + mSupportedCovertArtHeight + ", width :" + mSupportedCoverArtWidth + ", Max size:"
