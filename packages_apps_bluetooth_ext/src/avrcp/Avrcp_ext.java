@@ -1265,7 +1265,7 @@ public final class Avrcp_ext {
                 // if BA streaming is ongoing, don't update AVRCP state based on A2DP State.
                 // This is for some remote devices, which send PLAY/PAUSE based on AVRCP State.
                 BATService mBatService = BATService.getBATService();
-                if ((mBatService != null) && !mBatService.isA2dpSuspendFromBA())  {
+                if ((mBatService == null) || !mBatService.isA2dpSuspendFromBA()) {
                   // if this suspend was triggered by BA, then don't update AVRCP state
                   updateCurrentMediaState((BluetoothDevice)msg.obj);
                 }
