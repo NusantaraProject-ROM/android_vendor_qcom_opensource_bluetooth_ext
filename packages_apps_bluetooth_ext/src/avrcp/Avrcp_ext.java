@@ -4316,6 +4316,14 @@ public final class Avrcp_ext {
         }
 
         public void playItemRsp(byte[] address, int rspStatus) {
+            BluetoothDevice device;
+            String bdaddr = Utils.getAddressStringFromByte(address);
+            device = mAdapter.getRemoteDevice(bdaddr);
+
+            if(rspStatus == AvrcpConstants.RSP_NO_ERROR && mA2dpService.getActiveDevice() != device) {
+                Log.d(TAG, "Trigger Handoff");
+                mA2dpService.setActiveDevice(device);
+            }
             if (!playItemRspNative(address, rspStatus)) {
                 Log.e(TAG, "playItemRspNative failed!");
             }
@@ -4463,7 +4471,20 @@ public final class Avrcp_ext {
             Log.e(TAG,"Invalid device index for play status");
             return;
         }
+        int action = KeyEvent.ACTION_DOWN;
+        if (state == AvrcpConstants.KEY_STATE_RELEASE) action = KeyEvent.ACTION_UP;
 
+        if (((code == KeyEvent.KEYCODE_MEDIA_PAUSE) || (code == KeyEvent.KEYCODE_MEDIA_PLAY))
+            && (mA2dpService.getActiveDevice() != device)){
+            if (action == KeyEvent.ACTION_DOWN) {
+                Log.d(TAG, "Trigger Handoff");
+                mA2dpService.setActiveDevice(device);
+                deviceFeatures[deviceIndex].isActiveDevice = true;
+                deviceFeatures[1-deviceIndex].isActiveDevice = false;
+            } else {
+                Log.d(TAG, "Ignore action up from inactive device");
+            }
+        }
         if (DEBUG) Log.d(TAG, "Avrcp current play state: " +
             convertPlayStateToPlayStatus(mCurrentPlayerState) +
             " isMusicActive: " + mAudioManager.isMusicActive() + " A2dp state: "  + mA2dpState +
@@ -4486,8 +4507,6 @@ public final class Avrcp_ext {
                 return;
             }
         }
-        int action = KeyEvent.ACTION_DOWN;
-        if (state == AvrcpConstants.KEY_STATE_RELEASE) action = KeyEvent.ACTION_UP;
 
         BATService mBatService = BATService.getBATService();
         if ((mBatService != null) && mBatService.isBATActive()) {
@@ -4557,6 +4576,7 @@ public final class Avrcp_ext {
         } else {
             deviceFeatures[deviceIndex].mLastPassthroughcmd = code;
         }
+
         mMediaSessionManager.dispatchMediaKeyEvent(event);
         addKeyPending(event);
     }
