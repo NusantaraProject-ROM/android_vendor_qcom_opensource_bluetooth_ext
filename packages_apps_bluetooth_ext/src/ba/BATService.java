@@ -126,14 +126,15 @@ public class BATService extends ProfileService {
     private BluetoothBAEncryptionKey mCurrEncryptionKey;
     private BluetoothBAStreamServiceRecord mServiceRecord;
     private BATMessageHandler mMsgHandler;
-    private static BATService sBATService;
+    private static BATService sBATService = null;
     private BluetoothAdapter mAdapter;
     // we need pending state only during transition from enable/disable.
     // no need for statemachine, at this point. Can be manager with a variable.
 
-    static {
+    // TODO Enable after KS chagnes are merged
+    /*static {
         classInitNative();
-    }
+    }*/
 
     protected IProfileServiceBinder initBinder() {
         return new BluetoothBATBinder(this);
