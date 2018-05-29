@@ -329,7 +329,7 @@ void process_twsp_role_change (int eb_idx, uint8_t role) {
 }
 
 bool set_twsp_state(int eb_idx, uint8_t state) {
-    APPL_TRACE_DEBUG("%s: state : %d\n", __func__, state);
+    APPL_TRACE_DEBUG("%s: current state: %d new state : %d\n", __func__, twsp_devices[eb_idx].state, state);
 
     if (eb_idx < PRIMARY_EB_IDX || eb_idx > SECONDARY_EB_IDX) {
         APPL_TRACE_WARNING("%s: Invalid eb_idx: %d\n", __func__, eb_idx);
@@ -341,6 +341,12 @@ bool set_twsp_state(int eb_idx, uint8_t state) {
         return false;
     }
 
+    if (twsp_devices[eb_idx].state == TWSPLUS_EB_STATE_INEAR &&
+        state != TWSPLUS_EB_STATE_INEAR) {
+        //If It is tranistioning away from InEar,
+        //Clear the ring_set flag
+        twsp_devices[eb_idx].ring_sent = false;
+    }
     twsp_devices[eb_idx].state = state;
     process_twsp_state_change(eb_idx, state);
     return true;
@@ -444,17 +450,28 @@ bool twsp_set_ring_sent(tBTA_AG_SCB *p_scb, bool ring_sent) {
 bool twsp_ring_needed(tBTA_AG_SCB *p_scb) {
     int sel_idx = -1;
     bool ring_already_sent = false;
+    int prev_sent_idx = -1;
     bool ret = false;
     for (int i=0; i<=SECONDARY_EB_IDX; i++) {
         if (twsp_devices[i].ring_sent) {
             ring_already_sent = true;
+            if (twsp_devices[i].p_scb == p_scb) {
+                //If ring was send to same scb before
+                //should send it to same scb again
+                prev_sent_idx = i;
+            }
         }
-        if (twsp_devices[i].p_scb == p_scb) {
+        else if (twsp_devices[i].p_scb == p_scb) {
             sel_idx = i;
         }
     }
     if (ring_already_sent) {
-        ret = false;
+        if (prev_sent_idx == -1) {
+            ret = false;
+        } else {
+            APPL_TRACE_DEBUG("%s: resent timer to same scb", __func__);
+            ret = true;
+        }
     } else {
         //If ring is not sent to any of them
         //check if it is in ear

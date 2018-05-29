@@ -71,6 +71,10 @@ bool is_rfc_connected (tBTA_AG_SCB* p_scb) {
     return (p_scb && p_scb->conn_handle);
 }
 
+bool is_svc_connected (tBTA_AG_SCB* p_scb) {
+    return (p_scb && p_scb->svc_conn);
+}
+
 tBTA_AG_SCB* get_scb(const RawAddress& addr) {
     uint16_t handle;
     tBTA_AG_SCB* p_scb;
@@ -138,7 +142,7 @@ bool twsp_sco_active(tBTA_AG_SCB* p_scb) {
 void  dispatch_event_twsp_peer_device(tBTA_AG_SCB *p_scb, uint8_t event) {
     tBTA_AG_SCB *other_scb = get_other_twsp_scb((p_scb->peer_addr));
     if (other_scb) {
-        if (is_rfc_connected(other_scb)) {
+        if (is_svc_connected(other_scb)) {
            bta_ag_twsp_sco_event(other_scb, event);
         } else {
            APPL_TRACE_WARNING("%s: RFC is not up yet", __func__);
@@ -152,7 +156,7 @@ void  dispatch_event_primary_peer_device(tBTA_AG_SCB *p_scb, uint8_t event) {
     tBTA_AG_SCB *other_scb = get_other_twsp_scb((p_scb->peer_addr));
     APPL_TRACE_DEBUG("%s: other_scb: %x", other_scb);
     if (other_scb) {
-        if (is_rfc_connected(other_scb)) {
+        if (is_svc_connected(other_scb)) {
            bta_ag_sco_event(other_scb, event);
         } else {
            APPL_TRACE_WARNING("%s: RFC is not up yet", __func__);
@@ -225,10 +229,10 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                   bta_ag_codec_negotiate(p_scb);
               break;
               case BTA_AG_SCO_SHUTDOWN_E:
-                   bta_ag_remove_sco(p_scb, false);
-                   p_sco->state = BTA_AG_SCO_SHUTDOWN_ST;
-                  //If this is because of remote closure (OFF or battery dies)
-                  //Close the other SCO as well, so that HSM brings back the other earbud
+                  bta_ag_remove_sco(p_scb, false);
+                  p_sco->state = BTA_AG_SCO_SHUTDOWN_ST;
+                  //If this is because of remote closure(OFF or battery dies)
+                  //Close other SCO as well, so that HSM brings back ther earbud
                   //as part of making an active device
                   if (bta_ag_sco_is_active_device(p_scb->peer_addr)) {
                       APPL_TRACE_WARNING("Calling SCO close");
