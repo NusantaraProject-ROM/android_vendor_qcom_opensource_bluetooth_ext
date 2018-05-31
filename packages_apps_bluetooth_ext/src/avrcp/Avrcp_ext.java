@@ -2072,7 +2072,7 @@ public final class Avrcp_ext {
 
                 boolean isSplitA2dpEnabled = false;
                 long update_interval = 0L;
-                String offloadSupported = SystemProperties.get("persist.vendor.bt.enable.splita2dp");
+                String offloadSupported = SystemProperties.get("persist.vendor.btstack.enable.splita2dp");
                 if (offloadSupported.isEmpty() || "true".equals(offloadSupported)) {
                     isSplitA2dpEnabled = true;
                     Log.v(TAG,"split enabled");

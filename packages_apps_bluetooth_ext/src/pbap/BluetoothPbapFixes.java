@@ -257,7 +257,7 @@ public class BluetoothPbapFixes {
 
     protected static void updateMtu(ServerSession serverSession, boolean isSrmSupported,
             int rfcommMaxMTU) {
-        String offloadSupported = SystemProperties.get("persist.vendor.bt.enable.splita2dp");
+        String offloadSupported = SystemProperties.get("persist.vendor.btstack.enable.splita2dp");
         if (DEBUG) Log.d(TAG, "offloadSupported :" + offloadSupported + " isSrmSupported :" +
                 isSrmSupported + " isA2DPConnected :" + BTOppUtils.isA2DPConnected +
                 " rfcommMaxMTU :" + rfcommMaxMTU);
