@@ -231,14 +231,8 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
               case BTA_AG_SCO_SHUTDOWN_E:
                   bta_ag_remove_sco(p_scb, false);
                   p_sco->state = BTA_AG_SCO_SHUTDOWN_ST;
-                  //If this is because of remote closure(OFF or battery dies)
-                  //Close other SCO as well, so that HSM brings back ther earbud
-                  //as part of making an active device
-                  if (bta_ag_sco_is_active_device(p_scb->peer_addr)) {
-                      APPL_TRACE_WARNING("Calling SCO close");
-                      dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_CLOSE_E);
-                  }
                   bta_ag_cb.sec_sm_scb = NULL;
+
               break;
               case BTA_AG_SCO_CONN_CLOSE_E:
                   /* sco failed; create sco listen connection */
