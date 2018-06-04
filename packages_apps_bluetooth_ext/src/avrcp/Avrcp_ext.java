@@ -105,6 +105,7 @@ public final class Avrcp_ext {
     private AvrcpMessageHandler mHandler;
     private final BluetoothAdapter mAdapter;
     private A2dpService mA2dpService;
+    private Handler mAudioManagerPlaybackHandler;
     private AudioManagerPlaybackListener mAudioManagerPlaybackCb;
     private MediaSessionManager mMediaSessionManager;
     private @Nullable MediaController mMediaController;
@@ -407,6 +408,7 @@ public final class Avrcp_ext {
         mCurrentPlayerState = new PlaybackState.Builder().setState(PlaybackState.STATE_NONE, -1L, 0.0f).build();
         mReportedPlayStatus = PLAYSTATUS_ERROR;
         mA2dpState = BluetoothA2dp.STATE_NOT_PLAYING;
+        mAudioManagerIsPlaying = false;
         mPlayStatusChangedNT = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
         mPlayerStatusChangeNT  = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
         mTrackChangedNT = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
@@ -500,6 +502,8 @@ public final class Avrcp_ext {
         thread.start();
         Looper looper = thread.getLooper();
         mHandler = new AvrcpMessageHandler(looper);
+        mAudioManagerPlaybackHandler = new Handler(looper);
+        mAudioManagerPlaybackCb = new AudioManagerPlaybackListener();
         mMediaControllerCb = new MediaControllerListener();
         mAvrcpMediaRsp = new AvrcpMediaRsp();
         mAvrcpPlayerAppSettingsRsp = new AvrcpPlayerAppSettingsRsp();
@@ -560,6 +564,10 @@ public final class Avrcp_ext {
             // initialize browsable player list and build media player list
             buildBrowsablePlayerList();
         }
+
+        mAudioManager.registerAudioPlaybackCallback(
+                mAudioManagerPlaybackCb, mAudioManagerPlaybackHandler);
+
         Log.v(TAG, "Exit start");
     }
 
@@ -578,6 +586,8 @@ public final class Avrcp_ext {
     public synchronized void doQuit() {
         if (DEBUG) Log.d(TAG, "doQuit");
         if (mAudioManager != null)
+            mAudioManager.unregisterAudioPlaybackCallback(mAudioManagerPlaybackCb);
+
         if (mMediaController != null) mMediaController.unregisterCallback(mMediaControllerCb);
         Message msg = mHandler.obtainMessage(MESSAGE_DEVICE_RC_CLEANUP, APP_CLEANUP,
                0, null);
@@ -592,6 +602,7 @@ public final class Avrcp_ext {
             mAvrcpPlayerAppSettings = null;
         }
 
+        mAudioManagerPlaybackHandler.removeCallbacksAndMessages(null);
         mHandler.removeCallbacksAndMessages(null);
         Looper looper = mHandler.getLooper();
         if (looper != null) {
@@ -602,6 +613,8 @@ public final class Avrcp_ext {
             mAvrcpBipRsp.stop();
             mAvrcpBipRsp = null;
         }
+
+        mAudioManagerPlaybackHandler = null;
         mContext.unregisterReceiver(mAvrcpReceiver);
         mContext.unregisterReceiver(mBootReceiver);
 
@@ -1825,6 +1838,20 @@ public final class Avrcp_ext {
                 }
             } else {
                 newState = mMediaController.getPlaybackState();
+                if (newState == null) {
+                    Log.d(TAG, "updateCurrentMediaState: playState is null, mAudioManagerIsPlaying=" + mAudioManagerIsPlaying
+                               + ", isMusicActive=" + mAudioManager.isMusicActive());
+                    PlaybackState.Builder builder = new PlaybackState.Builder();
+                    if (mAudioManagerIsPlaying && mAudioManager.isMusicActive()) {
+                        builder.setState(PlaybackState.STATE_PLAYING,
+                                PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
+                        newState = builder.build();
+                    } else if (!mAudioManagerIsPlaying && !mAudioManager.isMusicActive()){
+                        builder.setState(PlaybackState.STATE_PAUSED,
+                                PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0.0f);
+                        newState = builder.build();
+                    }
+                }
                 Log.v(TAG,"updateCurrentMediaState: get media attributes: ");
                 currentAttributes = new MediaAttributes(mMediaController.getMetadata());
             }
