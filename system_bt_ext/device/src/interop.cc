@@ -725,7 +725,7 @@ static bool get_addr_maxlat(char *str, char *bdaddrstr,
                   &saveptr)) != NULL) {
     trim(token);
     errno = 0;
-    strlcpy(bdaddrstr, token, strlen(token) + 1);
+    strlcpy(bdaddrstr, token, KEY_MAX_LENGTH);
     if ( errno == EINVAL || errno == ERANGE )
       return false;
   }
