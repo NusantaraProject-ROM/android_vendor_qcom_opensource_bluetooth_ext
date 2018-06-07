@@ -574,6 +574,7 @@ public final class Avrcp_ext {
     public static Avrcp_ext make(Context context, A2dpService svc,
                              int maxConnections) {
         if (DEBUG) Log.v(TAG, "make");
+        Log.v(TAG, "mAvrcp = " + mAvrcp);
         //Avrcp_ext ar = new Avrcp_ext(context, svc, maxConnections);
         if(mAvrcp == null) {
             mAvrcp = new Avrcp_ext(context, svc, maxConnections);
@@ -581,6 +582,12 @@ public final class Avrcp_ext {
         }
         Log.v(TAG, "Exit make");
         return mAvrcp;
+    }
+
+    public static void clearAvrcpInstance () {
+        Log.v(TAG, "clearing mAvrcp instatnce" + mAvrcp);
+        mAvrcp = null;
+        Log.v(TAG, "After clearing mAvrcp instatnce " + mAvrcp);
     }
 
     public synchronized void doQuit() {
