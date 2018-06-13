@@ -90,6 +90,16 @@ typedef enum {
     BT_VENDOR_PROPERTY_TWS_PLUS_AUTO_CONNECT,
 } bt_vendor_property_type_t;
 
+typedef enum {
+    BTHF_VOIP_CALL_NETWORK_TYPE_MOBILE = 0,
+    BTHF_VOIP_CALL_NETWORK_TYPE_WIFI
+} bthf_voip_call_network_type_t;
+
+typedef enum {
+    BTHF_VOIP_STATE_STOPPED = 0,
+    BTHF_VOIP_STATE_STARTED
+} bthf_voip_state_t;
+
 typedef struct {
     bt_vendor_property_type_t type;
     int len;
@@ -159,6 +169,10 @@ typedef struct {
 
     /** Closes the interface. */
     void  (*cleanup)( void );
+
+    /** Sends connectivity network type used by Voip currently to stack */
+    bt_status_t (*voip_network_type_wifi) (bthf_voip_state_t is_voip_started,
+                                           bthf_voip_call_network_type_t is_network_wifi);
 
 } btvendor_interface_t;
 

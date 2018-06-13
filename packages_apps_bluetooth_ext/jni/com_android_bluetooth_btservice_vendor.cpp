@@ -292,6 +292,21 @@ static bool getQtiStackStatusNative() {
     return (sBluetoothVendorInterface != NULL);
 }
 
+static jboolean voipNetworkWifiInfoNative(JNIEnv *env, jobject object,
+                                           jboolean isVoipStarted, jboolean isNetworkWifi) {
+    bt_status_t status;
+    if (!sBluetoothVendorInterface) return JNI_FALSE;
+
+    ALOGE("In voipNetworkWifiInfoNative");
+    if ( (status = sBluetoothVendorInterface->voip_network_type_wifi(isVoipStarted ?
+            BTHF_VOIP_STATE_STARTED : BTHF_VOIP_STATE_STOPPED, isNetworkWifi ?
+            BTHF_VOIP_CALL_NETWORK_TYPE_WIFI : BTHF_VOIP_CALL_NETWORK_TYPE_MOBILE))
+            != BT_STATUS_SUCCESS) {
+        ALOGE("Failed sending VOIP network type, status: %d", status);
+    }
+    return (status == BT_STATUS_SUCCESS) ? JNI_TRUE : JNI_FALSE;
+}
+
 static JNINativeMethod sMethods[] = {
     {"classInitNative", "()V", (void *) classInitNative},
     {"initNative", "()V", (void *) initNative},
@@ -300,7 +315,7 @@ static JNINativeMethod sMethods[] = {
     {"setWifiStateNative", "(Z)V", (void*) setWifiStateNative},
     {"getProfileInfoNative", "(II)Z", (void*) getProfileInfoNative},
     {"getQtiStackStatusNative", "()Z", (void*) getQtiStackStatusNative},
-
+    {"voipNetworkWifiInfoNative", "(ZZ)Z", (void *)voipNetworkWifiInfoNative},
 };
 
 int register_com_android_bluetooth_btservice_vendor(JNIEnv* env)

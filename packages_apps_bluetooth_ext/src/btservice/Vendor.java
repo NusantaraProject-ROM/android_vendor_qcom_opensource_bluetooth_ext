@@ -106,6 +106,12 @@ final class Vendor {
         mService.startBluetoothDisable();
     }
 
+   public void voipNetworkWifiInformation(boolean isVoipStarted, boolean isNetworkWifi) {
+        Log.d(TAG,"In voipNetworkWifiInformation, isVoipStarted: " + isVoipStarted +
+                     ", isNetworkWifi: " + isNetworkWifi);
+        voipNetworkWifiInfoNative(isVoipStarted, isNetworkWifi);
+   }
+
     private void iotDeviceBroadcast(byte[] remoteAddr,
                 int error, int error_info, int event_mask, int lmpVer, int lmpSubVer,
                 int manufacturerId,int pwr_level, int rssi, int linkQuality) {
@@ -178,4 +184,5 @@ final class Vendor {
     private native void setWifiStateNative(boolean status);
     private native boolean getProfileInfoNative(int profile_id , int profile_info);
     private native boolean getQtiStackStatusNative();
+    private native boolean voipNetworkWifiInfoNative(boolean isVoipStarted, boolean isNetworkWifi);
 }

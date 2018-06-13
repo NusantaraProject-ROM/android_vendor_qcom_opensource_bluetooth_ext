@@ -263,6 +263,55 @@ static void cleanup(void)
         bt_vendor_callbacks = NULL;
 }
 
+static void set_voip_network_type_wifi_hci_cmd_complete(tBTM_VSC_CMPL* p_data)
+{
+    LOG_INFO(LOG_TAG,"In set_voip_network_type_wifi_hci_cmd_complete");
+    uint8_t         *stream,  status, subcmd;
+    uint16_t        opcode, length;
+
+    if (p_data && (stream = (uint8_t*)p_data->p_param_buf))
+    {
+        opcode = p_data->opcode;
+        length = p_data->param_len;
+        STREAM_TO_UINT8(status, stream);
+        STREAM_TO_UINT8(subcmd, stream);
+        BTIF_TRACE_DEBUG("%s opcode = 0x%04X, length = %d, status = %d, subcmd = %d",
+                __FUNCTION__, opcode, length, status, subcmd);
+        if (status == HCI_SUCCESS)
+        {
+            BTIF_TRACE_DEBUG("btm_SetVoipNetworkTypeWifi status success");
+        }
+    }
+}
+
+/*******************************************************************************
+**
+** Function         voip_network_type_wifi
+**
+** Description      BT app updates the connectivity network used for VOIP as Wifi
+**
+** Returns          bt_status_t
+**
+*******************************************************************************/
+bt_status_t voip_network_type_wifi(bthf_voip_state_t isVoipStarted,
+                                           bthf_voip_call_network_type_t isNetworkWifi)
+{
+    LOG_INFO(LOG_TAG,"In voip_network_type_wifi");
+    uint8_t           cmd[3], *p_cursor;
+    uint8_t           sub_cmd = HCI_VSC_SUBCODE_VOIP_NETWORK_WIFI;
+
+    p_cursor = cmd;
+    memset(cmd, 0, 3);
+
+    *p_cursor++ = sub_cmd;
+    *p_cursor++ = isVoipStarted;
+    *p_cursor++ = isNetworkWifi;
+
+    BTM_VendorSpecificCommand(HCI_VSC_VOIP_NETWORK_WIFI_OCF, sizeof(cmd),
+            cmd, set_voip_network_type_wifi_hci_cmd_complete);
+    return BT_STATUS_SUCCESS;
+}
+
 /*******************************************************************************
 **
 ** Function         get_testapp_interface
@@ -312,6 +361,7 @@ static const btvendor_interface_t btvendorInterface = {
     get_profile_info,
     set_property_callouts,
     cleanup,
+    voip_network_type_wifi,
 };
 
 /*******************************************************************************
