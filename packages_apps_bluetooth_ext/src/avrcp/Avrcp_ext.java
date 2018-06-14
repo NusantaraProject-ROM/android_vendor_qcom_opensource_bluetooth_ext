@@ -166,6 +166,7 @@ public final class Avrcp_ext {
 
     private boolean avrcp_playstatus_blacklist = false;
     private static final String [] BlacklistDeviceAddrToMediaAttr = {"00:17:53"/*Toyota Etios*/};
+    private boolean ignore_play;
     private static final String playerStateUpdateBlackListedAddr[] = {
          "BC:30:7E", //bc-30-7e-5e-f6-27, Name: Porsche BT 0310; bc-30-7e-8c-22-cb, Name: Audi MMI 1193
          "00:1E:43", //00-1e-43-14-f0-68, Name: Audi MMI 4365
@@ -1822,24 +1823,8 @@ public final class Avrcp_ext {
                     if (device != null) {
                         if ((isPlaying != isPlayingState(deviceFeatures[i].mCurrentPlayState)) &&
                             (device.equals(deviceFeatures[i].mCurrentDevice))) {
-                            if (isPlaying) {
-                                deviceFeatures[i].isActiveDevice = true;
-                                Log.v(TAG,"updateCurrentMediaState: Active device is set true at index = " + i);
-                                if (updateAbsVolume) {
-                                    mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
-                                           isAbsoluteVolumeSupported());
-                                    updateAbsVolume = false;
-                                }
-                            }
                             updateA2dpPlayState = true;
                             deviceFeatures[i].mLastStateUpdate = SystemClock.elapsedRealtime();
-                        }
-
-                        if (!device.equals(deviceFeatures[i].mCurrentDevice) &&
-                            deviceFeatures[i].isActiveDevice && isPlaying &&
-                            !isTwsPlusPair(deviceFeatures[i].mCurrentDevice, device)) {
-                            deviceFeatures[i].isActiveDevice = false;
-                            Log.v(TAG,"updateCurrentMediaState: Active device is set false at index = " + i);
                         }
                     }
                 }
@@ -2863,7 +2848,12 @@ public final class Avrcp_ext {
                     deviceFeatures[i].isActiveDevice = true;
                     updateAbsVolume = false;
                 }
-                deviceFeatures[i].isActiveDevice = true;
+
+                BluetoothDevice mDevice = mA2dpService.getActiveDevice();
+                if (mDevice != null && mDevice.equals(deviceFeatures[i].mCurrentDevice)) {
+                    setActiveDevice(mDevice);
+                }
+
                 /*Playstate is explicitly updated here to take care of cases
                         where play state update is missed because of that happening
                         even before Avrcp connects*/
@@ -2960,7 +2950,6 @@ public final class Avrcp_ext {
             */
             if (deviceFeatures[i].mCurrentDevice != null &&
                     !(deviceFeatures[i].mCurrentDevice.equals(device))) {
-                deviceFeatures[i].isActiveDevice = true;
                 Log.i(TAG,"setAvrcpDisconnectedDevice : Active device changed to index = " + i);
                 if (device.isTwsPlusDevice() &&
                     isTwsPlusPair(device,deviceFeatures[i].mCurrentDevice )) {
@@ -4352,9 +4341,15 @@ public final class Avrcp_ext {
             BluetoothDevice device;
             String bdaddr = Utils.getAddressStringFromByte(address);
             device = mAdapter.getRemoteDevice(bdaddr);
+            int deviceIndex = getIndexForDevice(device);
+            if (deviceIndex == INVALID_DEVICE_INDEX) {
+                Log.e(TAG,"Invalid device index for playItemRsp");
+                return;
+            }
 
-            if(rspStatus == AvrcpConstants.RSP_NO_ERROR && mA2dpService.getActiveDevice() != device) {
-                Log.d(TAG, "Trigger Handoff");
+            if((rspStatus == AvrcpConstants.RSP_NO_ERROR) && ((mA2dpService != null) &&
+                    !mA2dpService.getActiveDevice().equals(device))) {
+                Log.d(TAG, "Trigger Handoff by playItem");
                 mA2dpService.setActiveDevice(device);
             }
             if (!playItemRspNative(address, rspStatus)) {
@@ -4477,6 +4472,19 @@ public final class Avrcp_ext {
         return INVALID_DEVICE_INDEX;
     }
 
+    public void setActiveDevice(BluetoothDevice device) {
+        int deviceIndex = getIndexForDevice(device);
+        if (deviceIndex == INVALID_DEVICE_INDEX) {
+            Log.e(TAG,"Invalid device index for play status");
+            return;
+        }
+        deviceFeatures[deviceIndex].isActiveDevice = true;
+        deviceFeatures[1-deviceIndex].isActiveDevice = false;
+        Log.e(TAG,"setActive  addr " + deviceFeatures[deviceIndex].mCurrentDevice.getAddress());
+        if (deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice)
+            mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), true);
+    }
+
     /* getters for some private variables */
     public AvrcpBrowseManager getAvrcpBrowseManager() {
         return mAvrcpBrowseManager;
@@ -4501,27 +4509,54 @@ public final class Avrcp_ext {
         device = mAdapter.getRemoteDevice(address);
         int deviceIndex = getIndexForDevice(device);
         if (deviceIndex == INVALID_DEVICE_INDEX) {
-            Log.e(TAG,"Invalid device index for play status");
+            Log.e(TAG,"Invalid device index for passthrough command");
             return;
         }
+        Log.d(TAG, "passthrough from device: " + address);
+        if (mA2dpService != null)
+            Log.d(TAG, "Active device: " + mA2dpService.getActiveDevice());
+
         int action = KeyEvent.ACTION_DOWN;
         if (state == AvrcpConstants.KEY_STATE_RELEASE) action = KeyEvent.ACTION_UP;
 
-        if (((code == KeyEvent.KEYCODE_MEDIA_PAUSE) || (code == KeyEvent.KEYCODE_MEDIA_PLAY))
-            && (mA2dpService.getActiveDevice() != device)){
-            if (action == KeyEvent.ACTION_DOWN) {
-                Log.d(TAG, "Trigger Handoff");
-                mA2dpService.setActiveDevice(device);
-                deviceFeatures[deviceIndex].isActiveDevice = true;
-                deviceFeatures[1-deviceIndex].isActiveDevice = false;
+        if ((mA2dpService != null) && !mA2dpService.getActiveDevice().equals(device)) {
+            Log.w(TAG, "code " + code + " action " + action + " from inactive device");
+            if (code == KeyEvent.KEYCODE_MEDIA_PLAY) {
+                if (isPlayingState(mCurrentPlayerState) &&
+                        mAudioManager.isMusicActive() &&
+                        (mA2dpState == BluetoothA2dp.STATE_PLAYING)) {
+                    ignore_play = true;
+                }
+                if (action == KeyEvent.ACTION_DOWN) {
+                    Log.d(TAG, "AVRCP Trigger Handoff");
+                    mA2dpService.setActiveDevice(device);
+                } else {
+                    Log.d(TAG, "release for play PT from inactive device");
+                }
             } else {
-                Log.d(TAG, "Ignore action up from inactive device");
+                Log.d(TAG, "Ignore passthrough from inactive device");
+                return;
             }
         }
+
+        Log.d(TAG, "ignore_play: " + ignore_play);
+        if (ignore_play && code == KeyEvent.KEYCODE_MEDIA_PLAY) {
+           if (action == KeyEvent.ACTION_UP) {
+               ignore_play = false;
+               Log.d(TAG, "ignore_play: " + ignore_play + " since play released is received");
+           }
+           return;
+        }
+
+        if (ignore_play) {
+            ignore_play = false;
+            Log.d(TAG, "ignore_play: " + ignore_play + " since another PT came before play release");
+        }
+
         if (DEBUG) Log.d(TAG, "Avrcp current play state: " +
             convertPlayStateToPlayStatus(mCurrentPlayerState) +
             " isMusicActive: " + mAudioManager.isMusicActive() + " A2dp state: "  + mA2dpState +
-            "Cached passthrough command:" + deviceFeatures[deviceIndex].mLastPassthroughcmd);
+            " Cached passthrough command: " + deviceFeatures[deviceIndex].mLastPassthroughcmd);
         if ((deviceFeatures[deviceIndex].mLastPassthroughcmd == KeyEvent.KEYCODE_UNKNOWN) ||
                     deviceFeatures[deviceIndex].mLastPassthroughcmd == code) {
             if (isPlayingState(mCurrentPlayerState) &&
