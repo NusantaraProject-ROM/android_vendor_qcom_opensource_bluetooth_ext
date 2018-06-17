@@ -907,6 +907,10 @@ static jboolean getPlayStatusRspNative(JNIEnv* env, jobject object,
 }
 static jboolean updatePlayStatusToStack(JNIEnv *env ,jobject object, jint playStatus) {
   ALOGE("%s",__func__);
+  if (!sBluetoothAvrcpInterface) {
+    ALOGE("%s: sBluetoothAvrcpInterface is null ", __func__);
+    return JNI_FALSE;
+  }
   bt_status_t status = sBluetoothAvrcpInterface->update_play_status_to_stack(
                                                  (btrc_play_status_t) playStatus);
   if (status != BT_STATUS_SUCCESS) {
