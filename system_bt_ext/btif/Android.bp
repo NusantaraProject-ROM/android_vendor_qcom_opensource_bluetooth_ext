@@ -34,7 +34,6 @@ cc_library_static {
         "src/btif_tws_plus.cc",
         "src/btif_ba.cc",
         "src/btif_twsp_hf.cc",
-        "src/btif_iot_config.cc",
     ],
     shared_libs: [
         "libcutils",
@@ -51,7 +50,6 @@ cc_library_static {
     cflags: [
         "-DBUILDCFG",
         "-DHAS_NO_BDROID_BUILDCFG",
-        "-DBT_IOT_LOGGING_ENABLED",
     ],
 
 }
