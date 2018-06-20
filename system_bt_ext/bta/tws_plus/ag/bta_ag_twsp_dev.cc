@@ -157,7 +157,11 @@ tBTA_AG_SCB* twsp_get_best_mic_scb () {
         }
     }
     APPL_TRACE_DEBUG("%s: selected idx is : %d", __func__, selected_idx);
-    return twsp_devices[selected_idx].p_scb;
+    if (selected_idx == -1) {
+        return nullptr;
+    } else {
+        return twsp_devices[selected_idx].p_scb;
+    }
 }
 
 int get_best_mic_quality_eb_role () {
@@ -195,8 +199,10 @@ void select_microphone_path(tBTA_AG_SCB *best_scb) {
     twsp_update_microphone_selection(peer_scb, best_scb);
 
     int idx = twsp_get_idx_by_scb(best_scb);
-    //Update the earbud role
-    g_latest_selected_eb_role = twsp_devices[idx].role;
+    if (idx != -1) {
+        //Update the earbud role
+        g_latest_selected_eb_role = twsp_devices[idx].role;
+    }
 
     APPL_TRACE_DEBUG("%s: g_latest_selected_eb_role : %d\n", __func__, g_latest_selected_eb_role);
 }
@@ -473,12 +479,17 @@ bool twsp_ring_needed(tBTA_AG_SCB *p_scb) {
             ret = true;
         }
     } else {
-        //If ring is not sent to any of them
-        //check if it is in ear
-        if (twsp_devices[sel_idx].state == TWSPLUS_EB_STATE_INEAR) {
-           ret = true;
+        if (sel_idx == -1) {
+            APPL_TRACE_ERROR("%s: Invalid sel_idx: %d", __func__, sel_idx);
+            ret = false;
         } else {
-           ret = false;
+            //If ring is not sent to any of them
+            //check if it is in ear
+            if (twsp_devices[sel_idx].state == TWSPLUS_EB_STATE_INEAR) {
+                ret = true;
+            } else {
+                ret = false;
+            }
         }
     }
 

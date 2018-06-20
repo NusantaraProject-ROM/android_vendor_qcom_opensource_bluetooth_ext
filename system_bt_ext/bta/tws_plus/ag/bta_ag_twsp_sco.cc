@@ -171,16 +171,16 @@ void bta_ag_twsp_hfp_result(tBTA_AG_SCB* p_scb, tBTA_AG_API_RESULT* p_result) {
 
     switch (p_result->result) {
         case BTA_AG_TWS_QES_RES: {
-                bta_ag_send_result(p_scb, BTA_AG_TWS_QES_RES, NULL, 0);
+                bta_ag_send_result(p_scb, BTA_AG_TWS_QES_RES, nullptr, 0);
             } break;
         case BTA_AG_TWS_QMQ_RES: {
-                bta_ag_send_result(p_scb, BTA_AG_TWS_QMQ_RES, NULL, 0);
+                bta_ag_send_result(p_scb, BTA_AG_TWS_QMQ_RES, nullptr, 0);
             } break;
         case BTA_AG_TWS_QBC_RES: {
-                bta_ag_send_result(p_scb, BTA_AG_TWS_QBC_RES, NULL, 0);
+                bta_ag_send_result(p_scb, BTA_AG_TWS_QBC_RES, nullptr, 0);
            } break;
         case BTA_AG_TWS_QDSP_RES: {
-                bta_ag_send_result(p_scb, BTA_AG_TWS_QDSP_RES, NULL, 0);
+                bta_ag_send_result(p_scb, BTA_AG_TWS_QDSP_RES, nullptr, 0);
            } break;
    }
 }
@@ -571,7 +571,7 @@ void twsp_update_microphone_selection(tBTA_AG_SCB *curr_scb,
        }
     }
 
-    bta_ag_send_result(selected_scb, BTA_AG_MIC_RES, NULL, MIC_ENABLE);
+    bta_ag_send_result(selected_scb, BTA_AG_MIC_RES, nullptr, MIC_ENABLE);
     //Have a timer for MIC_PATH_ENABLE_DELAY
     usleep(MIC_PATH_ENABLE_DELAY*1000);
     int  role = get_twsp_role(selected_scb);
@@ -583,7 +583,7 @@ void twsp_update_microphone_selection(tBTA_AG_SCB *curr_scb,
     send_twsp_esco_setup(left_eb_addr, right_eb_addr, role);
 
     if (curr_scb != NULL) {
-        bta_ag_send_result(curr_scb, BTA_AG_MIC_RES, NULL, MIC_DISABLE);
+        bta_ag_send_result(curr_scb, BTA_AG_MIC_RES, nullptr, MIC_DISABLE);
         APPL_TRACE_DEBUG("%s: Disabling Mic path for %x", __func__, curr_scb);
     }
 }
