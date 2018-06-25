@@ -4506,7 +4506,8 @@ public final class Avrcp_ext {
             return;
         }
         deviceFeatures[deviceIndex].isActiveDevice = true;
-        deviceFeatures[1-deviceIndex].isActiveDevice = false;
+        if (maxAvrcpConnections > 1)
+            deviceFeatures[1-deviceIndex].isActiveDevice = false;
         Log.e(TAG,"AVRCP setActive  addr " + deviceFeatures[deviceIndex].mCurrentDevice.getAddress() +
                     " isActive device index " + deviceIndex + " absolute volume supported "+
                     deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice  + " local volume " +
@@ -4525,7 +4526,8 @@ public final class Avrcp_ext {
             msg.arg2 = deviceFeatures[deviceIndex].mLocalVolume;
             mHandler.sendMessageDelayed(msg, 100);
         }
-        if(deviceFeatures[1-deviceIndex].mCurrentDevice != null && (!deviceFeatures[1-deviceIndex].isAbsoluteVolumeSupportingDevice)) {
+        if((maxAvrcpConnections > 1) && (deviceFeatures[1-deviceIndex].mCurrentDevice != null) &&
+            (!deviceFeatures[1-deviceIndex].isAbsoluteVolumeSupportingDevice)) {
             Log.e(TAG,"Before updating stream Volume = " + mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC));
             deviceFeatures[1-deviceIndex].mLocalVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
             Log.e(TAG,"After updating stream Volume = " + deviceFeatures[1-deviceIndex].mLocalVolume);
