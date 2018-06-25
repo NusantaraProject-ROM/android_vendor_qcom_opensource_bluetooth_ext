@@ -1134,10 +1134,11 @@ public final class Avrcp_ext {
                         break;
                     }
                 }
-                if (deviceFeatures[deviceIndex].mLocalVolume != volIndex &&
-                                                (msg.arg2 == AVRC_RSP_ACCEPT ||
-                                                 msg.arg2 == AVRC_RSP_CHANGED ||
-                                                 msg.arg2 == AVRC_RSP_INTERIM)) {
+                if ((deviceFeatures[deviceIndex].mLocalVolume != volIndex &&
+                                                 (msg.arg2 == AVRC_RSP_CHANGED ||
+                                                 msg.arg2 == AVRC_RSP_INTERIM)) ||
+                                                 (deviceFeatures[deviceIndex].mLastLocalVolume != volIndex &&
+                                                 msg.arg2 == AVRC_RSP_ACCEPT)) {
                     if (msg.arg2 == AVRC_RSP_ACCEPT){
                         Log.d(TAG, "Don't show media UI when slide volume bar");
                         isShowUI = false;
