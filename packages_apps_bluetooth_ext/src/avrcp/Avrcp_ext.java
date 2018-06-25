@@ -82,6 +82,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.Objects;
 import android.os.SystemProperties;
 import com.android.bluetooth.hfp.HeadsetService;
 /******************************************************************************
@@ -770,7 +771,10 @@ public final class Avrcp_ext {
                 deviceIndex = msg.arg1;
                 int vol = (deviceFeatures[deviceIndex].mRemoteVolume > AVRCP_MAX_SAFETY_VOL) ?
                               AVRCP_MAX_SAFETY_VOL : deviceFeatures[deviceIndex].mRemoteVolume;
-                mAudioManager.avrcpSupportsAbsoluteVolume(mA2dpService.getActiveDevice().getAddress(), true);
+                BluetoothDevice device = mA2dpService.getActiveDevice();
+                if(device == null)
+                    break;
+                mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), true);
                 if(vol >= 0) {
                     msg = mHandler.obtainMessage();
                     msg.what = MESSAGE_UPDATE_ABSOLUTE_VOLUME;
@@ -2917,7 +2921,7 @@ public final class Avrcp_ext {
                     updated when avrcp connection was not up yet.*/
                     Log.i(TAG,"A2dp playing device found");
                     BluetoothDevice playingDevice = mA2dpService.getActiveDevice();
-                    if (playingDevice.equals(device)) {
+                    if (playingDevice != null && playingDevice.equals(device)) {
                         PlaybackState.Builder playState = new PlaybackState.Builder();
                         playState.setState(PlaybackState.STATE_PLAYING,
                                        PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
@@ -4371,7 +4375,7 @@ public final class Avrcp_ext {
             }
 
             if((rspStatus == AvrcpConstants.RSP_NO_ERROR) && ((mA2dpService != null) &&
-                    !mA2dpService.getActiveDevice().equals(device))) {
+                    !Objects.equals(mA2dpService.getActiveDevice(), device))) {
                 Log.d(TAG, "Trigger Handoff by playItem");
                 mA2dpService.setActiveDevice(device);
             }
@@ -4562,7 +4566,7 @@ public final class Avrcp_ext {
         int action = KeyEvent.ACTION_DOWN;
         if (state == AvrcpConstants.KEY_STATE_RELEASE) action = KeyEvent.ACTION_UP;
 
-        if ((mA2dpService != null) && !mA2dpService.getActiveDevice().equals(device)) {
+        if ((mA2dpService != null) && !Objects.equals(mA2dpService.getActiveDevice(), device)) {
             Log.w(TAG, "code " + code + " action " + action + " from inactive device");
             if (code == KeyEvent.KEYCODE_MEDIA_PLAY) {
                 if (isPlayingState(mCurrentPlayerState) &&
