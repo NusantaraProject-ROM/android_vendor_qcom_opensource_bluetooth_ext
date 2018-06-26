@@ -1025,7 +1025,9 @@ public final class Avrcp_ext {
                     break;
                 }
                 if (DEBUG) Log.v(TAG, "MSG_NATIVE_REQ_VOLUME_CHANGE addr: " + address);
-                if (!(deviceFeatures[deviceIndex].isActiveDevice && isAbsoluteVolumeSupported(deviceIndex))) {
+                BluetoothDevice device = mA2dpService.getActiveDevice();
+
+                if (device != null  && (!(deviceFeatures[deviceIndex].isActiveDevice && isAbsoluteVolumeSupported(deviceIndex)))) {
                     if (DEBUG) Log.v(TAG, "MSG_NATIVE_REQ_VOLUME_CHANGE ignored");
                     break;
                 }
@@ -1052,7 +1054,7 @@ public final class Avrcp_ext {
                 if (msg.arg2 == AVRC_RSP_INTERIM && areMultipleDevicesConnected() &&
                     deviceFeatures[deviceIndex].mInitialRemoteVolume == -1 &&
                     deviceFeatures[deviceIndex].mCurrentDevice.isTwsPlusDevice()) {
-                    BluetoothDevice device = deviceFeatures[deviceIndex].mCurrentDevice;
+                    device = deviceFeatures[deviceIndex].mCurrentDevice;
                     for(int i = 0; i < maxAvrcpConnections; i++) {
                         BluetoothDevice conn_dev = deviceFeatures[i].mCurrentDevice;
                         if (i != deviceIndex && deviceFeatures[i].mCurrentDevice != null &&
@@ -1096,8 +1098,9 @@ public final class Avrcp_ext {
                         Log.d(TAG, "Don't show media UI when slide volume bar");
                         isShowUI = false;
                     }
+                    device = mA2dpService.getActiveDevice();
                     /* If the volume has successfully changed */
-                    if (!deviceFeatures[deviceIndex].isActiveDevice &&
+                    if (device != null && !deviceFeatures[deviceIndex].isActiveDevice &&
                            (msg.arg2 == AVRC_RSP_CHANGED || msg.arg2 == AVRC_RSP_INTERIM)) {
                         Log.d(TAG, "Do not change volume from an inactive device");
                         break;
