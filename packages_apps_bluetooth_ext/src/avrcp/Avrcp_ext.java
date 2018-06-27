@@ -1564,7 +1564,11 @@ public final class Avrcp_ext {
         } else {
             if (!areMultipleDevicesConnected()) {
                 Log.v(TAG, "Single connection exists");
-                return true;
+                if (deviceFeatures[deviceIndex].isActiveDevice) {
+                   Log.v(TAG, "isPlayStateToBeUpdated device is active device");
+                   return true;
+                }
+                return false;
             } else {
                 Log.v(TAG, "Multiple connection exists in handoff");
                 if(isDeviceActiveInHandOffNative(getByteAddress(
@@ -4502,7 +4506,7 @@ public final class Avrcp_ext {
     public void setActiveDevice(BluetoothDevice device) {
         int deviceIndex = getIndexForDevice(device);
         if (deviceIndex == INVALID_DEVICE_INDEX) {
-            Log.e(TAG,"Invalid device index for play status");
+            Log.e(TAG,"Invalid device index for setActiveDevice");
             return;
         }
         deviceFeatures[deviceIndex].isActiveDevice = true;
@@ -4538,6 +4542,11 @@ public final class Avrcp_ext {
             Log.e(TAG,"Before updating stream Volume = " + mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC));
             deviceFeatures[1-deviceIndex].mLocalVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
             Log.e(TAG,"After updating stream Volume = " + deviceFeatures[1-deviceIndex].mLocalVolume);
+       }
+       if (!areMultipleDevicesConnected()) {
+          Log.e(TAG,"setActiveDevice: updatePlayStatusForDevice");
+          updatePlayStatusForDevice(deviceIndex, mCurrentPlayerState);
+          deviceFeatures[deviceIndex].mLastStateUpdate = mLastStateUpdate;
        }
     }
 
