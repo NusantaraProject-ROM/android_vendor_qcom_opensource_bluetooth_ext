@@ -483,7 +483,7 @@ public final class Avrcp_ext {
         IntentFilter bootFilter = new IntentFilter();
         bootFilter.addAction(Intent.ACTION_USER_UNLOCKED);
         context.registerReceiver(mBootReceiver, bootFilter);
-        pts_test = SystemProperties.getBoolean("bt.avrcpct-passthrough.pts", false);
+        pts_test = SystemProperties.getBoolean("vendor.bluetooth.avrcpct-passthrough.pts", false);
         avrcp_playstatus_blacklist = SystemProperties.getBoolean("bt.avrcp-playstatus.blacklist", false);
 
         // create Notification channel.
@@ -2130,9 +2130,9 @@ public final class Avrcp_ext {
                     Log.v(TAG,"split enabled");
                 }
                 if (isSplitA2dpEnabled) {
-                    update_interval = SystemProperties.getLong("persist.bt.avrcp.pos_time", 3000L);
+                    update_interval = SystemProperties.getLong("persist.vendor.btstack.avrcp.pos_time", 3000L);
                 } else {
-                    update_interval = SystemProperties.getLong("persist.bt.avrcp.pos_time", 1000L);
+                    update_interval = SystemProperties.getLong("persist.vendor.btstack.avrcp.pos_time", 1000L);
                 }
                 deviceFeatures[deviceIndex].mPlayPosChangedNT =
                                              AvrcpConstants.NOTIFICATION_TYPE_INTERIM;
