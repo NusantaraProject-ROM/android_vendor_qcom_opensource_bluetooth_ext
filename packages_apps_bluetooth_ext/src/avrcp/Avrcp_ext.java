@@ -4509,8 +4509,15 @@ public final class Avrcp_ext {
             return;
         }
         deviceFeatures[deviceIndex].isActiveDevice = true;
-        if (maxAvrcpConnections > 1)
-            deviceFeatures[1-deviceIndex].isActiveDevice = false;
+        if (maxAvrcpConnections > 1) {
+            if (deviceFeatures[1-deviceIndex].mCurrentDevice != null &&
+                deviceFeatures[1-deviceIndex].mCurrentDevice.isTwsPlusDevice() &&
+                isTwsPlusPair(deviceFeatures[1-deviceIndex].mCurrentDevice, device)) {
+                Log.d(TAG,"TWS+ pair connected, keep both devices active");
+            } else {
+                deviceFeatures[1-deviceIndex].isActiveDevice = false;
+            }
+        }
         Log.e(TAG,"AVRCP setActive  addr " + deviceFeatures[deviceIndex].mCurrentDevice.getAddress() +
                     " isActive device index " + deviceIndex + " absolute volume supported "+
                     deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice  + " local volume " +
@@ -4570,8 +4577,18 @@ public final class Avrcp_ext {
 
         int action = KeyEvent.ACTION_DOWN;
         if (state == AvrcpConstants.KEY_STATE_RELEASE) action = KeyEvent.ACTION_UP;
-
-        if ((mA2dpService != null) && !Objects.equals(mA2dpService.getActiveDevice(), device)) {
+        BluetoothDevice a2dp_active_device = null;
+        boolean skip = false;;
+        if (mA2dpService != null) a2dp_active_device = mA2dpService.getActiveDevice();
+        if (a2dp_active_device != null) {
+            if (a2dp_active_device.isTwsPlusDevice() &&
+                (isTwsPlusPair(a2dp_active_device, device) ||
+                Objects.equals(a2dp_active_device, device))) {
+                Log.d(TAG,"Passthrough received from TWS+ Pair");
+                skip = true;
+            }
+        }
+        if (!skip && (mA2dpService != null) && !Objects.equals(a2dp_active_device, device)) {
             Log.w(TAG, "code " + code + " action " + action + " from inactive device");
             if (code == KeyEvent.KEYCODE_MEDIA_PLAY) {
                 if (isPlayingState(mCurrentPlayerState) &&
