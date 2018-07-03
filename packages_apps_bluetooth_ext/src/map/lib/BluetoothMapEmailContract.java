@@ -176,13 +176,13 @@ public final class BluetoothMapEmailContract {
      * E.g. as a mapping for them such that the naming will match the underlying
      * matching folder ID's.
      */
-    public static final String FOLDER_NAME_INBOX   = "INBOX";
-    public static final String FOLDER_NAME_SENT    = "SENT";
-    public static final String FOLDER_NAME_OUTBOX  = "OUTBOX";
-    public static final String FOLDER_NAME_DRAFT   = "DRAFT";
-    public static final String FOLDER_NAME_DRAFTS  = "DRAFTS";
-    public static final String FOLDER_NAME_DELETED = "DELETED";
-    public static final String FOLDER_NAME_OTHER   = "OTHER";
+    public static final String FOLDER_NAME_INBOX   = "inbox";
+    public static final String FOLDER_NAME_SENT    = "sent";
+    public static final String FOLDER_NAME_OUTBOX  = "outbox";
+    public static final String FOLDER_NAME_DRAFT   = "draft";
+    public static final String FOLDER_NAME_DRAFTS  = "drafts";
+    public static final String FOLDER_NAME_DELETED = "deleted";
+    public static final String FOLDER_NAME_OTHER   = "other";
 
     /**
      * Folder IDs to be used with Instant Messaging virtual folders
