@@ -172,7 +172,7 @@ static bool bta_tws_plus_get_str_attr(tSDP_DISC_REC* p_rec, uint16_t attr_id,
  ******************************************************************************/
 static void bta_tws_plus_search_cback(uint16_t result, void* user_data) {
   tSDP_DISC_REC* p_rec = NULL;
-  tBTA_TWS_PLUS_SDP_SEARCH_COMP evt_data;
+  tBTA_TWS_PLUS evt_data;
   tBTA_TWS_PLUS_STATUS status = BTA_TWS_PLUS_FAILURE;
   bluetooth::Uuid& uuid = *(reinterpret_cast<bluetooth::Uuid*>(user_data));
   APPL_TRACE_DEBUG("%s() -  res: 0x%x", __func__, result);
@@ -182,22 +182,23 @@ static void bta_tws_plus_search_cback(uint16_t result, void* user_data) {
 
   if (bta_tws_plus_cb.p_dm_cback == NULL) return;
 
-  evt_data.eb_addr = bta_tws_plus_cb.remote_addr;
+  evt_data.sdp_search_comp.eb_addr = bta_tws_plus_cb.remote_addr;
 
   if (result == SDP_SUCCESS || result == SDP_DB_FULL) {
       p_rec = SDP_FindServiceUUIDInDb(p_bta_tws_plus_sdp_cfg->p_sdp_db, uuid, p_rec);
       /* generate the matching record data pointer */
       if ((p_rec != NULL) && ( uuid == bluetooth::Uuid::From128BitBE(UUID_TWS_PLUS_SINK))) {
-        if(bta_tws_plus_get_str_attr(p_rec, ATTR_ID_TWS_PLUS_LINKED_EARBUD, evt_data.peer_eb_addr)) {
+        if(bta_tws_plus_get_str_attr(p_rec, ATTR_ID_TWS_PLUS_LINKED_EARBUD,
+                           evt_data.sdp_search_comp.peer_eb_addr)) {
             status = BTA_TWS_PLUS_SUCCESS;
         }
         APPL_TRACE_DEBUG("%s() - found TWS_PLUS SINK uuid", __func__);
       } else {
         APPL_TRACE_DEBUG("%s() - UUID not found", __func__);
       }
-      evt_data.status = status;
+      evt_data.sdp_search_comp.status = status;
 
-      bta_tws_plus_cb.p_dm_cback(BTA_TWS_PLUS_SDP_SEARCH_COMP_EVT, (tBTA_TWS_PLUS*)&evt_data);
+      bta_tws_plus_cb.p_dm_cback(BTA_TWS_PLUS_SDP_SEARCH_COMP_EVT, &evt_data);
       osi_free(user_data);  // We no longer need the user data to track the search
   }
 }
@@ -213,13 +214,14 @@ static void bta_tws_plus_search_cback(uint16_t result, void* user_data) {
  ******************************************************************************/
 void bta_tws_plus_enable(tBTA_TWS_PLUS_MSG* p_data) {
   APPL_TRACE_DEBUG("%s in, sdp_active:%d", __func__, bta_tws_plus_cb.sdp_active);
-  tBTA_TWS_PLUS_STATUS status = BTA_TWS_PLUS_SUCCESS;
+  tBTA_TWS_PLUS evt_data;
+  evt_data.status = BTA_TWS_PLUS_SUCCESS;
   bta_tws_plus_cb.p_dm_cback = p_data->enable.p_cback;
   if(!TWS_Plus_AddRecord()) {
-    status = BTA_TWS_PLUS_FAILURE;
+    evt_data.status = BTA_TWS_PLUS_FAILURE;
   }
   if(bta_tws_plus_cb.p_dm_cback)  {
-    bta_tws_plus_cb.p_dm_cback(BTA_TWS_PLUS_ENABLE_EVT, (tBTA_TWS_PLUS*)&status);
+    bta_tws_plus_cb.p_dm_cback(BTA_TWS_PLUS_ENABLE_EVT, &evt_data);
   }
 }
 
@@ -268,11 +270,11 @@ void bta_tws_plus_sdp_search(tBTA_TWS_PLUS_MSG* p_data) {
     /* SDP is still in progress */
     status = BTA_TWS_PLUS_BUSY;
     if (bta_tws_plus_cb.p_dm_cback) {
-      tBTA_TWS_PLUS_SDP_SEARCH_COMP result;
+      tBTA_TWS_PLUS result;
       memset(&result, 0, sizeof(result));
-      result.eb_addr = p_data->sdp_search.bd_addr;
-      result.status = status;
-      bta_tws_plus_cb.p_dm_cback(BTA_TWS_PLUS_SDP_SEARCH_COMP_EVT, (tBTA_TWS_PLUS*)&result);
+      result.sdp_search_comp.eb_addr = p_data->sdp_search.bd_addr;
+      result.sdp_search_comp.status = status;
+      bta_tws_plus_cb.p_dm_cback(BTA_TWS_PLUS_SDP_SEARCH_COMP_EVT, &result);
     }
     return;
   }
@@ -294,11 +296,11 @@ void bta_tws_plus_sdp_search(tBTA_TWS_PLUS_MSG* p_data) {
 
     /* failed to start SDP. report the failure right away */
     if (bta_tws_plus_cb.p_dm_cback) {
-      tBTA_TWS_PLUS_SDP_SEARCH_COMP result;
+      tBTA_TWS_PLUS result;
       memset(&result, 0, sizeof(result));
-      result.eb_addr =  p_data->sdp_search.bd_addr;
-      result.status = status;
-      bta_tws_plus_cb.p_dm_cback(BTA_TWS_PLUS_SDP_SEARCH_COMP_EVT, (tBTA_TWS_PLUS*)&result);
+      result.sdp_search_comp.eb_addr =  p_data->sdp_search.bd_addr;
+      result.sdp_search_comp.status = status;
+      bta_tws_plus_cb.p_dm_cback(BTA_TWS_PLUS_SDP_SEARCH_COMP_EVT, &result);
     }
   }
   /*
@@ -318,22 +320,22 @@ void bta_tws_plus_sdp_search(tBTA_TWS_PLUS_MSG* p_data) {
 void bta_tws_plus_derive_linkkey(tBTA_TWS_PLUS_MSG* p_data) {
   tBTA_TWS_PLUS_STATUS status = BTA_TWS_PLUS_FAILURE;
   int i = 0;
-  tBTA_TWS_PLUS_LK_DERIVED result;
+  tBTA_TWS_PLUS result;
   memset(&result, 0, sizeof(result));
   APPL_TRACE_DEBUG("%s in, sdp_active:%d", __func__, bta_tws_plus_cb.sdp_active);
   if(SMP_DeriveBrEdrLinkKey(p_data->derive_lk.peer_eb_addr,
-    ( uint8_t *) p_data->derive_lk.key,(uint8_t *) result.key)) {
+    ( uint8_t *) p_data->derive_lk.key,(uint8_t *) result.lk_derived.key)) {
      APPL_TRACE_DEBUG("%s link key for 2nd device derived", __func__);
      for(i = 0; i< 16 ; i++)
-      APPL_TRACE_DEBUG("%s result.key [%d] is %d", __func__, i, result.key[i]);
+      APPL_TRACE_DEBUG("%s result.key [%d] is %d", __func__, i, result.lk_derived.key[i]);
      status = BTA_TWS_PLUS_SUCCESS;
   }
   if (bta_tws_plus_cb.p_dm_cback) {
-    result.peer_eb_addr =  p_data->derive_lk.peer_eb_addr;
-    result.bd_addr = p_data->derive_lk.bd_addr;
-    result.status = status;
-    result.reason = p_data->derive_lk.reason;
-    bta_tws_plus_cb.p_dm_cback(BTA_TWS_PLUS_LK_DERIVED_EVT, (tBTA_TWS_PLUS*)&result);
+    result.lk_derived.peer_eb_addr =  p_data->derive_lk.peer_eb_addr;
+    result.lk_derived.bd_addr = p_data->derive_lk.bd_addr;
+    result.lk_derived.status = status;
+    result.lk_derived.reason = p_data->derive_lk.reason;
+    bta_tws_plus_cb.p_dm_cback(BTA_TWS_PLUS_LK_DERIVED_EVT, &result);
   }
 }
 
