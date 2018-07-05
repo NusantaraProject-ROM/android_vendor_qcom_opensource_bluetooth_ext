@@ -1740,8 +1740,7 @@ public final class Avrcp_ext {
                     && (mediaNumber.equals(other.mediaNumber))
                     && (mediaTotalNumber.equals(other.mediaTotalNumber))
                     && (genre.equals(other.genre))
-                    && (playingTimeMs == other.playingTimeMs)
-                    && (coverArt == null?true:(coverArt.equals(other.coverArt)));
+                    && (playingTimeMs == other.playingTimeMs);
         }
 
         public synchronized String getString(int attrId) {
@@ -1956,19 +1955,12 @@ public final class Avrcp_ext {
                 Log.v(TAG, "Send track changed");
                 mMediaAttributes = currentAttributes;
                 mLastQueueId = newQueueId;
-                if (device != null) {
-                    int idx = getIndexForDevice(device);
-                    if ((idx != INVALID_DEVICE_INDEX) &&
-                            deviceFeatures[idx].mTrackChangedNT == AvrcpConstants.NOTIFICATION_TYPE_INTERIM)
-                    sendTrackChangedRsp(false, device);
-                } else {
-                    for (int i = 0; i < maxAvrcpConnections; i++) {
-                        if ((deviceFeatures[i].mCurrentDevice != null) &&
-                            (deviceFeatures[i].mTrackChangedNT == AvrcpConstants.NOTIFICATION_TYPE_INTERIM)) {
-                            deviceFeatures[i].mTracksPlayed++;
-                            Log.v(TAG,"sending track change for device " + i);
-                            sendTrackChangedRsp(false, deviceFeatures[i].mCurrentDevice);
-                        }
+                for (int i = 0; i < maxAvrcpConnections; i++) {
+                    if ((deviceFeatures[i].mCurrentDevice != null) &&
+                        (deviceFeatures[i].mTrackChangedNT == AvrcpConstants.NOTIFICATION_TYPE_INTERIM)) {
+                         deviceFeatures[i].mTracksPlayed++;
+                         Log.v(TAG,"sending track change for device " + i);
+                         sendTrackChangedRsp(false, deviceFeatures[i].mCurrentDevice);
                     }
                 }
             }
