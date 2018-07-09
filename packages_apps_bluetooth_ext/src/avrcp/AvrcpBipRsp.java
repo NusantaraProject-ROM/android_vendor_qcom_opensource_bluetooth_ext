@@ -351,4 +351,12 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
 
         return mAvrcpBipRspServer.getAlbumName(songName);
     }
+
+    protected void reStartListener(BluetoothDevice device) {
+        if (D) Log.d(TAG, "reStartListener ");
+        if (mRemoteDevice != null && mRemoteDevice.equals(device)) {
+            mSessionStatusHandler.sendMessage(
+                    mSessionStatusHandler.obtainMessage(MSG_INTERNAL_START_LISTENER));
+        }
+    }
 }

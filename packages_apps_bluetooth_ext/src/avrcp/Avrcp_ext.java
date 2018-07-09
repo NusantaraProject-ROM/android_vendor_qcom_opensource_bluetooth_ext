@@ -1449,6 +1449,10 @@ public final class Avrcp_ext {
                 if (msg.arg1 == BluetoothProfile.STATE_CONNECTED) {
                     setAvrcpConnectedDevice(device);
                 } else {
+                    if (DEBUG) Log.d(TAG," mAvrcpBipRsp :" + mAvrcpBipRsp);
+                    if (mAvrcpBipRsp != null) {
+                        mAvrcpBipRsp.reStartListener(device);
+                    }
                     setAvrcpDisconnectedDevice(device);
                 }
                 break;
