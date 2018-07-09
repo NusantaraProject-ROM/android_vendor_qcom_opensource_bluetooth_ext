@@ -3969,7 +3969,8 @@ public final class Avrcp_ext {
             if (DEBUG) Log.d(TAG, "handleGetTotalNumOfItemsResponse: " + numPlayers + " players.");
             getTotalNumOfItemsRspNative(bdaddr, AvrcpConstants.RSP_NO_ERROR, 0, numPlayers);
         } else if (scope == AvrcpConstants.BTRC_SCOPE_NOW_PLAYING) {
-            if (mCurrAddrPlayerID == NO_PLAYER_ID) {
+            if (mMediaController == null) {
+                Log.e(TAG, "Could not get Total NumOfItems. mMediaController is null");
                 getTotalNumOfItemsRspNative(bdaddr, AvrcpConstants.RSP_NO_AVBL_PLAY, 0, 0);
                 return;
             }
