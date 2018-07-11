@@ -341,6 +341,7 @@ public final class Avrcp_ext {
         private int mInitialRemoteVolume;
         private int mLastRspPlayStatus;
         private boolean isActiveDevice;
+        private int mLastRequestedVolume;
 
         /* Local volume in audio index 0-15 */
         private int mLocalVolume;
@@ -382,6 +383,7 @@ public final class Avrcp_ext {
             mInitialRemoteVolume = -1;
             isActiveDevice = false;
             mLastRemoteVolume = -1;
+            mLastRequestedVolume = -1;
             mLocalVolume = -1;
             mLastLocalVolume = -1;
             mAbsVolThreshold = 0;
@@ -1032,11 +1034,39 @@ public final class Avrcp_ext {
                     break;
                 }
                 byte absVol = (byte) ((byte) msg.arg1 & 0x7f); // discard MSB as it is RFD
+                int absolutevol = absVol;
                 if (DEBUG)
                     Log.v(TAG, "MSG_NATIVE_REQ_VOLUME_CHANGE: volume=" + absVol + " ctype="
                                     + msg.arg2 + " local vol " + deviceFeatures[deviceIndex].mLocalVolume +
                                     " remote vol " + deviceFeatures[deviceIndex].mRemoteVolume);
                 boolean volAdj = false;
+                Log.v(TAG, "last local Volume = " + deviceFeatures[deviceIndex].mLastLocalVolume +
+                    " last remote Volume = " + deviceFeatures[deviceIndex].mLastRemoteVolume +
+                    " last requested volume = " + deviceFeatures[deviceIndex].mLastRequestedVolume +
+                    " cmd set = " + deviceFeatures[deviceIndex].mVolCmdSetInProgress +
+                    " cmd adjust = " + deviceFeatures[deviceIndex].mVolCmdAdjustInProgress);
+                if ((deviceFeatures[deviceIndex].mVolCmdSetInProgress ||
+                        deviceFeatures[deviceIndex].mVolCmdAdjustInProgress) &&
+                        (deviceFeatures[deviceIndex].mLastRequestedVolume != -1) &&
+                        (deviceFeatures[deviceIndex].mLastRequestedVolume != absolutevol)) {
+                    Log.v(TAG, "send cached lastreq vol = " +
+                        deviceFeatures[deviceIndex].mLastRequestedVolume);
+                    boolean isSetVol =
+                        setVolumeNative(deviceFeatures[deviceIndex].mLastRequestedVolume,
+                        getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
+                    if (isSetVol) {
+                        removeMessages(MSG_ABS_VOL_TIMEOUT);
+                        deviceFeatures[deviceIndex].mLastRemoteVolume =
+                                deviceFeatures[deviceIndex].mLastRequestedVolume;
+                        sendMessageDelayed(obtainMessage(MSG_ABS_VOL_TIMEOUT,
+                                 0, 0, deviceFeatures[deviceIndex].mCurrentDevice),
+                                 CMD_TIMEOUT_DELAY);
+                        deviceFeatures[deviceIndex].mLastRequestedVolume = -1;
+                        Log.v(TAG, "Reset cached lastreq vol = " +
+                            deviceFeatures[deviceIndex].mLastRequestedVolume);
+                    }
+                    break;
+                }
                 if (msg.arg2 == AVRC_RSP_ACCEPT || msg.arg2 == AVRC_RSP_REJ) {
                     if ((deviceFeatures[deviceIndex].mVolCmdAdjustInProgress == false) &&
                         (deviceFeatures[deviceIndex].mVolCmdSetInProgress == false)) {
@@ -1249,8 +1279,9 @@ public final class Avrcp_ext {
 
                           if ((deviceFeatures[deviceIndex].mVolCmdSetInProgress) ||
                                 (deviceFeatures[deviceIndex].mVolCmdAdjustInProgress)){
-                              if (DEBUG)
-                                  Log.w(TAG, "There is already a volume command in progress.");
+                              deviceFeatures[deviceIndex].mLastRequestedVolume = avrcpVolume;
+                              Log.w(TAG, "There is already a volume command in progress cache = " +
+                                  deviceFeatures[deviceIndex].mLastRequestedVolume);
                               continue;
                           }
                           if (deviceFeatures[deviceIndex].mInitialRemoteVolume == -1) {
@@ -1273,6 +1304,7 @@ public final class Avrcp_ext {
                          }
                     }
                 }
+                Log.v(TAG, "last remote Vol = " + deviceFeatures[deviceIndex].mLastRemoteVolume);
                 break;
             }
             case MSG_ABS_VOL_TIMEOUT:
