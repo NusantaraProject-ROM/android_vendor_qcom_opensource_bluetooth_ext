@@ -771,21 +771,24 @@ public final class Avrcp_ext {
             case MESSAGE_UPDATE_ABS_VOLUME_STATUS:
             {
                 deviceIndex = msg.arg1;
-                int vol = (deviceFeatures[deviceIndex].mRemoteVolume > AVRCP_MAX_SAFETY_VOL) ?
-                              AVRCP_MAX_SAFETY_VOL : deviceFeatures[deviceIndex].mRemoteVolume;
+                int vol = msg.arg2;
                 BluetoothDevice device = mA2dpService.getActiveDevice();
                 if(device == null)
                     break;
-                mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), true);
-                if(vol >= 0) {
-                    msg = mHandler.obtainMessage();
-                    msg.what = MESSAGE_UPDATE_ABSOLUTE_VOLUME;
-                    msg.arg1 = deviceIndex;
-                    msg.arg2 = convertToAudioStreamVolume(vol);
-                    mHandler.sendMessageDelayed(msg, 50);
-                    if(vol != deviceFeatures[deviceIndex].mRemoteVolume)
-                        setVolumeNative(vol , getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
+                mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
+                                                          isAbsoluteVolumeSupported(deviceIndex));
+                if (isAbsoluteVolumeSupported(deviceIndex)) {
+                    int volume = convertToAvrcpVolume(vol);
+                    vol = (volume > AVRCP_MAX_SAFETY_VOL)?AVRCP_MAX_SAFETY_VOL:volume;
                 }
+                if (vol >= 0) {
+                    //vol = convertToAvrcpVolume(mLastLocalVolume);
+                    Log.d(TAG,"vol = " + vol + "rem vol = " + deviceFeatures[deviceIndex].mRemoteVolume);
+                    if(vol != deviceFeatures[deviceIndex].mRemoteVolume &&
+                       deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice)
+                       setVolumeNative(vol , getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
+                }
+                //mLastLocalVolume = -1;
                 break;
             }
 
@@ -4079,6 +4082,7 @@ public final class Avrcp_ext {
         deviceFeatures[index].mAddrPlayerChangedNT = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
         deviceFeatures[index].mUidsChangedNT = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
         deviceFeatures[index].mLastPassthroughcmd = KeyEvent.KEYCODE_UNKNOWN;
+        deviceFeatures[index].isAbsoluteVolumeSupportingDevice = false;
     }
 
     private synchronized void onConnectionStateChanged(
@@ -4525,7 +4529,21 @@ public final class Avrcp_ext {
         Log.e(TAG, "returning invalid index");
         return INVALID_DEVICE_INDEX;
     }
-
+    public void storeVolumeForDevice(BluetoothDevice device) {
+        int deviceIndex = getIndexForDevice(device);
+        if (deviceIndex == INVALID_DEVICE_INDEX) {
+            Log.e(TAG,"Invalid device index for play status");
+            return;
+        }
+        Log.e(TAG,"storeVolumeForDevice: " + deviceFeatures[deviceIndex].mCurrentDevice.getAddress() +
+                  " at index: " + deviceIndex + " absolute volume supported: " +
+                  deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice + " local volume " +
+                  deviceFeatures[deviceIndex].mLocalVolume + " remote volume " +
+                  deviceFeatures[deviceIndex].mRemoteVolume);
+        deviceFeatures[deviceIndex].mLocalVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+        Log.d(TAG,"streamo volume saved: " + deviceFeatures[deviceIndex].mLocalVolume);
+        return;
+    }
     public void setActiveDevice(BluetoothDevice device) {
         int deviceIndex = getIndexForDevice(device);
         if (deviceIndex == INVALID_DEVICE_INDEX) {
@@ -4543,34 +4561,34 @@ public final class Avrcp_ext {
             }
         }
         Log.e(TAG,"AVRCP setActive  addr " + deviceFeatures[deviceIndex].mCurrentDevice.getAddress() +
-                    " isActive device index " + deviceIndex + " absolute volume supported "+
-                    deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice  + " local volume " +
-                    deviceFeatures[deviceIndex].mLocalVolume + " remote volume " +
-                    deviceFeatures[deviceIndex].mRemoteVolume);
-        if(deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice) {
-            Message msg = mHandler.obtainMessage();
-            msg.what = MESSAGE_UPDATE_ABS_VOLUME_STATUS;
-            msg.arg1 = deviceIndex;
-            mHandler.sendMessageDelayed(msg, 100);
-        } else if(deviceFeatures[deviceIndex].mLocalVolume >= 0) {
-            Message msg = mHandler.obtainMessage();
-            msg = mHandler.obtainMessage();
-            msg.what = MESSAGE_UPDATE_ABSOLUTE_VOLUME;
-            msg.arg1 = deviceIndex;
-            msg.arg2 = deviceFeatures[deviceIndex].mLocalVolume;
-            mHandler.sendMessageDelayed(msg, 100);
+                    " isActive device index " + deviceIndex);
+    }
+    public int getVolume(BluetoothDevice device) {
+       int deviceIndex = getIndexForDevice(device);
+        if (deviceIndex == INVALID_DEVICE_INDEX) {
+            Log.e(TAG,"Invalid device index for getVolume");
+            return -1;
         }
-        if((maxAvrcpConnections > 1) && (deviceFeatures[1-deviceIndex].mCurrentDevice != null) &&
-            (!deviceFeatures[1-deviceIndex].isAbsoluteVolumeSupportingDevice)) {
-            Log.e(TAG,"Before updating stream Volume = " + mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC));
-            deviceFeatures[1-deviceIndex].mLocalVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-            Log.e(TAG,"After updating stream Volume = " + deviceFeatures[1-deviceIndex].mLocalVolume);
-       }
-       if (!areMultipleDevicesConnected()) {
-          Log.e(TAG,"setActiveDevice: updatePlayStatusForDevice");
-          updatePlayStatusForDevice(deviceIndex, mCurrentPlayerState);
-          deviceFeatures[deviceIndex].mLastStateUpdate = mLastStateUpdate;
-       }
+        return deviceFeatures[deviceIndex].mLocalVolume;
+    }
+    public void setAbsVolumeFlag(BluetoothDevice device) {
+        int deviceIndex = getIndexForDevice(device);
+        if (deviceIndex == INVALID_DEVICE_INDEX) {
+            Log.e(TAG,"Invalid device index for setAbsVolumeFlag");
+            return;
+        }
+        /* Delay updating absVolume support notification to audiomanager
+         * as absVolume flag in audio audioservice is reset when device disconnect is
+         * notified to audiomanager in SHO is processed late. Resulting in not sending
+         * setABsVolume cmd to remote
+         */
+        Message msg = mHandler.obtainMessage();
+        msg.what = MESSAGE_UPDATE_ABS_VOLUME_STATUS;
+        msg.arg1 = deviceIndex;
+        msg.arg2 = deviceFeatures[deviceIndex].mLocalVolume;
+        mHandler.sendMessageDelayed(msg, 100);
+        Log.d(TAG,"setAbsVolumeFlag = " + isAbsoluteVolumeSupported(deviceIndex));
+        return;
     }
 
     /* getters for some private variables */
