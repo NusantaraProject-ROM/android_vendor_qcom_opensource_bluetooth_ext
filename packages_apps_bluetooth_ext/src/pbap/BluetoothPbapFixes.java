@@ -257,15 +257,7 @@ public class BluetoothPbapFixes {
 
     protected static void updateMtu(ServerSession serverSession, boolean isSrmSupported,
             int rfcommMaxMTU) {
-        String offloadSupported = SystemProperties.get("persist.vendor.btstack.enable.splita2dp");
-        if (DEBUG) Log.d(TAG, "offloadSupported :" + offloadSupported + " isSrmSupported :" +
-                isSrmSupported + " isA2DPConnected :" + BTOppUtils.isA2DPConnected +
-                " rfcommMaxMTU :" + rfcommMaxMTU);
-        if (offloadSupported.isEmpty() || offloadSupported.equals("true")) {
-            if (!isSrmSupported && BTOppUtils.isA2DPConnected && rfcommMaxMTU > 0) {
-                serverSession.updateMTU(rfcommMaxMTU);
-            }
-        }
+        // TODO: TO Remove this API from here and its invocation (startObexServerSession)
     }
 
     public static MatrixCursor filterOutSimContacts(Cursor contactCursor) {
