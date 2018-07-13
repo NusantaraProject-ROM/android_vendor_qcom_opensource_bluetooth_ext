@@ -1591,7 +1591,6 @@ public final class Avrcp_ext {
         }
         return true;
     }
-
     private void updatePlayerStateAndPosition(PlaybackState state) {
         if (DEBUG) Log.v(TAG, "updatePlayerStateAndPosition, old=" +
                             mCurrentPlayerState + ", state=" + state);
@@ -2159,17 +2158,6 @@ public final class Avrcp_ext {
                 registerNotificationRspAvalPlayerChangedNative(
                         AvrcpConstants.NOTIFICATION_TYPE_INTERIM,
                         getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
-                if (mAvailablePlayerViewChanged &&
-                        (deviceFeatures[deviceIndex].mAvailablePlayersChangedNT ==
-                        AvrcpConstants.NOTIFICATION_TYPE_INTERIM)) {
-                    Log.v(TAG, "Sending response for available playerchanged:");
-                    deviceFeatures[deviceIndex].mAvailablePlayersChangedNT =
-                                                 AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
-                    registerNotificationRspAvalPlayerChangedNative(
-                            AvrcpConstants.NOTIFICATION_TYPE_CHANGED,
-                            getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
-                    mAvailablePlayerViewChanged = false;
-                }
                 break;
 
             case EVT_ADDR_PLAYER_CHANGED:
