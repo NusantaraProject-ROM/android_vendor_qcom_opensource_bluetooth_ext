@@ -80,8 +80,9 @@ enum {
 #define VS_HCI_ENCODING_SCHEME_2_5 0x00
 // TTP Offset
 #define VS_HCI_TTP_OFFSET          0x03D090
-//TX power level
-#define VS_HCI_TX_POWER_LEVEL     0x09
+//TX power level: HOST will always send FF and SOC
+// would determine the right value based on soc type
+#define VS_HCI_TX_POWER_LEVEL     0xFF
 // Sample size
 #define VS_HCI_SAMPLE_SIZE  512
 
