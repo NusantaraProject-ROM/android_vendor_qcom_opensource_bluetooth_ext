@@ -2891,6 +2891,7 @@ public final class Avrcp_ext {
         return false;
     }
     public void setAvrcpConnectedDevice(BluetoothDevice device) {
+        boolean NeedCheckMusicActive = true;
         Log.i(TAG,"setAvrcpConnectedDevice, Device added is " + device);
         BluetoothDevice active_device = null;
         for (int i = 0; i < maxAvrcpConnections; i++) {
@@ -2905,6 +2906,8 @@ public final class Avrcp_ext {
                 }
             }
         }
+        if(avrcp_playstatus_blacklist && isPlayerStateUpdateBlackListed(device.getAddress(),device.getName()))
+           NeedCheckMusicActive = false;
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
             if (deviceFeatures[i].mCurrentDevice == null) {
                 deviceFeatures[i].mCurrentDevice = device;
@@ -2939,7 +2942,7 @@ public final class Avrcp_ext {
                           "isMusicActive = " + mAudioManager.isMusicActive());
                 if (!isPlayingState(mCurrentPlayerState) &&
                      (mA2dpService.getActiveDevice() != null) &&
-                      mAudioManager.isMusicActive()) {
+                      ((NeedCheckMusicActive && mAudioManager.isMusicActive()) ||(!NeedCheckMusicActive))) {
                 /*A2DP playstate updated for video playback scenario, where a2dp play status is
                     updated when avrcp connection was not up yet.*/
                     Log.i(TAG,"A2dp playing device found");
