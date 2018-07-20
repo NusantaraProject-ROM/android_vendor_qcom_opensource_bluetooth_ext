@@ -85,6 +85,7 @@ import java.util.TreeMap;
 import java.util.Objects;
 import android.os.SystemProperties;
 import com.android.bluetooth.hfp.HeadsetService;
+import java.util.Arrays;
 /******************************************************************************
  * support Bluetooth AVRCP profile. support metadata, play status, event
  * notifications, address player selection and browse feature implementation.
@@ -168,6 +169,11 @@ public final class Avrcp_ext {
     private boolean avrcp_playstatus_blacklist = false;
     private static final String [] BlacklistDeviceAddrToMediaAttr = {"00:17:53"/*Toyota Etios*/};
     private boolean ignore_play;
+    private byte changePathFolderType;
+    private FolderItemsRsp saveRspObj;
+    private int changePathDepth;
+    private byte changePathDirection;
+
     private static final String playerStateUpdateBlackListedAddr[] = {
          "BC:30:7E", //bc-30-7e-5e-f6-27, Name: Porsche BT 0310; bc-30-7e-8c-22-cb, Name: Audi MMI 1193
          "00:1E:43", //00-1e-43-14-f0-68, Name: Audi MMI 4365
@@ -573,7 +579,9 @@ public final class Avrcp_ext {
 
         mAudioManager.registerAudioPlaybackCallback(
                 mAudioManagerPlaybackCb, mAudioManagerPlaybackHandler);
-
+        changePathDepth = 0;
+        changePathFolderType = 0;
+        changePathDirection = 0;
         Log.v(TAG, "Exit start");
     }
 
@@ -636,6 +644,9 @@ public final class Avrcp_ext {
         mCurrentBrowsingDevice = null;
         if (mNotificationManager != null )
             mNotificationManager.deleteNotificationChannel(AVRCP_NOTIFICATION_ID);
+        changePathDepth = 0;
+        changePathFolderType = 0;
+        changePathDirection = 0;
         Log.d(TAG, "Exit doQuit");
     }
 
@@ -1427,14 +1438,34 @@ public final class Avrcp_ext {
 
             case MSG_NATIVE_REQ_CHANGE_PATH:
             {
-                if (DEBUG) Log.v(TAG, "MSG_NATIVE_REQ_CHANGE_PATH");
+                if (DEBUG) Log.v(TAG, "MSG_NATIVE_REQ_CHANGE_PATH" + " changePathDepth " +
+                            changePathDepth + " changePathFolderType " + changePathFolderType);
                 Bundle data = msg.getData();
                 byte[] bdaddr = data.getByteArray("BdAddress");
                 byte[] folderUid = data.getByteArray("folderUid");
                 byte direction = data.getByte("direction");
+                byte[] tempUid = new byte[AvrcpConstants.UID_SIZE];
                 if (mAvrcpBrowseManager.getBrowsedMediaPlayer(bdaddr) != null) {
-                        mAvrcpBrowseManager.getBrowsedMediaPlayer(bdaddr).changePath(folderUid,
+                    changePathDirection = direction;
+                    mAvrcpBrowseManager.getBrowsedMediaPlayer(bdaddr).changePath(folderUid,
                         direction);
+                    if ((direction == 1) && (changePathDepth >= 0)) {
+                       for (int index=0; index<saveRspObj.mDisplayNames.length; index++) {
+                            for (int size=0; size < AvrcpConstants.UID_SIZE; size++)
+                                tempUid[size] = saveRspObj.mItemUid[index* AvrcpConstants.UID_SIZE + size];
+                            if (Arrays.equals(folderUid, tempUid)) {
+                                changePathFolderType = saveRspObj.mFolderTypes[index];
+                                break;
+                            }
+                       }
+                       changePathDepth++;
+                    }
+                    else if ((direction == 0) && (changePathDepth>0)) {
+                       changePathDepth--;
+                       if (changePathDepth == 0)
+                            changePathFolderType = 0;
+                    }
+
                 } else {
                     Log.e(TAG, "Remote requesting change path before setbrowsedplayer");
                     changePathRspNative(bdaddr, AvrcpConstants.RSP_BAD_CMD, 0);
@@ -3043,6 +3074,8 @@ public final class Avrcp_ext {
             Log.v(TAG,"BT device is matched with browsing device:");
             mAvrcpBrowseManager.cleanup();
             mCurrentBrowsingDevice = null;
+            changePathDepth = 0;
+            changePathFolderType = 0;
         }
         Log.v(TAG,"Exit setAvrcpDisconnectedDevice");
     }
@@ -4345,6 +4378,12 @@ public final class Avrcp_ext {
             if (!setBrowsedPlayerRspNative(address, rspStatus, depth, numItems, textArray)) {
                 Log.e(TAG, "setBrowsedPlayerRsp failed!");
             }
+            else {
+                if (depth == 0) {
+                    changePathDepth = 0;
+                    changePathFolderType = 0;
+                }
+            }
         }
 
         public void mediaPlayerListRsp(byte[] address, int rspStatus, MediaPlayerListRsp rspObj) {
@@ -4364,6 +4403,29 @@ public final class Avrcp_ext {
 
         public void folderItemsRsp(byte[] address, int rspStatus, FolderItemsRsp rspObj) {
             if (rspObj != null && rspStatus == AvrcpConstants.RSP_NO_ERROR) {
+                String Album = new String("Albums");
+                String Artist = new String("Artists");
+                String Playlist = new String("Playlists");
+                for (int index = 0; index < rspObj.mDisplayNames.length; index++) {
+                    if (rspObj.mDisplayNames[index].equals(Album))
+                        rspObj.mFolderTypes[index] = AvrcpConstants.FOLDER_TYPE_ALBUMS;
+                    else if (rspObj.mDisplayNames[index].equals(Artist))
+                        rspObj.mFolderTypes[index] = AvrcpConstants.FOLDER_TYPE_ARTISTS;
+                    else if (rspObj.mDisplayNames[index].equals(Playlist))
+                        rspObj.mFolderTypes[index] = AvrcpConstants.FOLDER_TYPE_PLAYLISTS;
+                    /*by default for every folder filling folder type Titles*/
+                    else
+                        if (changePathFolderType > 0)
+                            rspObj.mFolderTypes[index] = changePathFolderType;
+                        else
+                            rspObj.mFolderTypes[index] = AvrcpConstants.FOLDER_TYPE_TITLES;
+                }
+                Log.v(TAG, " changePathDepth " + changePathDepth +
+                        " changePathFolderType " + changePathFolderType);
+                if (changePathDepth == 0) {
+                    saveRspObj = rspObj;
+                    changePathFolderType = 0;
+                }
                 if (!getFolderItemsRspNative(address, rspStatus, sUIDCounter, rspObj.mScope,
                         rspObj.mNumItems, rspObj.mFolderTypes, rspObj.mPlayable, rspObj.mItemTypes,
                         rspObj.mItemUid, rspObj.mDisplayNames, rspObj.mAttributesNum,
@@ -4379,6 +4441,13 @@ public final class Avrcp_ext {
         }
 
         public void changePathRsp(byte[] address, int rspStatus, int numItems) {
+            /*to handle changePath invalid uid scenario or any error sceanrio */
+            if (rspStatus != AvrcpConstants.RSP_NO_ERROR && changePathDepth>0) {
+                if(changePathDirection == 1)
+                    changePathDepth--;
+                else
+                    changePathDepth++;
+            }
             if (!changePathRspNative(address, rspStatus, numItems))
                 Log.e(TAG, "changePathRspNative failed!");
         }
