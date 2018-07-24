@@ -1304,7 +1304,6 @@ public final class Avrcp_ext {
                          }
                     }
                 }
-                Log.v(TAG, "last remote Vol = " + deviceFeatures[deviceIndex].mLastRemoteVolume);
                 break;
             }
             case MSG_ABS_VOL_TIMEOUT:
