@@ -2938,9 +2938,10 @@ public final class Avrcp_ext {
                     }
                 }
                 Log.i(TAG,"setAvrcpConnectedDevice, mCurrentPlayerState = " + mCurrentPlayerState +
-                          "isMusicActive = " + mAudioManager.isMusicActive());
+                          "isMusicActive = " + mAudioManager.isMusicActive() +
+                          "isA2dpPlaying = " + mA2dpService.isA2dpPlaying(device));
                 if (!isPlayingState(mCurrentPlayerState) &&
-                     (mA2dpService.getActiveDevice() != null) &&
+                     (mA2dpService.isA2dpPlaying(device)) &&
                       ((NeedCheckMusicActive && mAudioManager.isMusicActive()) ||(!NeedCheckMusicActive))) {
                 /*A2DP playstate updated for video playback scenario, where a2dp play status is
                     updated when avrcp connection was not up yet.*/
