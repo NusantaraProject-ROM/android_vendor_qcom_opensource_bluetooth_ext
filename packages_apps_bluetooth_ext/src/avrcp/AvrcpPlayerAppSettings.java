@@ -234,6 +234,10 @@ public class AvrcpPlayerAppSettings {
                                 data, getByteAddress(device));
                     break;
                     case AvrcpConstants.SET_ATTRIBUTE_VALUES:
+                        if (device == null) {
+                            Log.e(TAG,"ERROR!!! device is null.");
+                            return;
+                        }
                         boolean send_change_rsp_only = true;
                         data = intent.getByteArrayExtra(EXTRA_ATTRIB_VALUE_PAIRS);
                         updateLocalPlayerSettings(data);
