@@ -161,6 +161,7 @@ static void btif_vendor_bredr_cleanup_event(uint16_t event, char *p_param)
         }
     }
     btif_queue_release();
+    btif_dm_bredr_disable();
     HAL_CBACK(bt_vendor_callbacks, bredr_cleanup_cb, true);
 }
 
