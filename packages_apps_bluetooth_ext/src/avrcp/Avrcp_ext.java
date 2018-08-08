@@ -1682,7 +1682,8 @@ public final class Avrcp_ext {
                 deviceFeatures[deviceIndex].mLastStateUpdate = mLastStateUpdate;
             }
         }
-        if (state.getState() == PlaybackState.STATE_PLAYING) {
+        if ((state.getState() == PlaybackState.STATE_PLAYING) &&
+                (newPlayStatus != oldPlayStatus)) {
             Log.i(TAG,"No active device found, update playstate to stack");
             updatePlayStatusToStack(newPlayStatus);
         }
