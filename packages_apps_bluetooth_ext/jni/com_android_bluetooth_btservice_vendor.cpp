@@ -184,11 +184,13 @@ static void remote_device_properties_callback(bt_status_t status,
                                method_devicePropertyChangedCallback, addr.get(),
                                types.get(), props.get());
 }
+
 static btvendor_callbacks_t sBluetoothVendorCallbacks = {
     sizeof(sBluetoothVendorCallbacks),
     bredr_cleanup_callback,
     iot_device_broadcast_callback,
     remote_device_properties_callback,
+    NULL,
 };
 
 static void classInitNative(JNIEnv* env, jclass clazz) {

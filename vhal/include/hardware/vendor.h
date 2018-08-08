@@ -121,6 +121,10 @@ typedef void (* remote_dev_prop_callback)(bt_status_t status,
                           RawAddress *bd_addr, int num_properties,
                           bt_vendor_property_t *properties);
 
+/** Bluetooth HCI event Callback */
+/* Receive any HCI event from controller for raw commands */
+typedef void (* hci_event_recv_callback)(uint8_t event_code, uint8_t *buf, uint8_t len);
+
 /** BT-Vendor callback structure. */
 typedef struct {
     /** set to sizeof(BtVendorCallbacks) */
@@ -128,6 +132,7 @@ typedef struct {
     btvendor_bredr_cleanup_callback  bredr_cleanup_cb;
     btvendor_iot_device_broadcast_callback iot_device_broadcast_cb;
     remote_dev_prop_callback         rmt_dev_prop_cb;
+    hci_event_recv_callback  hci_event_recv_cb;
 } btvendor_callbacks_t;
 
 typedef int (*property_set_callout)(const char* key, const char* value);
@@ -153,6 +158,9 @@ typedef struct {
      * Register the BtVendor callbacks
      */
     bt_status_t (*init)( btvendor_callbacks_t* callbacks );
+
+    /* Send any test HCI command to the controller. */
+    int (*hci_cmd_send)(uint16_t opcode, uint8_t *buf, uint8_t len);
 
     /** test interface. */
     const void* (*get_testapp_interface)(int);
