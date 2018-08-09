@@ -129,7 +129,6 @@ public final class Avrcp_ext {
     private int mPlayPosChangedNT;
     private long mSongLengthMs;
     private int mAddrPlayerChangedNT;
-    private int mReportedPlayerID;
     private int mNowPlayingListChangedNT;
     private long mPlaybackIntervalMs;
     private long mLastReportedPosition;
@@ -356,6 +355,7 @@ public final class Avrcp_ext {
         private int mAbsVolThreshold;
         private HashMap<Integer, Integer> mVolumeMapping;
         private int mLastPassthroughcmd;
+        private int mReportedPlayerID;
 
         public DeviceDependentFeature(Context context) {
             mContext = context;
@@ -397,6 +397,7 @@ public final class Avrcp_ext {
             mAbsoluteVolume = -1;
             mLastRspPlayStatus = -1;
             mLastPassthroughcmd = KeyEvent.KEYCODE_UNKNOWN;
+            mReportedPlayerID = NO_PLAYER_ID;
             mVolumeMapping = new HashMap<Integer, Integer>();
             Resources resources = context.getResources();
             if (resources != null) {
@@ -442,7 +443,6 @@ public final class Avrcp_ext {
         mAbsVolThreshold = 0;
         mVolumeMapping = new HashMap<Integer, Integer>();
         mCurrAddrPlayerID = NO_PLAYER_ID;
-        mReportedPlayerID = mCurrAddrPlayerID;
         mCurrBrowsePlayerID = 0;
         mContext = context;
         mLastUsedPlayerID = 0;
@@ -1994,8 +1994,12 @@ public final class Avrcp_ext {
                             + currentAttributes.toRedactedString() + " : "
                             + mMediaAttributes.toRedactedString());
 
-            if (addr != null && mReportedPlayerID != mCurrAddrPlayerID &&
-                    index != INVALID_DEVICE_INDEX) {
+            // Update available/addressed player for current active device, but cached the player
+            // update for inactive device until device switch and inactive device become active.
+            if (addr != null && index != INVALID_DEVICE_INDEX &&
+                    deviceFeatures[index].mReportedPlayerID != mCurrAddrPlayerID) {
+                Log.v(TAG, "Update player id: " + deviceFeatures[index].mReportedPlayerID +
+                        "-> " + mCurrAddrPlayerID);
                 if (deviceFeatures[index].mAvailablePlayersChangedNT ==
                         AvrcpConstants.NOTIFICATION_TYPE_INTERIM) {
                     registerNotificationRspAvalPlayerChangedNative(
@@ -2012,7 +2016,7 @@ public final class Avrcp_ext {
                     deviceFeatures[index].mAddrPlayerChangedNT =
                             AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
                 }
-                mReportedPlayerID = mCurrAddrPlayerID;
+                deviceFeatures[index].mReportedPlayerID = mCurrAddrPlayerID;
 
                 // Update the now playing list without sending the notification
                 deviceFeatures[index].mNowPlayingListChangedNT = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
@@ -2259,7 +2263,7 @@ public final class Avrcp_ext {
                         AvrcpConstants.NOTIFICATION_TYPE_INTERIM,
                         mCurrAddrPlayerID, sUIDCounter,
                         getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
-                mReportedPlayerID = mCurrAddrPlayerID;
+                deviceFeatures[deviceIndex].mReportedPlayerID = mCurrAddrPlayerID;
                 break;
 
             case EVENT_UIDS_CHANGED:
@@ -4156,6 +4160,7 @@ public final class Avrcp_ext {
         deviceFeatures[index].mLastPassthroughcmd = KeyEvent.KEYCODE_UNKNOWN;
         deviceFeatures[index].isAbsoluteVolumeSupportingDevice = false;
         deviceFeatures[index].keyPressState = AvrcpConstants.KEY_STATE_RELEASE; //Key release state
+        deviceFeatures[index].mReportedPlayerID = NO_PLAYER_ID;
     }
 
     private synchronized void onConnectionStateChanged(
@@ -4672,6 +4677,37 @@ public final class Avrcp_ext {
         }
         Log.e(TAG,"AVRCP setActive  addr " + deviceFeatures[deviceIndex].mCurrentDevice.getAddress() +
                     " isActive device index " + deviceIndex);
+
+        if ((maxAvrcpConnections > 1) && (deviceFeatures[deviceIndex].mCurrentDevice != null) &&
+                (deviceFeatures[deviceIndex].mReportedPlayerID != mCurrAddrPlayerID)) {
+            Log.d(TAG,"Update cached browsing events to latest active device, deviceFeatures[" +
+                    deviceIndex + "].mReportedPlayerID: " +
+                    deviceFeatures[deviceIndex].mReportedPlayerID +
+                    ", mCurrAddrPlayerID: " + mCurrAddrPlayerID);
+            if (deviceFeatures[deviceIndex].mAvailablePlayersChangedNT ==
+                    AvrcpConstants.NOTIFICATION_TYPE_INTERIM) {
+                registerNotificationRspAvalPlayerChangedNative(
+                        AvrcpConstants.NOTIFICATION_TYPE_CHANGED,
+                        getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
+                mAvailablePlayerViewChanged = false;
+                deviceFeatures[deviceIndex].mAvailablePlayersChangedNT =
+                        AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
+            }
+            if (deviceFeatures[deviceIndex].mAddrPlayerChangedNT ==
+                    AvrcpConstants.NOTIFICATION_TYPE_INTERIM) {
+                registerNotificationRspAddrPlayerChangedNative(
+                        AvrcpConstants.NOTIFICATION_TYPE_CHANGED, mCurrAddrPlayerID,
+                        sUIDCounter, getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
+                deviceFeatures[deviceIndex].mAddrPlayerChangedNT =
+                        AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
+                // send track change event becasue some carkits will refresh metadata
+                // while receive addressed player change event. Track change event to
+                // make remote get metadata correctly.
+                sendTrackChangedRsp(false, deviceFeatures[deviceIndex].mCurrentDevice);
+            }
+
+            deviceFeatures[deviceIndex].mReportedPlayerID = mCurrAddrPlayerID;
+        }
     }
     public int getVolume(BluetoothDevice device) {
        int deviceIndex = getIndexForDevice(device);
