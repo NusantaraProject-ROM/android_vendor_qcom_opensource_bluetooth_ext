@@ -319,7 +319,11 @@ void process_twsp_state_change (int eb_idx, uint8_t state) {
           tBTA_AG_SCB *p_scb =  twsp_devices[eb_idx].p_scb;
           if (p_scb != NULL) {
               tBTA_AG_SCB *peer_scb = get_other_twsp_scb(p_scb->peer_addr);
-              select_microphone_path(peer_scb);
+              if (peer_scb != NULL) {
+                 select_microphone_path(peer_scb);
+              } else {
+                 APPL_TRACE_WARNING("%s: peer_scb is NULL, No mic switch");
+              }
           }
         }
     }
