@@ -3371,8 +3371,9 @@ public final class Avrcp_ext {
     private void setActiveMediaSession(MediaSession.Token token) {
         android.media.session.MediaController activeController =
                 new android.media.session.MediaController(mContext, token);
-        if (activeController.getPackageName().contains("telecom")) {
-            Log.d(TAG, "Ignore active media session change to telecom");
+        if ((activeController.getPackageName().contains("telecom")) ||
+           (activeController.getPackageName().contains("skype"))) {
+            Log.d(TAG, "Ignore active media session change to telecom/skype");
             return;
         }
 
@@ -3395,9 +3396,11 @@ public final class Avrcp_ext {
 
     private void setActiveMediaSession(android.media.session.MediaController mController) {
         HeadsetService mService = HeadsetService.getHeadsetService();
-        if (mService != null && mService.isScoOrCallActive()) {
-            Log.w(TAG, "Ignore media session during call");
-            return;
+        if (mController.getPackageName().contains("telecom")) {
+            if (mService != null && mService.isScoOrCallActive()) {
+                Log.w(TAG, "Ignore media session during call");
+                return;
+            }
         }
 
         addMediaPlayerController(mController);
