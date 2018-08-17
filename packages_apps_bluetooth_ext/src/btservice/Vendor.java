@@ -114,7 +114,8 @@ final class Vendor {
 
     private void iotDeviceBroadcast(byte[] remoteAddr,
                 int error, int error_info, int event_mask, int lmpVer, int lmpSubVer,
-                int manufacturerId,int pwr_level, int rssi, int linkQuality) {
+                int manufacturerId,int pwr_level, int rssi, int linkQuality,
+                int glitchCount) {
         String mRemoteAddr = Utils.getAddressStringFromByte(remoteAddr);
         BluetoothDevice mBluetoothDevice = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(mRemoteAddr);
         String mRemoteName = mService.getRemoteName(mBluetoothDevice);
@@ -122,22 +123,24 @@ final class Vendor {
         Log.d(TAG,"iotDeviceBroadcast " + mRemoteName + " address: " + mRemoteAddr + " error: " + error
                     + " error info: " + error_info + " event mask: " + event_mask + "Class of Device: " + mRemoteCoD
                     + " lmp version: " + lmpVer + " lmp subversion: " + lmpSubVer + " manufacturer: " + manufacturerId
-                    + " power level: " + pwr_level + " rssi: " + rssi + " link quality: " + linkQuality);
-        // Commented due to frame work dependent change
-        //Intent intent = new Intent(BluetoothDevice.ACTION_REMOTE_ISSUE_OCCURRED);
-        //intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mRemoteAddr);
-        //intent.putExtra(BluetoothDevice.EXTRA_NAME, mRemoteName);
-        //intent.putExtra(BluetoothDevice.EXTRA_CLASS, mRemoteCoD);
-        //intent.putExtra(BluetoothDevice.EXTRA_ISSUE_TYPE, error);
-        //intent.putExtra(BluetoothDevice.EXTRA_ERROR_CODE, error_info);
-        //intent.putExtra(BluetoothDevice.EXTRA_ERROR_EVENT_MASK, event_mask);
-        //intent.putExtra(BluetoothDevice.EXTRA_LMP_VERSION, lmpVer);
-        //intent.putExtra(BluetoothDevice.EXTRA_LMP_SUBVER, lmpSubVer);
-        //intent.putExtra(BluetoothDevice.EXTRA_MANUFACTURER, manufacturerId);
-        //intent.putExtra(BluetoothDevice.EXTRA_POWER_LEVEL, pwr_level);
-        //intent.putExtra(BluetoothDevice.EXTRA_RSSI, rssi);
-        //intent.putExtra(BluetoothDevice.EXTRA_LINK_QUALITY, linkQuality);
-        //mService.sendBroadcast(intent, AdapterService.BLUETOOTH_PERM);
+                    + " power level: " + pwr_level + " rssi: " + rssi + " link quality: " + linkQuality
+                    + " glitch count: " + glitchCount);
+
+        Intent intent = new Intent(BluetoothDevice.ACTION_REMOTE_ISSUE_OCCURRED);
+        intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mRemoteAddr);
+        intent.putExtra(BluetoothDevice.EXTRA_NAME, mRemoteName);
+        intent.putExtra(BluetoothDevice.EXTRA_CLASS, mRemoteCoD);
+        intent.putExtra(BluetoothDevice.EXTRA_ISSUE_TYPE, error);
+        intent.putExtra(BluetoothDevice.EXTRA_ERROR_CODE, error_info);
+        intent.putExtra(BluetoothDevice.EXTRA_ERROR_EVENT_MASK, event_mask);
+        intent.putExtra(BluetoothDevice.EXTRA_LMP_VERSION, lmpVer);
+        intent.putExtra(BluetoothDevice.EXTRA_LMP_SUBVER, lmpSubVer);
+        intent.putExtra(BluetoothDevice.EXTRA_MANUFACTURER, manufacturerId);
+        intent.putExtra(BluetoothDevice.EXTRA_POWER_LEVEL, pwr_level);
+        intent.putExtra(BluetoothDevice.EXTRA_RSSI, rssi);
+        intent.putExtra(BluetoothDevice.EXTRA_LINK_QUALITY, linkQuality);
+        intent.putExtra(BluetoothDevice.EXTRA_GLITCH_COUNT, glitchCount);
+        mService.sendBroadcast(intent, AdapterService.BLUETOOTH_PERM);
     }
     void devicePropertyChangedCallback(byte[] address, int[] types, byte[][] values) {
         byte[] val;

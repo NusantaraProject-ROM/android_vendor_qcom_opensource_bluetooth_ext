@@ -111,7 +111,8 @@ typedef struct {
 typedef void (*  btvendor_bredr_cleanup_callback)(bool status);
 typedef void (*  btvendor_iot_device_broadcast_callback)(RawAddress* remote_bd_addr, uint16_t error,
                         uint16_t error_info, uint32_t event_mask, uint8_t lmp_ver, uint16_t lmp_subver,
-                        uint16_t manufacturer_id, uint8_t power_level, uint8_t rssi, uint8_t link_quality );
+                        uint16_t manufacturer_id, uint8_t power_level, int8_t rssi, uint8_t link_quality,
+                        uint16_t glitch_count );
 typedef void (* btvendor_bredr_cleanup_callback)(bool status);
 
 /** Callback to notify the remote device vendor properties.
