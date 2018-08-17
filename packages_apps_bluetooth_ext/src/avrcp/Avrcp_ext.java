@@ -4750,8 +4750,6 @@ public final class Avrcp_ext {
         if ((deviceFeatures[deviceIndex].mLastPassthroughcmd == KeyEvent.KEYCODE_UNKNOWN) ||
                     deviceFeatures[deviceIndex].mLastPassthroughcmd == code) {
             if (isPlayingState(mCurrentPlayerState) &&
-                     mAudioManager.isMusicActive() &&
-                     (mA2dpState == BluetoothA2dp.STATE_PLAYING) &&
                      (code == KeyEvent.KEYCODE_MEDIA_PLAY)) {
                  Log.w(TAG, "Ignoring passthrough command play" + op + " state " + state +
                          "in music playing");
