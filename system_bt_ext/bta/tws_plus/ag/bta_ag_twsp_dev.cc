@@ -54,6 +54,7 @@ void reset_twsp_device(int  eb_idx) {
         return;
     }
 
+     APPL_TRACE_WARNING("%s: eb idx: %d\n", __func__, eb_idx);
      twsp_devices[eb_idx].p_scb = NULL;
      twsp_devices[eb_idx].battery_charge = TWSPLUS_MIN_BATTERY_CHARGE;
      twsp_devices[eb_idx].state = TWSPLUS_EB_STATE_OFF;
@@ -65,21 +66,25 @@ void reset_twsp_device(int  eb_idx) {
      twsp_devices[eb_idx].ring_sent = false;
 }
 
-void update_twsp_device(int eb_idx, tBTA_AG_SCB* p_scb) {
-    if (eb_idx < PRIMARY_EB_IDX || eb_idx > SECONDARY_EB_IDX) {
-        APPL_TRACE_WARNING("%s: Invalid eb_idx: %d\n", __func__, eb_idx);
-        return;
+void update_twsp_device(tBTA_AG_SCB* p_scb) {
+    for (int i=0; i<MAX_TWSPLUS_DEVICES; i++) {
+        if (twsp_devices[i].p_scb == NULL) {
+            APPL_TRACE_WARNING("%s: idx: %d, p_scb: %x", __func__, i, p_scb);
+            twsp_devices[i].p_scb = p_scb;
+            twsp_devices[i].battery_charge = TWSPLUS_MIN_BATTERY_CHARGE;
+            twsp_devices[i].state = TWSPLUS_EB_STATE_OFF;
+            twsp_devices[i].role =  TWSPLUS_EB_ROLE_LEFT;
+            twsp_devices[i].mic_path_delay = TWSPLUS_INVALID_MICPATH_DELAY;
+            twsp_devices[i].mic_quality = TWSPLUS_MIN_MIC_QUALITY;
+            twsp_devices[i].qdsp_nr = TWSPLUS_INVALID_QDSP_VALUE;
+            twsp_devices[i].qdsp_ec = TWSPLUS_INVALID_QDSP_VALUE;
+            twsp_devices[i].ring_sent = false;
+            return;
+        }
     }
-     APPL_TRACE_WARNING("%s: idx: %d, p_scb: %x", __func__, eb_idx, p_scb);
-     twsp_devices[eb_idx].p_scb = p_scb;
-     twsp_devices[eb_idx].battery_charge = TWSPLUS_MIN_BATTERY_CHARGE;
-     twsp_devices[eb_idx].state = TWSPLUS_EB_STATE_OFF;
-     twsp_devices[eb_idx].role =  TWSPLUS_EB_ROLE_LEFT;
-     twsp_devices[eb_idx].mic_path_delay = TWSPLUS_INVALID_MICPATH_DELAY;
-     twsp_devices[eb_idx].mic_quality = TWSPLUS_MIN_MIC_QUALITY;
-     twsp_devices[eb_idx].qdsp_nr = TWSPLUS_INVALID_QDSP_VALUE;
-     twsp_devices[eb_idx].qdsp_ec = TWSPLUS_INVALID_QDSP_VALUE;
-     twsp_devices[eb_idx].ring_sent = false;
+
+    APPL_TRACE_WARNING("%s: Invalid p_scb %d\n", __func__);
+    return;
 }
 
 void init_twsp_devices() {

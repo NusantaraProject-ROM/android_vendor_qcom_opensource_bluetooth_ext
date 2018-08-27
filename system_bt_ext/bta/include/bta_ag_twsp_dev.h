@@ -91,7 +91,7 @@ typedef struct {
 } tTWSPLUS_DEVICE;
 
 void twsp_handle_vs_at_events(tBTA_AG_SCB* p_scb, uint16_t cmd, int16_t int_arg);
-void update_twsp_device(int eb_idx, tBTA_AG_SCB* p_scb);
+void update_twsp_device(tBTA_AG_SCB* p_scb);
 void reset_twsp_device(int eb_idx);
 bool twsp_set_ring_sent(tBTA_AG_SCB *p_scb, bool ring_sent);
 void twsp_clr_all_ring_sent();
@@ -101,5 +101,6 @@ bool twsp_get_right_eb_addr(RawAddress& eb_addr);
 bool twsp_get_left_eb_addr(RawAddress& eb_addr);
 uint8_t get_twsp_role(tBTA_AG_SCB *p_scb);
 tBTA_AG_SCB* twsp_get_best_mic_scb ();
+int twsp_get_idx_by_scb(tBTA_AG_SCB* p_scb);
 
 #endif//__BTA_AG_TWSPLUS_DEV_H_
