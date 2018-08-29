@@ -3990,6 +3990,7 @@ public final class Avrcp_ext {
                 Log.w(TAG, "Remote requesting play item on uid which may not be recognized by" +
                         "current addressed player");
                 playItemRspNative(bdaddr, AvrcpConstants.RSP_INV_ITEM);
+                return;
             }
 
             if (mAvrcpBrowseManager.getBrowsedMediaPlayer(bdaddr) != null) {
