@@ -1449,9 +1449,11 @@ public final class Avrcp_ext {
                 byte[] tempUid = new byte[AvrcpConstants.UID_SIZE];
                 if (mAvrcpBrowseManager.getBrowsedMediaPlayer(bdaddr) != null) {
                     changePathDirection = direction;
+                    if(direction == 1)
+                       changePathDepth++;
                     mAvrcpBrowseManager.getBrowsedMediaPlayer(bdaddr).changePath(folderUid,
                         direction);
-                    if ((direction == 1) && (changePathDepth >= 0)) {
+                    if ((direction == 1) && (changePathDepth > 0)) {
                        for (int index=0; index<saveRspObj.mDisplayNames.length; index++) {
                             for (int size=0; size < AvrcpConstants.UID_SIZE; size++)
                                 tempUid[size] = saveRspObj.mItemUid[index* AvrcpConstants.UID_SIZE + size];
@@ -1460,7 +1462,6 @@ public final class Avrcp_ext {
                                 break;
                             }
                        }
-                       changePathDepth++;
                     }
                     else if ((direction == 0) && (changePathDepth>0)) {
                        changePathDepth--;
