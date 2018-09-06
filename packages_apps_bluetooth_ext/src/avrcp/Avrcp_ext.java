@@ -4660,9 +4660,18 @@ public final class Avrcp_ext {
         return;
     }
     public void setActiveDevice(BluetoothDevice device) {
+        if (device == null) {
+          for (int i = 0; i < maxAvrcpConnections; i++) {
+              deviceFeatures[i].isActiveDevice = false;
+          }
+          return;
+        }
         int deviceIndex = getIndexForDevice(device);
         if (deviceIndex == INVALID_DEVICE_INDEX) {
             Log.e(TAG,"Invalid device index for setActiveDevice");
+            for (int i = 0; i < maxAvrcpConnections; i++) {
+                deviceFeatures[i].isActiveDevice = false;
+            }
             return;
         }
         deviceFeatures[deviceIndex].isActiveDevice = true;
