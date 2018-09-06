@@ -62,7 +62,7 @@ enum {
 
 // VS command parameters
 // comamand opcode
-#define VS_BA_CMD_OPCODE         0x0180
+#define VS_BA_CMD_OPCODE         0x0023
 // sub opcode
 #define VS_HCI_BAT_TX_CONFIG     0x01
 #define VS_HCI_BAT_TX_VOL        0x02
