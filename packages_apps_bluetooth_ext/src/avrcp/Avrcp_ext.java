@@ -2929,8 +2929,8 @@ public final class Avrcp_ext {
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
             if (deviceFeatures[i].mCurrentDevice == null) {
                 deviceFeatures[i].mCurrentDevice = device;
-                if ((device.isTwsPlusDevice() && active_device != null &&
-                    isTwsPlusPair(active_device, device))) {
+                if ((device.isTwsPlusDevice())) {
+                    Log.v(TAG,"TWS+ device connected, set it to active");
                     deviceFeatures[i].isActiveDevice = true;
                     updateAbsVolume = false;
                 }
