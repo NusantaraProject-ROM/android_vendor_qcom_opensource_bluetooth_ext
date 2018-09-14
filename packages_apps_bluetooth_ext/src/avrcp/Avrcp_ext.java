@@ -232,6 +232,7 @@ public final class Avrcp_ext {
     private final static int MSG_SET_AVRCP_CONNECTED_DEVICE = 25;
     private final static int MESSAGE_UPDATE_ABS_VOLUME_STATUS = 31;
     private final static int MESSAGE_UPDATE_ABSOLUTE_VOLUME = 32;
+    private static final int MSG_PLAY_STATUS_CMD_TIMEOUT = 33;
 
     private static final int STACK_CLEANUP = 0;
     private static final int APP_CLEANUP = 1;
@@ -348,6 +349,7 @@ public final class Avrcp_ext {
         private int mLastRspPlayStatus;
         private boolean isActiveDevice;
         private int mLastRequestedVolume;
+        private boolean isPlayStatusTimeOut;
 
         /* Local volume in audio index 0-15 */
         private int mLocalVolume;
@@ -389,6 +391,7 @@ public final class Avrcp_ext {
             mLastStateUpdate = -1;
             mInitialRemoteVolume = -1;
             isActiveDevice = false;
+            isPlayStatusTimeOut = false;
             mLastRemoteVolume = -1;
             mLastRequestedVolume = -1;
             mLocalVolume = -1;
@@ -956,7 +959,8 @@ public final class Avrcp_ext {
                     Log.v(TAG, "Force play postion to 0, for getPlayStatus Rsp");
                     position = 0;
                 }
-
+                if (deviceFeatures[deviceIndex].isPlayStatusTimeOut)
+                    playState = convertPlayStateToPlayStatus(mCurrentPlayerState);
                 getPlayStatusRspNative(getByteAddress(device), playState, (int)mSongLengthMs, position);
                 break;
             }
@@ -1526,6 +1530,11 @@ public final class Avrcp_ext {
                 }
                 break;
 
+            case MSG_PLAY_STATUS_CMD_TIMEOUT:
+                deviceIndex = getIndexForDevice((BluetoothDevice) msg.obj);
+                deviceFeatures[deviceIndex].isPlayStatusTimeOut = true;
+                break;
+
             default:
                 Log.e(TAG, "unknown message! msg.what=" + msg.what);
                 break;
@@ -1602,6 +1611,11 @@ public final class Avrcp_ext {
                     newPlayStatus,
                     getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
             deviceFeatures[deviceIndex].mLastRspPlayStatus = newPlayStatus;
+            if (!deviceFeatures[deviceIndex].isPlayStatusTimeOut) {
+                Message msg = mHandler.obtainMessage(MSG_PLAY_STATUS_CMD_TIMEOUT,
+                                         0, 0, deviceFeatures[deviceIndex].mCurrentDevice);
+                mHandler.sendMessageDelayed(msg, CMD_TIMEOUT_DELAY);
+            }
         }
         Log.i(TAG,"Exit updatePlayStatusForDevice");
     }
@@ -2139,7 +2153,8 @@ public final class Avrcp_ext {
                 }
                 deviceFeatures[deviceIndex].mPlayStatusChangedNT =
                         AvrcpConstants.NOTIFICATION_TYPE_INTERIM;
-
+                mHandler.removeMessages(MSG_PLAY_STATUS_CMD_TIMEOUT);
+                deviceFeatures[deviceIndex].isPlayStatusTimeOut = false;
                 if(avrcp_playstatus_blacklist && isPlayerStateUpdateBlackListed(
                     deviceFeatures[deviceIndex].mCurrentDevice.getAddress(),
                     deviceFeatures[deviceIndex].mCurrentDevice.getName()) &&
@@ -3026,6 +3041,12 @@ public final class Avrcp_ext {
                                        PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
                         deviceFeatures[i].mCurrentPlayState = playState.build();
                     }
+                } else if (isPlayingState(mCurrentPlayerState) &&
+                           !mA2dpService.isA2dpPlaying(device)) {
+                       PlaybackState.Builder playState = new PlaybackState.Builder();
+                       playState.setState(PlaybackState.STATE_PAUSED,
+                                     PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
+                       deviceFeatures[i].mCurrentPlayState = playState.build();
                 }
                 Log.i(TAG,"play status updated on Avrcp connection as: " +
                                                     deviceFeatures[i].mCurrentPlayState);
@@ -4161,6 +4182,7 @@ public final class Avrcp_ext {
         deviceFeatures[index].isAbsoluteVolumeSupportingDevice = false;
         deviceFeatures[index].keyPressState = AvrcpConstants.KEY_STATE_RELEASE; //Key release state
         deviceFeatures[index].mReportedPlayerID = NO_PLAYER_ID;
+        deviceFeatures[index].isPlayStatusTimeOut = false;
     }
 
     private synchronized void onConnectionStateChanged(
