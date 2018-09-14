@@ -1132,6 +1132,7 @@ public final class Avrcp_ext {
                         volIndex > deviceFeatures[deviceIndex].mAbsVolThreshold) {
                         if (DEBUG) Log.v(TAG, "remote inital volume too high " + volIndex + ">" +
                             deviceFeatures[deviceIndex].mAbsVolThreshold);
+                        notifyVolumeChanged(deviceFeatures[deviceIndex].mAbsVolThreshold, isShowUI);
                         Message msg1 = mHandler.obtainMessage(MSG_SET_ABSOLUTE_VOLUME,
                             deviceFeatures[deviceIndex].mAbsVolThreshold , 0);
                         mHandler.sendMessage(msg1);
