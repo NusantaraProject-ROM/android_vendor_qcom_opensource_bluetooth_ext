@@ -344,6 +344,8 @@ static void btif_tws_plus_upstreams_evt(uint16_t event, char* p_param) {
           BTIF_TRACE_DEBUG("%s() Bd addr found from SDP query : %s ", __func__,
           p_data->sdp_search_comp.peer_eb_addr.ToString().c_str());
 
+          btif_tws_plus_set_peer_eb_addr(&p_data->sdp_search_comp.eb_addr,
+                                        &p_data->sdp_search_comp.peer_eb_addr);
           if (btif_config_get_bin(p_data->sdp_search_comp.eb_addr.ToString().c_str(),
                                   "LinkKey", link_key, &size)) {
             btif_tws_plus_derive_link_key(p_data->sdp_search_comp.eb_addr,
@@ -355,10 +357,10 @@ static void btif_tws_plus_upstreams_evt(uint16_t event, char* p_param) {
           // update bond state changed for first device
           RawAddress eb_bd_addr = RawAddress::kEmpty;
           bond_state_changed(BT_STATUS_SUCCESS,
-                p_data->lk_derived.bd_addr, BT_BOND_STATE_BONDED);
-          btif_tws_plus_update_rmt_dev_props( &p_data->lk_derived.bd_addr,
-                                            &p_data->lk_derived.bd_addr);
-          btif_tws_plus_set_peer_eb_addr(&p_data->lk_derived.bd_addr,
+                p_data->sdp_search_comp.eb_addr, BT_BOND_STATE_BONDED);
+          btif_tws_plus_update_rmt_dev_props(&p_data->sdp_search_comp.eb_addr,
+                                            &p_data->sdp_search_comp.eb_addr);
+          btif_tws_plus_set_peer_eb_addr(&p_data->sdp_search_comp.eb_addr,
                                          &eb_bd_addr);
       }
       break;
