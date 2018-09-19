@@ -4777,12 +4777,15 @@ public final class Avrcp_ext {
         }
         deviceFeatures[deviceIndex].isActiveDevice = true;
         if (maxAvrcpConnections > 1) {
-            if (deviceFeatures[1-deviceIndex].mCurrentDevice != null &&
-                deviceFeatures[1-deviceIndex].mCurrentDevice.isTwsPlusDevice() &&
-                isTwsPlusPair(deviceFeatures[1-deviceIndex].mCurrentDevice, device)) {
-                Log.d(TAG,"TWS+ pair connected, keep both devices active");
-            } else {
-                deviceFeatures[1-deviceIndex].isActiveDevice = false;
+            for (int i = 0; i < maxAvrcpConnections; i++) {
+                if (deviceIndex != i && deviceFeatures[i].mCurrentDevice != null &&
+                    deviceFeatures[i].mCurrentDevice.isTwsPlusDevice() &&
+                    isTwsPlusPair(deviceFeatures[i].mCurrentDevice, device)) {
+                    Log.d(TAG,"TWS+ pair connected, keep both devices active");
+                } else {
+                    if(deviceIndex != i)
+                        deviceFeatures[i].isActiveDevice = false;
+                }
             }
         }
         Log.e(TAG,"AVRCP setActive  addr " + deviceFeatures[deviceIndex].mCurrentDevice.getAddress() +
