@@ -1533,6 +1533,10 @@ public final class Avrcp_ext {
 
             case MSG_PLAY_STATUS_CMD_TIMEOUT:
                 deviceIndex = getIndexForDevice((BluetoothDevice) msg.obj);
+                if (deviceIndex == INVALID_DEVICE_INDEX) {
+                    Log.e(TAG,"invalid device index for Play status timeout");
+                    break;
+                }
                 deviceFeatures[deviceIndex].isPlayStatusTimeOut = true;
                 break;
 
