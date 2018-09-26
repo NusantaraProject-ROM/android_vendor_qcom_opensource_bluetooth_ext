@@ -149,7 +149,6 @@ public final class Avrcp_ext {
     private boolean mRemotePassthroughCmd;
 
     private String mAddress;
-    private HashMap<Integer, Integer> mVolumeMapping;
 
     private int mLastDirection;
     private final int mVolumeStep;
@@ -355,7 +354,6 @@ public final class Avrcp_ext {
         private int mLocalVolume;
         private int mLastLocalVolume;
         private int mAbsVolThreshold;
-        private HashMap<Integer, Integer> mVolumeMapping;
         private int mLastPassthroughcmd;
         private int mReportedPlayerID;
 
@@ -401,7 +399,6 @@ public final class Avrcp_ext {
             mLastRspPlayStatus = -1;
             mLastPassthroughcmd = KeyEvent.KEYCODE_UNKNOWN;
             mReportedPlayerID = NO_PLAYER_ID;
-            mVolumeMapping = new HashMap<Integer, Integer>();
             Resources resources = context.getResources();
             if (resources != null) {
                 mAbsVolThreshold = resources.getInteger(R.integer.a2dp_absolute_volume_initial_threshold);
@@ -444,7 +441,6 @@ public final class Avrcp_ext {
         mLocalVolume = -1;
         mLastLocalVolume = -1;
         mAbsVolThreshold = 0;
-        mVolumeMapping = new HashMap<Integer, Integer>();
         mCurrAddrPlayerID = NO_PLAYER_ID;
         mCurrBrowsePlayerID = 0;
         mContext = context;
@@ -659,8 +655,6 @@ public final class Avrcp_ext {
         for (int i = 0; i < maxAvrcpConnections; i++) {
             deviceFeatures[i].keyPressState =
                 AvrcpConstants.KEY_STATE_RELEASE; //Key release state
-            if (deviceFeatures[i].mVolumeMapping != null)
-                deviceFeatures[i].mVolumeMapping.clear();
             if (deviceFeatures[i].mMusicAppCmdResponsePending != null)
                 deviceFeatures[i].mMusicAppCmdResponsePending.clear();
         }
@@ -670,8 +664,6 @@ public final class Avrcp_ext {
     public void cleanup() {
         if (DEBUG) Log.d(TAG, "cleanup");
         cleanupNative();
-        if (mVolumeMapping != null)
-            mVolumeMapping.clear();
         Log.d(TAG, "Exit cleanup()");
     }
 
@@ -865,8 +857,6 @@ public final class Avrcp_ext {
                 deviceFeatures[deviceIndex].mLocalVolume = -1;
                 deviceFeatures[deviceIndex].mInitialRemoteVolume = -1;
                 deviceFeatures[deviceIndex].mLastPassthroughcmd = KeyEvent.KEYCODE_UNKNOWN;
-                if (deviceFeatures[deviceIndex].mVolumeMapping != null)
-                    deviceFeatures[deviceIndex].mVolumeMapping.clear();
 
                 if ((deviceFeatures[deviceIndex].mFeatures &
                         BTRC_FEAT_AVRC_UI_UPDATE) != 0)
@@ -1059,7 +1049,6 @@ public final class Avrcp_ext {
                     Log.v(TAG, "MSG_NATIVE_REQ_VOLUME_CHANGE: volume=" + absVol + " ctype="
                                     + msg.arg2 + " local vol " + deviceFeatures[deviceIndex].mLocalVolume +
                                     " remote vol " + deviceFeatures[deviceIndex].mRemoteVolume);
-                boolean volAdj = false;
                 Log.v(TAG, "last local Volume = " + deviceFeatures[deviceIndex].mLastLocalVolume +
                     " last remote Volume = " + deviceFeatures[deviceIndex].mLastRemoteVolume +
                     " last requested volume = " + deviceFeatures[deviceIndex].mLastRequestedVolume +
@@ -1095,7 +1084,6 @@ public final class Avrcp_ext {
                     }
                     removeMessages(MSG_ABS_VOL_TIMEOUT);
 
-                    volAdj = deviceFeatures[deviceIndex].mVolCmdAdjustInProgress;
                     deviceFeatures[deviceIndex].mVolCmdAdjustInProgress = false;
                     deviceFeatures[deviceIndex].mVolCmdSetInProgress = false;
                     deviceFeatures[deviceIndex].mAbsVolRetryTimes = 0;
@@ -1141,10 +1129,9 @@ public final class Avrcp_ext {
                         break;
                     }
                 }
-                if ((deviceFeatures[deviceIndex].mLocalVolume != volIndex &&
+                if (deviceFeatures[deviceIndex].mLocalVolume != volIndex &&
                                                  (msg.arg2 == AVRC_RSP_CHANGED ||
-                                                 msg.arg2 == AVRC_RSP_INTERIM)) ||
-                                                 (deviceFeatures[deviceIndex].mLastLocalVolume != volIndex &&
+                                                 msg.arg2 == AVRC_RSP_INTERIM ||
                                                  msg.arg2 == AVRC_RSP_ACCEPT)) {
                     if (msg.arg2 == AVRC_RSP_ACCEPT){
                         Log.d(TAG, "Don't show media UI when slide volume bar");
@@ -1171,26 +1158,23 @@ public final class Avrcp_ext {
                                 deviceFeatures[deviceIndex].mLocalVolume;
                         }
                     }
-                    // remember the remote volume value, as it's the one supported by remote
-                    if (volAdj) {
-                        synchronized (deviceFeatures[deviceIndex].mVolumeMapping) {
-                            deviceFeatures[deviceIndex].mVolumeMapping.put(volIndex, (int)absVol);
-                            if (DEBUG) Log.v(TAG, "remember volume mapping " +volIndex+ "-"+absVol);
-                        }
-                    }
                     notifyVolumeChanged(deviceFeatures[deviceIndex].mLocalVolume, isShowUI);
                     deviceFeatures[deviceIndex].mRemoteVolume = absVol;
                     long pecentVolChanged = ((long)absVol * 100) / 0x7f;
                     Log.e(TAG, "percent volume changed: " + pecentVolChanged + "%");
-                } else if (msg.arg2 == AVRC_RSP_REJ) {
-                    Log.e(TAG, "setAbsoluteVolume call rejected");
-                } else if (volAdj && deviceFeatures[deviceIndex].mLastRemoteVolume > 0
+                } else if (deviceFeatures[deviceIndex].mLastRemoteVolume > 0
                             && deviceFeatures[deviceIndex].mLastRemoteVolume < AVRCP_MAX_VOL &&
                             deviceFeatures[deviceIndex].mLocalVolume == volIndex &&
                             (msg.arg2 == AVRC_RSP_ACCEPT )) {
                     /* oops, the volume is still same, remote does not like the value
                      * retry a volume one step up/down */
                     if (DEBUG) Log.d(TAG, "Remote device didn't tune volume, let's try one more step.");
+                    /* direction calculation for retry mechanism */
+                    if(convertToAudioStreamVolume(deviceFeatures[deviceIndex].mLastRemoteVolume)
+                        < deviceFeatures[deviceIndex].mLocalVolume)
+                        deviceFeatures[deviceIndex].mLastDirection = -1;
+                    else
+                        deviceFeatures[deviceIndex].mLastDirection = 1;
                     int retry_volume = Math.min(AVRCP_MAX_VOL,
                             Math.max(0, deviceFeatures[deviceIndex].mLastRemoteVolume +
                                         deviceFeatures[deviceIndex].mLastDirection));
@@ -1201,90 +1185,12 @@ public final class Avrcp_ext {
                             0, 0, deviceFeatures[deviceIndex].mCurrentDevice), CMD_TIMEOUT_DELAY);
                         deviceFeatures[deviceIndex].mVolCmdAdjustInProgress = true;
                     }
+                    deviceFeatures[deviceIndex].mLastDirection = 0;
                 } else if (msg.arg2 == AVRC_RSP_REJ) {
                     if (DEBUG)
                         Log.v(TAG, "setAbsoluteVolume call rejected");
                 }
             }   break;
-
-            case MSG_ADJUST_VOLUME:
-            {
-                if (DEBUG) Log.d(TAG, "MSG_ADJUST_VOLUME: direction=" + msg.arg1);
-                for (int i = 0; i < maxAvrcpConnections; i++) {
-                    if (deviceFeatures[i].mCurrentDevice != null &&
-                            deviceFeatures[i].isActiveDevice && deviceFeatures[i].isAbsoluteVolumeSupportingDevice) {
-                          deviceIndex = i;
-                          if ((deviceFeatures[deviceIndex].mVolCmdAdjustInProgress) ||
-                                (deviceFeatures[deviceIndex].mVolCmdSetInProgress)){
-                          if (DEBUG)
-                               Log.w(TAG, "already a volume command in progress" +
-                                       "for this device.");
-                              continue;
-                          }
-                          if (deviceFeatures[deviceIndex].mInitialRemoteVolume == -1) {
-                              if (DEBUG) Log.d(TAG, "remote never tell us initial volume, black list it.");
-                              blackListCurrentDevice(deviceIndex);
-                              break;
-                          }
-                              // Wait on verification on volume from device, before changing the volume.
-                          if (deviceFeatures[deviceIndex].mRemoteVolume != -1 &&
-                                   (msg.arg1 == -1 || msg.arg1 == 1)) {
-                              int setVol = -1;
-                              int targetVolIndex = -1;
-                              if (deviceFeatures[deviceIndex].mLocalVolume == 0 && msg.arg1 == -1) {
-                                 if (DEBUG) Log.w(TAG, "No need to Vol down from 0.");
-                              break;
-                              }
-                              if (deviceFeatures[deviceIndex].mLocalVolume ==
-                                      mAudioStreamMax && msg.arg1 == 1) {
-                                  if (DEBUG) Log.w(TAG, "No need to Vol up from max.");
-                                  break;
-                              }
-
-                              targetVolIndex = deviceFeatures[deviceIndex].mLocalVolume + msg.arg1;
-                              if (DEBUG) Log.d(TAG, "Adjusting volume to  " + targetVolIndex);
-
-                              Integer j;
-                              synchronized (deviceFeatures[deviceIndex].mVolumeMapping) {
-                                  j = deviceFeatures[deviceIndex].mVolumeMapping.get(targetVolIndex);
-                           }
-                           if (j != null) {
-                                /* if we already know this volume mapping, use it */
-                               setVol = j.byteValue();
-                               if (setVol == deviceFeatures[deviceIndex].mRemoteVolume) {
-                                    if (DEBUG) Log.d(TAG, "got same volume from mapping for " +
-                                         targetVolIndex + ", ignore.");
-                                    setVol = -1;
-                               }
-                               if (DEBUG) Log.d(TAG, "set volume from mapping " + targetVolIndex + "-" + setVol);
-                           }
-                           if (setVol == -1) {
-                               /* otherwise use phone steps */
-                               setVol = Math.min(AVRCP_MAX_VOL,
-                                        convertToAvrcpVolume(Math.max(0, targetVolIndex)));
-                               if (DEBUG) Log.d(TAG, "set volume from local volume "+ targetVolIndex+"-"+ setVol);
-                           }
-                           Log.v(TAG, "set volume for: " + deviceFeatures[deviceIndex].mCurrentDevice +
-                                      " Max vol for the stream:" + mAudioStreamMax);
-                           boolean isSetVol = setVolumeNative(setVol ,
-                                   getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
-                           if (isSetVol) {
-                                sendMessageDelayed(obtainMessage(MSG_ABS_VOL_TIMEOUT,
-                                    0, 0, deviceFeatures[deviceIndex].mCurrentDevice), CMD_TIMEOUT_DELAY);
-                                deviceFeatures[deviceIndex].mVolCmdAdjustInProgress = true;
-                                deviceFeatures[deviceIndex].mLastDirection = msg.arg1;
-                                deviceFeatures[deviceIndex].mLastRemoteVolume = setVol;
-                                deviceFeatures[deviceIndex].mLastLocalVolume = targetVolIndex;
-                           } else {
-                                if (DEBUG) Log.d(TAG, "adjustVolumeNative failed");
-                           }
-                        } else {
-                             Log.e(TAG, "Unknown direction in MSG_ADJUST_VOLUME");
-                        }
-                    }
-                }
-                break;
-            }
 
             case MSG_SET_ABSOLUTE_VOLUME:
             {
@@ -4254,7 +4160,6 @@ public final class Avrcp_ext {
             ProfileService.println(sb, "mVolCmdSetInProgress: " + deviceFeatures[i].mVolCmdSetInProgress);
             ProfileService.println(sb, "mVolCmdAdjustInProgress: " + deviceFeatures[i].mVolCmdAdjustInProgress);
             ProfileService.println(sb, "mAbsVolRetryTimes: " + deviceFeatures[i].mAbsVolRetryTimes);
-            ProfileService.println(sb, "mVolumeMapping: " + deviceFeatures[i].mVolumeMapping.toString());
 
         }
         synchronized (this) {
