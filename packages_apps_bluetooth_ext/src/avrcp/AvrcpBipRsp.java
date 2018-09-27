@@ -29,28 +29,22 @@
 
 package com.android.bluetooth.avrcp;
 
-import javax.obex.ServerSession;
-
-import java.io.IOException;
-import android.os.Message;
-
-import com.android.bluetooth.BluetoothObexTransport;
 import com.android.bluetooth.IObexConnectionHandler;
 import com.android.bluetooth.ObexServerSockets;
 
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.BroadcastReceiver;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
-import android.bluetooth.BluetoothUuid;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Message;
 import android.os.Handler;
-import android.os.RemoteException;
+import android.os.HandlerThread;
 import android.util.Log;
+
+import java.util.HashMap;
 
 public class AvrcpBipRsp implements IObexConnectionHandler {
     private final String TAG = "AvrcpBipRsp";
@@ -59,85 +53,61 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
 
     private static final boolean D = true;
 
-    public static boolean V = Log.isLoggable(LOG_TAG, Log.VERBOSE);
-
-    private volatile boolean mShutdown = false; // Used to interrupt socket accept thread
+    static boolean V = Log.isLoggable(LOG_TAG, Log.VERBOSE);
 
     private boolean mIsRegistered = false;
 
     // The handle to the socket registration with SDP
     private ObexServerSockets mServerSocket = null;
 
-    private ServerSession mServerSession = null;
-
-    // The actual incoming connection handle
-    private BluetoothSocket mConnSocket = null;
-
-    // The remote connected device
-    private BluetoothDevice mRemoteDevice = null;
-
     private BluetoothAdapter mAdapter;
 
     private Context mContext;
 
-    private static final int MSG_INTERNAL_START_LISTENER = 1;
+    private final int START_LISTENER = 1;
 
-    public static final int MSG_OBEX_CONNECTED = 2;
+    private final int STOP_LISTENER = 2;
 
-    public static final int MSG_OBEX_DISCONNECTED = 3;
+    private final int BIP_L2CAP_PSM = 0x1021;
 
-    public static final int MSG_OBEX_SESSION_CLOSED = 4;
+    private final HashMap<BluetoothDevice, AvrcpTgBipStateMachine> mBipStateMachineMap
+            = new HashMap<>();
 
-    private static final int AVRCP_BIP_L2CAP_PSM = 0x1021;
+    private int mMaxBipDevices;
 
-    private AvrcpBipRspObexServer mAvrcpBipRspServer;
+    protected static final int MSG_STATE_MACHINE_DONE = 5;
 
-    private static boolean mObexConnected;
+    private HandlerThread mHandlerThread;
 
-    private boolean mAcceptNewConnections;
+    private final int BD_ADDR_LEN = 6; // bytes
 
-    public AvrcpBipRsp (Context context) {
+    public AvrcpBipRsp (Context context, int maxBipConnections) {
         mContext = context;
+        mMaxBipDevices = getMaxDevices();
         mAdapter = BluetoothAdapter.getDefaultAdapter();
+        mHandlerThread = new HandlerThread("BipHandlerThread");
+        mHandlerThread.start();
+        mBipStateMachineMap.clear();
+        if (D) Log.d(TAG, "mMaxBipDevices :" + mMaxBipDevices);
     }
 
     private final BroadcastReceiver mAvrcpBipRspReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (D) Log.d(TAG, "onReceive");
             String action = intent.getAction();
-            if (D) Log.d(TAG, "onReceive: " + action);
-
+            if (D) Log.d(TAG, "action: " + action);
             if (action == null)
                 return;
             if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
                 int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,
                                                BluetoothAdapter.ERROR);
+                if (D) Log.d(TAG, "state:" + state);
                 if (state == BluetoothAdapter.STATE_TURNING_OFF) {
-                    if (D) Log.d(TAG, "STATE_TURNING_OFF");
-                    mShutdown = true;
                     stop();
                 } else if (state == BluetoothAdapter.STATE_ON) {
-                    if (D) Log.d(TAG, "STATE_ON");
-                    mShutdown = false;
                     // start ServerSocket listener threads
                     mSessionStatusHandler.sendMessage(mSessionStatusHandler
-                            .obtainMessage(MSG_INTERNAL_START_LISTENER));
-                }
-
-            } else if (action.equals(BluetoothDevice.ACTION_ACL_DISCONNECTED)) {
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-
-                if (device == null || mRemoteDevice == null)
-                    return;
-
-                if (V) Log.v(TAG,"ACL disconnected for " + device);
-                if (V) Log.v(TAG,"mRemoteDevice = " + mRemoteDevice);
-                if (device.getAddress().equals(mRemoteDevice.getAddress())) {
-                   /* Let the l2cap start listener handle this case as well */
-                   if (V) Log.v(TAG,"calling start l2cap listener ");
-                   mSessionStatusHandler.sendMessage(mSessionStatusHandler
-                           .obtainMessage(MSG_INTERNAL_START_LISTENER));
+                            .obtainMessage(START_LISTENER));
                 }
             }
         }
@@ -146,28 +116,27 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
     private final Handler mSessionStatusHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-            Log.v(TAG, "Handler(): got msg=" + msg.what);
-
+            if (D) Log.d(TAG, "Handler(): got msg=" + msg.what);
             switch (msg.what) {
-                case MSG_INTERNAL_START_LISTENER:
-                    /* fall throught */
-                case MSG_OBEX_SESSION_CLOSED:
+                case START_LISTENER:
                     if (mAdapter != null && mAdapter.isEnabled()) {
                         startL2capListener();
                     } else {
-                        Log.w(TAG, "Received msg = " + msg.what + " when adapter is" +
-                            " disabled, ignoring..");
+                        Log.w(TAG, "Adapter is disabled, ignoring..");
                     }
                     break;
-                case MSG_OBEX_DISCONNECTED:
-                    synchronized (this) {
-                        mObexConnected = false;
-                    }
+                case STOP_LISTENER:
+                    closeServerSocket();
                     break;
-                case MSG_OBEX_CONNECTED:
-                    synchronized (this) {
-                        mObexConnected = true;
+                case MSG_STATE_MACHINE_DONE:
+                    AvrcpTgBipStateMachine sm = (AvrcpTgBipStateMachine) msg.obj;
+                    BluetoothDevice remoteDevice = sm.getRemoteDevice();
+                     if (D) Log.d(TAG ,"sm: " + sm + " remoteDevice: " + remoteDevice);
+                    sm.quitNow();
+                    synchronized (mBipStateMachineMap) {
+                        mBipStateMachineMap.remove(remoteDevice);
                     }
+                    if (D) Log.d(TAG ,"MSG_STATE_MACHINE_DONE");
                     break;
             }
         }
@@ -175,106 +144,58 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
 
     private synchronized void startL2capListener() {
         if (D) Log.d(TAG, "startL2capListener");
-
-        if (mServerSession != null) {
-            if (D) Log.d(TAG, "mServerSession exists - shutting it down...");
-            mServerSession.close();
-            mServerSession = null;
-        }
-
-        closeConnectionSocket();
-
+        closeServerSocket();
         if(mServerSocket == null) {
             /* AVRCP 1.6 does not support obex over rfcomm */
             mServerSocket = ObexServerSockets.createWithFixedChannels(this, -1,
-                              AVRCP_BIP_L2CAP_PSM);
+                              BIP_L2CAP_PSM);
             if(mServerSocket == null) {
                 Log.e(TAG, "Failed to start the listener");
                 return;
             }
         }
-
-    }
-
-    void acceptNewConnections() {
-        mAcceptNewConnections = true;
     }
 
     private final synchronized void closeServerSocket() {
-        if(V) Log.d(TAG, "closeServerSocket");
+        if(D) Log.d(TAG, "closeServerSocket");
+        // Step 1, 2: clean up active server session and connection socket
+        synchronized (mBipStateMachineMap) {
+            for (AvrcpTgBipStateMachine stateMachine : mBipStateMachineMap.values()) {
+                stateMachine.sendMessage(AvrcpTgBipStateMachine.DISCONNECT);
+            }
+        }
+        // Step 3: clean up existing server sockets
         if (mServerSocket != null) {
             mServerSocket.shutdown(false);
             mServerSocket = null;
         }
     }
 
-    private final synchronized void closeConnectionSocket() {
-        if(V) Log.d(TAG, "closeConnectionSock");
-        if (mConnSocket != null) {
-            try {
-                mConnSocket.close();
-            } catch (IOException e) {
-                Log.e(TAG, "Close Connection Socket error: ", e);
-            } finally {
-                mConnSocket = null;
-                mRemoteDevice = null;
-            }
-        }
-        acceptNewConnections();
-    }
-
-    private final synchronized void startObexServerSession() throws IOException {
-        if (V) Log.v(TAG, "startObexServerSession");
-
-        mAvrcpBipRspServer = new AvrcpBipRspObexServer(mContext, mSessionStatusHandler);
-        if (V) Log.v(TAG, "startObexServerSession: mAvrcpBipRspServer = " + mAvrcpBipRspServer);
-        BluetoothObexTransport transport = new BluetoothObexTransport(mConnSocket);
-        mServerSession = new ServerSession(transport, mAvrcpBipRspServer, null);
-
-        if (V) Log.v(TAG, "startObexServerSession() success!");
-    }
-
-    public void start() {
+   void start() {
         IntentFilter filter = new IntentFilter();
-        if(!V)
-            V = Log.isLoggable(LOG_TAG, Log.VERBOSE);
-        if (V) Log.v(TAG, "Verbose logging enabled");
         filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
-        filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
         if (!mIsRegistered) {
             try {
                 mContext.registerReceiver(mAvrcpBipRspReceiver, filter);
                 mIsRegistered = true;
             } catch (Exception e) {
-                Log.w(TAG,"Unable to register avrcpbip receiver",e);
+                Log.e(TAG,"Unable to register avrcpbip receiver",e);
             }
         } else {
             Log.w(TAG, "receiver already registered!!");
         }
     }
 
-    public synchronized boolean stop() {
+    synchronized boolean stop() {
         if (D) Log.d(TAG, "stop()");
         if (mIsRegistered) {
-            try {
-                mIsRegistered = false;
-                mContext.unregisterReceiver(mAvrcpBipRspReceiver);
-            } catch (Exception e) {
-                Log.w(TAG,"Unable to unregister avrcpbip receiver", e);
-            }
+            unRegisterReceiver();
         } else {
             if (D) Log.d(TAG, "already stopped, returning");
             return true;
         }
-        mShutdown = true;
-        if (mServerSession != null) {
-            if (D) Log.d(TAG, "mServerSession exists - shutting it down...");
-            mServerSession.close();
-            mServerSession = null;
-        }
-        closeConnectionSocket();
-        closeServerSocket();
-
+        mSessionStatusHandler.sendMessage(mSessionStatusHandler
+                .obtainMessage(STOP_LISTENER));
         if (D) Log.d(TAG, "returning from stop()");
         return true;
     }
@@ -282,32 +203,23 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
     @Override
     public synchronized boolean onConnect(BluetoothDevice device, BluetoothSocket socket) {
         /* Signal to the service that we have received an incoming connection. */
-        if (device == null) {
-            Log.e(TAG, "onConnect received from null device");
+        if (device == null || socket == null) {
+            Log.e(TAG, "onConnect unexpected error, device: " + device + " socket: " + socket);
             return false;
         }
-
-        if(V) Log.d(TAG, "onConnect received from " + device.getAddress());
-
-        if (mRemoteDevice != null) {
-            Log.e(TAG, "onConnect received when already connected to "
-                   + mRemoteDevice.getAddress());
+        int smCount = 0;
+        synchronized (mBipStateMachineMap) {
+            smCount = mBipStateMachineMap.size();
+        }
+        if (D) Log.d(TAG, "onConnect device :" + device + " smCount:" + smCount);
+        if (smCount >= mMaxBipDevices) {
+            Log.w(TAG, "Cannot connect to " + device + " reached to max size :" + smCount);
             return false;
         }
-        if (!mAcceptNewConnections) {
-            Log.d(TAG, " onConnect BluetoothSocket :" + socket + " rejected");
-            return false;
-        }
-        mAcceptNewConnections = false;
-        mRemoteDevice = device;
-        mConnSocket = socket;
-
-        if (mConnSocket != null) {
-            try {
-                startObexServerSession();
-            } catch (IOException e) {
-                Log.e(TAG, "onConnect: IOException" + e);
-            }
+        AvrcpTgBipStateMachine sm = AvrcpTgBipStateMachine.make(mContext,
+                mHandlerThread.getLooper(), device, socket,  mSessionStatusHandler);
+        synchronized (mBipStateMachineMap) {
+            mBipStateMachineMap.put(device, sm);
         }
         return true;
     }
@@ -319,44 +231,113 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
      */
     @Override
     public synchronized void onAcceptFailed() {
-        mServerSocket = null;
-        if (mShutdown) {
-            Log.e(TAG,"Failed to accept incoming connection - " + "shutdown");
-        } else if (mAdapter != null && mAdapter.isEnabled()) {
-            Log.e(TAG,"Failed to accept incoming connection - " + "restarting");
-            startL2capListener();
+        Log.w(TAG, "onAcceptFailed, restarting the server socket");
+        if (mSessionStatusHandler != null) {
+            mSessionStatusHandler.removeCallbacksAndMessages(null);
+        }
+        mSessionStatusHandler.sendMessage(mSessionStatusHandler.obtainMessage
+                (START_LISTENER));
+    }
+
+    BluetoothDevice getBluetoothDevice(byte[] address) {
+        BluetoothDevice device = null;
+        try {
+            if (address != null && address.length == BD_ADDR_LEN) {
+                device = mAdapter.getRemoteDevice(address);
+            } else {
+                Log.w(TAG, " getBluetoothDevice invalid address ");
+            }
+        } catch (RuntimeException e) {
+            Log.w(TAG, " getBluetoothDevice " + e.toString());
+        }
+        return device;
+    }
+
+    synchronized String getImgHandleFromTitle(byte[] address, String title) {
+        if(D) Log.d(TAG," getImgHandleFromTitle address :" + address + " title :" + title);
+        if (address == null || address.length != BD_ADDR_LEN) {
+            Log.w(TAG," retrun invalid getImgHandleFromTitle");
+            return "";
+        }
+        BluetoothDevice device = getBluetoothDevice(address);
+        AvrcpTgBipStateMachine bipSm = mBipStateMachineMap.get(device);
+        if(bipSm != null) {
+            AvrcpBipRspObexServer bipServer = bipSm.getBipRsp();
+            if(bipServer != null) {
+                return bipServer.getImgHandleFromTitle(title);
+            } else {
+                Log.w(TAG,"getImgHandleFromTitle bipServer null");
+            }
+        } else {
+            Log.w(TAG,"getImgHandleFromTitle bipSm null");
+        }
+        return "";
+    }
+
+    synchronized String getImgHandle(BluetoothDevice device, String albumName) {
+        if (D) Log.v(TAG," getImgHandle device :" + device + " albumName :" + albumName);
+        if (device == null || albumName == null) {
+            Log.w(TAG," retrun invalid getImgHandle ");
+            return "";
+        }
+        AvrcpTgBipStateMachine bipSm = mBipStateMachineMap.get(device);
+        if(bipSm != null) {
+            AvrcpBipRspObexServer bipServer = bipSm.getBipRsp();
+            if(bipServer != null) {
+                return bipServer.getImgHandle(albumName);
+            } else {
+                Log.v(TAG,"getImgHandle bipServer null");
+            }
+        } else {
+            Log.v(TAG,"getImgHandle bipSm null");
+        }
+        return "";
+    }
+
+    void disconnect(BluetoothDevice device) {
+        AvrcpTgBipStateMachine bipSm = mBipStateMachineMap.get(device);
+        if (D) Log.d(TAG, "disconnect device :" + device + " bipSm :" + bipSm);
+        if( bipSm != null) {
+            bipSm.sendMessage(AvrcpTgBipStateMachine.DISCONNECT);
         }
     }
 
-    public synchronized String getImgHandle(String albumName) {
-
-        // If obex is not connected, return null
-        if (!mObexConnected)
-            return null;
-
-        if (mAvrcpBipRspServer == null)
-            return null;
-
-        return mAvrcpBipRspServer.getImgHandle(albumName);
-    }
-
-    public synchronized String getAlbumName(String songName) {
-
-        // If obex is not connected, return null
-        if (!mObexConnected)
-            return null;
-
-        if (mAvrcpBipRspServer == null)
-            return null;
-
-        return mAvrcpBipRspServer.getAlbumName(songName);
-    }
-
-    protected void reStartListener(BluetoothDevice device) {
-        if (D) Log.d(TAG, "reStartListener ");
-        if (mRemoteDevice != null && mRemoteDevice.equals(device)) {
-            mSessionStatusHandler.sendMessage(
-                    mSessionStatusHandler.obtainMessage(MSG_INTERNAL_START_LISTENER));
+    private void unRegisterReceiver() {
+        try {
+            mIsRegistered = false;
+            mContext.unregisterReceiver(mAvrcpBipRspReceiver);
+        } catch (Exception e) {
+            Log.w(TAG," unRegisterReceiver ", e);
         }
     }
+
+    private int getMaxDevices() {
+        int max_supported_bip_connections = 5;
+        int maxBipConnection = 1;
+        try {
+            boolean isAllowMultiBip = android.os.SystemProperties.
+                    getBoolean("persist.vendor.bt.a2dp.multi_bip", false);
+            maxBipConnection = (isAllowMultiBip) ? max_supported_bip_connections : maxBipConnection;
+        } catch (SecurityException e) {
+            Log.e(TAG, " getMaxDevices " + e.toString());
+        }
+        return maxBipConnection;
+    }
+
+    // Todo : Added to avaoid compilation issue
+    public AvrcpBipRsp (Context context) {
+        mContext = context;
+        mMaxBipDevices = getMaxDevices();
+        mAdapter = BluetoothAdapter.getDefaultAdapter();
+        mHandlerThread = new HandlerThread("BipHandlerThread");
+        mHandlerThread.start();
+        mBipStateMachineMap.clear();
+        if (D) Log.d(TAG, "mMaxBipDevices, ignore :" + mMaxBipDevices);
+    }
+
+    public String getImgHandle(String imgHandle){
+        if (D) Log.d(TAG, "getImgHandle ignore ");
+        return "";
+    }
+
 }

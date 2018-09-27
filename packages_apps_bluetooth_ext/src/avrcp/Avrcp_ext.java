@@ -83,7 +83,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Objects;
-import android.os.SystemProperties;
 import com.android.bluetooth.hfp.HeadsetService;
 import java.util.Arrays;
 /******************************************************************************
@@ -264,7 +263,7 @@ public final class Avrcp_ext {
     private AvrcpPlayerAppSettings mAvrcpPlayerAppSettings;
 
     /* BIP Responder */
-    static private AvrcpBipRsp mAvrcpBipRsp;
+    private static AvrcpBipRsp mAvrcpBipRsp;
 
     /* Broadcast receiver for device connections intent broadcasts */
     private final BroadcastReceiver mAvrcpReceiver = new AvrcpServiceBroadcastReceiver();
@@ -419,7 +418,7 @@ public final class Avrcp_ext {
     private Avrcp_ext(Context context, A2dpService svc, int maxConnections ) {
         if (DEBUG) Log.v(TAG, "Avrcp");
         mAdapter = BluetoothAdapter.getDefaultAdapter();
-        mMediaAttributes = new MediaAttributes(null);
+        mMediaAttributes = new MediaAttributes(null, null);
         mLastQueueId = MediaSession.QueueItem.UNKNOWN_ID;
         mLastStateUpdate = -1L;
         mSongLengthMs = 0L;
@@ -555,7 +554,7 @@ public final class Avrcp_ext {
         /* Enable Cover Art support is version is 1.6 and flag is set in config */
         if (isCoverArtSupported && avrcpVersion != null &&
             avrcpVersion.equals(AVRCP_1_6_STRING))
-            mAvrcpBipRsp = new AvrcpBipRsp(mContext);
+            mAvrcpBipRsp = new AvrcpBipRsp(mContext, maxAvrcpConnections);
         if (mAvrcpBipRsp != null) {
             if (DEBUG) Log.d(TAG, "Starting AVRCP BIP Responder Service");
             mAvrcpBipRsp.start();
@@ -982,6 +981,7 @@ public final class Avrcp_ext {
                 AvrcpCmd.ElementAttrCmd elem = (AvrcpCmd.ElementAttrCmd) msg.obj;
                 byte numAttr = elem.mNumAttr;
                 int[] attrIds = elem.mAttrIDs;
+                byte[] remoteAddr = elem.mAddress;
                 boolean blacklistAttr = false;
                 if (DEBUG) Log.v(TAG, "MSG_NATIVE_REQ_GET_ELEM_ATTRS:numAttr=" + numAttr);
                 textArray = new String[numAttr];
@@ -997,8 +997,12 @@ public final class Avrcp_ext {
                 }
                 StringBuilder responseDebug = new StringBuilder();
                 responseDebug.append("getElementAttr response: ");
+                BluetoothDevice device = null;
+                if (mAvrcpBipRsp != null) {
+                    device = mAvrcpBipRsp.getBluetoothDevice(remoteAddr);
+                }
                 for (int i = 0; i < numAttr; ++i) {
-                    textArray[i] = mMediaAttributes.getString(attrIds[i]);
+                    textArray[i] = mMediaAttributes.getString(device, attrIds[i]);
                     if(blacklistAttr) {
                         if(attrIds[i] == MediaAttributes.ATTR_MEDIA_NUMBER
                            && textArray[i].equals("0"))
@@ -1477,7 +1481,7 @@ public final class Avrcp_ext {
                 } else {
                     if (DEBUG) Log.d(TAG," mAvrcpBipRsp :" + mAvrcpBipRsp);
                     if (mAvrcpBipRsp != null) {
-                        mAvrcpBipRsp.reStartListener(device);
+                        mAvrcpBipRsp.disconnect(device);
                     }
                     setAvrcpDisconnectedDevice(device);
                 }
@@ -1746,12 +1750,12 @@ public final class Avrcp_ext {
         private static final int ATTR_COVER_ART = 8;
 
 
-        public MediaAttributes(MediaMetadata data) {
+        public MediaAttributes(BluetoothDevice device, MediaMetadata data) {
             synchronized (this) {
                 exists = data != null;
-                if (!exists)
+                if (!exists) {
                     return;
-
+                }
                 String CurrentPackageName = (mMediaController != null) ? mMediaController.getPackageName():null;
                 artistName = stringOrBlank(data.getString(MediaMetadata.METADATA_KEY_ARTIST));
                 albumName = stringOrBlank(data.getString(MediaMetadata.METADATA_KEY_ALBUM));
@@ -1764,8 +1768,9 @@ public final class Avrcp_ext {
                 mediaTotalNumber = longStringOrBlank(data.getLong(MediaMetadata.METADATA_KEY_NUM_TRACKS));
                 genre = stringOrBlank(data.getString(MediaMetadata.METADATA_KEY_GENRE));
                 playingTimeMs = data.getLong(MediaMetadata.METADATA_KEY_DURATION);
-                if (mAvrcpBipRsp != null)
-                    coverArt = stringOrBlank(mAvrcpBipRsp.getImgHandle(albumName));
+                if (DEBUG) Log.d(TAG," albumName :" + albumName + " device :" + device);
+                if (mAvrcpBipRsp != null && device != null)
+                    coverArt = stringOrBlank(mAvrcpBipRsp.getImgHandle(device, albumName));
                 else coverArt = stringOrBlank(null);
 
                 // Try harder for the title.
@@ -1813,7 +1818,7 @@ public final class Avrcp_ext {
                     && (playingTimeMs == other.playingTimeMs);
         }
 
-        public synchronized String getString(int attrId) {
+        public synchronized String getString(BluetoothDevice device, int attrId) {
             if (!exists)
                 return new String();
 
@@ -1833,10 +1838,10 @@ public final class Avrcp_ext {
                 case ATTR_PLAYING_TIME_MS:
                     return Long.toString(playingTimeMs);
                 case ATTR_COVER_ART:
-                    if (mAvrcpBipRsp != null) {
+                    if (mAvrcpBipRsp != null && device != null) {
                         /* Fetch coverArt Handle now in case OBEX channel is established just
                         * before retrieving get element attribute. */
-                        coverArt = stringOrBlank(mAvrcpBipRsp.getImgHandle(albumName));
+                        coverArt = stringOrBlank(mAvrcpBipRsp.getImgHandle(device, albumName));
                     } else {
                         coverArt = stringOrBlank(null);
                     }
@@ -1918,9 +1923,9 @@ public final class Avrcp_ext {
                 }
                 newState = builder.build();
                 if (mMediaController == null)
-                    currentAttributes = new MediaAttributes(null);
+                    currentAttributes = new MediaAttributes(device, null);
                 else
-                    currentAttributes = new MediaAttributes(mMediaController.getMetadata());
+                    currentAttributes = new MediaAttributes(device, mMediaController.getMetadata());
                 for (int i = 0; i < maxAvrcpConnections; i++) {
                     if (device != null && deviceFeatures[i].mCurrentDevice != null) {
                         if ((isPlaying != isPlayingState(deviceFeatures[i].mCurrentPlayState)) &&
@@ -1947,7 +1952,7 @@ public final class Avrcp_ext {
                     }
                 }
                 Log.v(TAG,"updateCurrentMediaState: get media attributes: ");
-                currentAttributes = new MediaAttributes(mMediaController.getMetadata());
+                currentAttributes = new MediaAttributes(device, mMediaController.getMetadata());
             }
         }
 
@@ -5334,14 +5339,14 @@ public final class Avrcp_ext {
             byte[] address);
 
     public static String getImgHandleFromTitle(String title) {
-        if (DEBUG) Log.d(TAG, " getImgHandleFromTitle title:" + title);
-        if (mAvrcpBipRsp != null && title != null)
-            return mAvrcpBipRsp.getImgHandle(mAvrcpBipRsp.getAlbumName(title));
+        if (DEBUG) Log.d(TAG, " getImgHandleFromTitle title:" + title + " return empty ");
         return "";
     }
 
     public static String getImgHandleFromTitle(byte[] bdaddr, String title) {
         if (DEBUG) Log.d(TAG, " getImgHandleFromTitle bdaddr:" + bdaddr + " title:" + title);
-        return getImgHandleFromTitle(title);
+        if (mAvrcpBipRsp != null && title != null)
+            return mAvrcpBipRsp.getImgHandleFromTitle(bdaddr, title);
+        return "";
     }
 }
