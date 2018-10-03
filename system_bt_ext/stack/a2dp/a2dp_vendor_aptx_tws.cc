@@ -59,6 +59,7 @@
 #include "bt_target.h"
 
 #include "a2dp_vendor_aptx_tws.h"
+#include <hardware/bt_av.h>
 
 #include <string.h>
 
