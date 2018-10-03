@@ -281,10 +281,8 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
             case BTA_AG_SCO_CONN_OPEN_E:
                 /*SCO is up!*/
                 p_sco->state = BTA_AG_SCO_OPEN_ST;
-                if (bta_ag_sco_is_active_device(p_scb->peer_addr)) {
-                    APPL_TRACE_WARNING("Calling SCO open");
-                    dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_OPEN_E);
-                }
+                APPL_TRACE_WARNING("Calling SCO open");
+                dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_OPEN_E);
             break;
             default:
                 APPL_TRACE_WARNING("%s: BTA_AG_SCO_OPENING_ST: Ignoring event %d",
