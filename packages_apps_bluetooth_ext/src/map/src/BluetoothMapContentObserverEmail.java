@@ -378,10 +378,6 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
         if (V) Log.d(TAG, "unregisterObserver");
         mResolver.unregisterContentObserver(mObserver);
         mObserverRegistered = false;
-        if(mProviderClient != null){
-            mProviderClient.release();
-            mProviderClient = null;
-        }
     }
 
     private void sendEvent(Event evt) {
@@ -980,5 +976,9 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
         unregisterObserver();
         //failPendingMessages();
         //removeDeletedMessages();
+        if(mProviderClient != null) {
+            mProviderClient.release();
+            mProviderClient = null;
+        }
     }
 }
