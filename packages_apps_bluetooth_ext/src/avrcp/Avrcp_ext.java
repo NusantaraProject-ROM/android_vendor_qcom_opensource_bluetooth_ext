@@ -860,10 +860,6 @@ public final class Avrcp_ext {
                     Log.v(TAG,"update audio manager for abs vol state = "
                             + isAbsoluteVolumeSupported(deviceIndex));
                 }
-                deviceFeatures[deviceIndex].mLastLocalVolume = -1;
-                deviceFeatures[deviceIndex].mRemoteVolume = -1;
-                deviceFeatures[deviceIndex].mLocalVolume = -1;
-                deviceFeatures[deviceIndex].mInitialRemoteVolume = -1;
                 deviceFeatures[deviceIndex].mLastPassthroughcmd = KeyEvent.KEYCODE_UNKNOWN;
 
                 if ((deviceFeatures[deviceIndex].mFeatures &
@@ -2947,7 +2943,7 @@ public final class Avrcp_ext {
                     deviceFeatures[i].isActiveDevice = true;
                     updateAbsVolume = false;
                 }
-
+                deviceFeatures[i].mInitialRemoteVolume = -1;
                 BluetoothDevice mDevice = mA2dpService.getActiveDevice();
                 if (mDevice != null && mDevice.equals(deviceFeatures[i].mCurrentDevice)) {
                     setActiveDevice(mDevice);
@@ -4132,6 +4128,9 @@ public final class Avrcp_ext {
         deviceFeatures[index].keyPressState = AvrcpConstants.KEY_STATE_RELEASE; //Key release state
         deviceFeatures[index].mReportedPlayerID = NO_PLAYER_ID;
         deviceFeatures[index].isPlayStatusTimeOut = false;
+        deviceFeatures[index].mInitialRemoteVolume = -1;
+        deviceFeatures[index].mLastRemoteVolume = -1;
+        deviceFeatures[index].mLastLocalVolume = -1;
     }
 
     private synchronized void onConnectionStateChanged(
