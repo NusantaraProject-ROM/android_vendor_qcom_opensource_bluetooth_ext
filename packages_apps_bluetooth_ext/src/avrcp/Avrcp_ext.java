@@ -1704,6 +1704,15 @@ public final class Avrcp_ext {
                                 isPlayStateToBeUpdated(deviceIndex) && !isInCall) {
                 updatePlayStatusForDevice(deviceIndex, state);
                 deviceFeatures[deviceIndex].mLastStateUpdate = mLastStateUpdate;
+            } else if ((state.getState() == PlaybackState.STATE_PLAYING) &&
+                        deviceFeatures[deviceIndex].mLastRspPlayStatus == PLAYSTATUS_PLAYING &&
+                        !isPlayStateToBeUpdated(deviceIndex)) {
+                PlaybackState.Builder playState = new PlaybackState.Builder();
+                playState.setState(PlaybackState.STATE_PAUSED,
+                                          PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
+                Log.i(TAG,"Updating playstatus PAUSE to inactive devices");
+                updatePlayStatusForDevice(deviceIndex, playState.build());
+                deviceFeatures[deviceIndex].mLastStateUpdate = mLastStateUpdate;
             }
         }
         if ((state.getState() == PlaybackState.STATE_PLAYING) &&
@@ -1738,6 +1747,17 @@ public final class Avrcp_ext {
                             + " new state: " + state + " device: " +
                             device + " index: " + deviceIndex);
                 updatePlayStatusForDevice(deviceIndex, state);
+                for (int i = 0; i < maxAvrcpConnections; i++) {
+                     if (i != deviceIndex && !deviceFeatures[i].isActiveDevice &&
+                          deviceFeatures[i].mLastRspPlayStatus == PLAYSTATUS_PLAYING &&
+                          (state.getState() == PlaybackState.STATE_PLAYING)) {
+                         PlaybackState.Builder playState = new PlaybackState.Builder();
+                         playState.setState(PlaybackState.STATE_PAUSED,
+                                          PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
+                         Log.i(TAG,"Updating PAUSE to inactive devices");
+                         updatePlayStatusForDevice(i, playState.build());
+                     }
+                }
             }
         }
         Log.v(TAG,"Exit updatePlaybackState");
