@@ -39,5 +39,7 @@ bool is_twsp_device_connected();
 
 int get_idx_primary_eb(RawAddress* bd_addr);
 
+int btif_hf_get_other_connected_twsp_index(int idx);
+
 }  // namespace headset
 }  // namespace bluetooth

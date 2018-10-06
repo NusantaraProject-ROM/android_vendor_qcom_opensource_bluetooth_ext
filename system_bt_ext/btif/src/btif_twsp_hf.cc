@@ -97,6 +97,33 @@ int get_idx_primary_eb(RawAddress* bd_addr) {
   return idx;
 }
 
+/*******************************************************************************
+**
+** Function         btif_hf_get_other_connected_twsp_index
+**
+** Description      Returns for other connected TWSP index
+**
+** Returns          Other connected index
+**
+*******************************************************************************/
+
+int btif_hf_get_other_connected_twsp_index(int current_index)
+{
+    int i;
+    for (i = 0; i < btif_max_hf_clients; i++)
+    {
+        if (i != current_index)
+        {
+            if (btif_is_tws_plus_device(&btif_hf_cb[i].connected_bda) &&
+                 ((btif_hf_cb[i].state == BTHF_CONNECTION_STATE_CONNECTED) ||
+                 (btif_hf_cb[i].state == BTHF_CONNECTION_STATE_SLC_CONNECTED)))
+                return i;
+        }
+    }
+    return btif_max_hf_clients;
+}
+
+
 }  // namespace headset
 }  // namespace bluetooth
 

@@ -115,8 +115,8 @@ bool twsp_sco_not_active(tBTA_AG_SCB* p_scb) {
             bta_ag_cb.sco.state == BTA_AG_SCO_SHUTDOWN_ST)
             ret = true;
     } else if(p_scb == bta_ag_cb.sec_sm_scb) {
-        if (bta_ag_cb.twsp_sco.state == BTA_AG_SCO_LISTEN_ST ||
-            bta_ag_cb.twsp_sco.state == BTA_AG_SCO_SHUTDOWN_ST)
+        if (bta_ag_cb.twsp_sec_sco.state == BTA_AG_SCO_LISTEN_ST ||
+            bta_ag_cb.twsp_sec_sco.state == BTA_AG_SCO_SHUTDOWN_ST)
             ret = true;
     } else {
         APPL_TRACE_ERROR("%s: Invalid scb : %x", __func__, p_scb);
@@ -131,7 +131,7 @@ bool twsp_sco_active(tBTA_AG_SCB* p_scb) {
         if (bta_ag_cb.sco.state == BTA_AG_SCO_OPEN_ST)
             ret = true;
     } else if(p_scb == bta_ag_cb.sec_sm_scb) {
-        if (bta_ag_cb.twsp_sco.state == BTA_AG_SCO_OPEN_ST)
+        if (bta_ag_cb.twsp_sec_sco.state == BTA_AG_SCO_OPEN_ST)
             ret = true;
     } else {
         APPL_TRACE_ERROR("%s: Invalid scb : %x", __func__, p_scb);
@@ -188,7 +188,7 @@ void bta_ag_twsp_hfp_result(tBTA_AG_SCB* p_scb, tBTA_AG_API_RESULT* p_result) {
 
 void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
    //PONTING TO SECONDARY sco cb
-   tBTA_AG_SCO_CB* p_sco = &bta_ag_cb.twsp_sco;
+   tBTA_AG_SCO_CB* p_sco = &bta_ag_cb.twsp_sec_sco;
 #if (BTA_AG_SCO_DEBUG == TRUE)
    uint8_t in_state = p_sco->state;
 #endif
@@ -286,8 +286,10 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
             case BTA_AG_SCO_CONN_OPEN_E:
                 /*SCO is up!*/
                 p_sco->state = BTA_AG_SCO_OPEN_ST;
-                APPL_TRACE_WARNING("Calling SCO open");
-                dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_OPEN_E);
+                if (bta_ag_sco_is_active_device(p_scb->peer_addr)) {
+                    APPL_TRACE_WARNING("Calling SCO open");
+                    dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_OPEN_E);
+                }
             break;
             case BTA_AG_SCO_CONN_CLOSE_E:
                 /* sco failed; create sco listen connection */
@@ -471,8 +473,8 @@ void print_bdaddr(const RawAddress& addr) {
 
 bool is_twsp_connected() {
     bool ret = false;
-    APPL_TRACE_DEBUG("%s: max indicies %d\n", __func__, BTIF_HF_NUM_CB);
-    for (int i=0; i <BTIF_HF_NUM_CB; i++) {
+    APPL_TRACE_DEBUG("%s: max indicies %d\n", __func__, BTA_AG_MAX_NUM_CLIENTS);
+    for (int i=0; i <BTA_AG_MAX_NUM_CLIENTS; i++) {
         APPL_TRACE_DEBUG("%s: %s", __func__,
             bta_ag_cb.scb[i].peer_addr.ToString().c_str());
         if (BTM_SecIsTwsPlusDev(bta_ag_cb.scb[i].peer_addr)) {
@@ -495,7 +497,7 @@ bool is_twsp_device(const RawAddress& addr) {
 
 bool is_twsp_set(const RawAddress& addr1, const RawAddress& addr2) {
    bool ret = false;
-   APPL_TRACE_ERROR("%s:>", __func__);
+   APPL_TRACE_DEBUG("%s:>", __func__);
    RawAddress p_addr;
    ret = BTM_SecGetTwsPlusPeerDev(addr1, p_addr);
    if (ret) {
@@ -508,6 +510,46 @@ bool is_twsp_set(const RawAddress& addr1, const RawAddress& addr2) {
       APPL_TRACE_ERROR("%s: Error getting peer bd addr: %d", __func__, ret);
    }
    return ret;
+}
+
+bool is_sco_connected_to_twsp() {
+   bool ret = false;
+   if (bta_ag_cb.sco.state == BTA_AG_SCO_OPEN_ST
+         && bta_ag_cb.main_sm_scb != NULL
+         && is_twsp_device(bta_ag_cb.main_sm_scb->peer_addr)) {
+            //if main SM sco is connected
+            //for twsp device
+            ret = true;
+   } else if (bta_ag_cb.twsp_sec_sco.state == BTA_AG_SCO_OPEN_ST
+         && bta_ag_cb.sec_sm_scb != NULL
+         && is_twsp_device(bta_ag_cb.sec_sm_scb->peer_addr )) {
+            ret = true;
+   }
+   APPL_TRACE_DEBUG("%s: returns : %d", __func__, ret);
+   return ret;
+}
+
+bool is_this_twsp_case(const RawAddress& addr) {
+    bool ret = false;
+    if (is_twsp_device(addr)
+          || is_sco_connected_to_twsp()) {
+        ret = true;
+    }
+    APPL_TRACE_DEBUG("%s: returns : %d", __func__, ret);
+    return ret;
+}
+
+tBTA_AG_SCB* get_sco_connected_scb() {
+    tBTA_AG_SCB* ret_scb = NULL;
+    if (bta_ag_cb.sco.state == BTA_AG_SCO_OPEN_ST) {
+        //if main SM sco is connected
+        //for twsp device
+        ret_scb = bta_ag_cb.main_sm_scb;
+   } else if (bta_ag_cb.twsp_sec_sco.state == BTA_AG_SCO_OPEN_ST) {
+        ret_scb = bta_ag_cb.sec_sm_scb;
+   }
+   APPL_TRACE_DEBUG("%s: returns : %x", __func__, ret_scb);
+   return ret_scb;
 }
 
 void get_left_eb_addr(RawAddress& eb_addr) {
