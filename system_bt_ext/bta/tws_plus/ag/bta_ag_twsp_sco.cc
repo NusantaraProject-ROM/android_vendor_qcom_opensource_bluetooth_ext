@@ -284,6 +284,11 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                 APPL_TRACE_WARNING("Calling SCO open");
                 dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_OPEN_E);
             break;
+            case BTA_AG_SCO_CONN_CLOSE_E:
+                /* sco failed; create sco listen connection */
+                bta_ag_create_sco(p_scb, false);
+                p_sco->state = BTA_AG_SCO_LISTEN_ST;
+             break;
             default:
                 APPL_TRACE_WARNING("%s: BTA_AG_SCO_OPENING_ST: Ignoring event %d",
                              __func__, event);
