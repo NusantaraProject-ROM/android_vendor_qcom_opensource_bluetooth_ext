@@ -88,6 +88,8 @@ typedef enum {
     BT_VENDOR_PROPERTY_TWS_PLUS_DEVICE_TYPE = 0x01,
     BT_VENDOR_PROPERTY_TWS_PLUS_PEER_ADDR,
     BT_VENDOR_PROPERTY_TWS_PLUS_AUTO_CONNECT,
+    BT_VENDOR_PROPERTY_HOST_ADD_ON_FEATURES,
+    BT_VENDOR_PROPERTY_SOC_ADD_ON_FEATURES
 } bt_vendor_property_type_t;
 
 typedef enum {
@@ -125,6 +127,12 @@ typedef void (* remote_dev_prop_callback)(bt_status_t status,
 /* Receive any HCI event from controller for raw commands */
 typedef void (* hci_event_recv_callback)(uint8_t event_code, uint8_t *buf, uint8_t len);
 
+/** Callback to notify the remote device vendor properties.
+ */
+typedef void (* adapter_vendor_prop_callback)(bt_status_t status,
+                          int num_properties,
+                          bt_vendor_property_t *properties);
+
 /** BT-Vendor callback structure. */
 typedef struct {
     /** set to sizeof(BtVendorCallbacks) */
@@ -133,6 +141,7 @@ typedef struct {
     btvendor_iot_device_broadcast_callback iot_device_broadcast_cb;
     remote_dev_prop_callback         rmt_dev_prop_cb;
     hci_event_recv_callback  hci_event_recv_cb;
+    adapter_vendor_prop_callback     adapter_vendor_prop_cb;
 } btvendor_callbacks_t;
 
 typedef int (*property_set_callout)(const char* key, const char* value);
