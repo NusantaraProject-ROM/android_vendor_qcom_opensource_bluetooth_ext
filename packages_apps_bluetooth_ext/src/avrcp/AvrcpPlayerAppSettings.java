@@ -234,14 +234,10 @@ public class AvrcpPlayerAppSettings {
                                 data, getByteAddress(device));
                     break;
                     case AvrcpConstants.SET_ATTRIBUTE_VALUES:
-                        if (device == null) {
-                            Log.e(TAG,"ERROR!!! device is null.");
-                            return;
-                        }
                         boolean send_change_rsp_only = true;
                         data = intent.getByteArrayExtra(EXTRA_ATTRIB_VALUE_PAIRS);
                         updateLocalPlayerSettings(data);
-                        if (isSetAttrValRsp) {
+                        if (isSetAttrValRsp && device != null) {
                             isSetAttrValRsp = false;
                             send_change_rsp_only = false;
                             Log.v(TAG,"Respond to SET_ATTRIBUTE_VALUES request");
@@ -262,7 +258,7 @@ public class AvrcpPlayerAppSettings {
                     case AvrcpConstants.GET_ATTRIBUTE_TEXT:
                         text = intent.getStringArrayExtra(EXTRA_ATTRIBUTE_STRING_ARRAY);
                         if (device == null) {
-                            Log.e(TAG,"ERROR!!! device is null");
+                            Log.e(TAG," ERROR!!! device is null");
                             return;
                         }
                         mAvrcpPlayerAppSettingsRspInterface.sendSettingsTextRsp(
