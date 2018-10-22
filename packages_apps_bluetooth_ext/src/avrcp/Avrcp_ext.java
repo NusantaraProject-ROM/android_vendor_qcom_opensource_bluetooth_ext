@@ -842,7 +842,7 @@ public final class Avrcp_ext {
                     Log.d(TAG,"MSG_NATIVE_REQ_GET_RC_FEATURES BA Active, update absvol support as true  ");
                     mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
                             true);
-                } else if (device.isTwsPlusDevice() && areMultipleDevicesConnected()) {
+                } else if (device.isTwsPlusDevice()) {
                     Log.v(TAG,"TWS+ device, update abs vol as true ");
                     mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
                             true);
@@ -1213,9 +1213,14 @@ public final class Avrcp_ext {
                               continue;
                           }
                           if (deviceFeatures[deviceIndex].mInitialRemoteVolume == -1) {
-                              if (DEBUG) Log.d(TAG, "remote never tell us initial volume, black list it.");
-                              blackListCurrentDevice(deviceIndex);
-                              break;
+                              if (!deviceFeatures[deviceIndex].mCurrentDevice.isTwsPlusDevice()) {
+                                  if (DEBUG) Log.d(TAG, "remote never tell us initial volume, black list it.");
+                                  blackListCurrentDevice(deviceIndex);
+                                  break;
+                              } else {
+                                  if (DEBUG) Log.d(TAG, "TWS+ device, intial volume not notified yet");
+                                  continue;
+                              }
                           }
                           Log.v(TAG, "event for device address " + getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
                           boolean isSetVol = setVolumeNative(avrcpVolume ,
