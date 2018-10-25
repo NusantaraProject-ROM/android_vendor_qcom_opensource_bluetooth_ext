@@ -277,6 +277,7 @@ public final class Avrcp_ext {
     private int mPassthroughDispatched; // Number of keys dispatched
 
     private BluetoothDevice mCurrentBrowsingDevice = null;
+    private BluetoothDevice mBrowsingActiveDevice = null;
 
     private class MediaKeyLog {
         private long mTimeSent;
@@ -461,6 +462,7 @@ public final class Avrcp_ext {
         mRewind = false;
         mRemotePassthroughCmd = false;
         mCurrentBrowsingDevice = null;
+        mBrowsingActiveDevice = null;
 
         initNative(maxAvrcpConnections);
 
@@ -646,6 +648,7 @@ public final class Avrcp_ext {
         mAddressedMediaPlayer.cleanup();
         mAvrcpBrowseManager.cleanup();
         mCurrentBrowsingDevice = null;
+        mBrowsingActiveDevice = null;
         if (mNotificationManager != null )
             mNotificationManager.deleteNotificationChannel(AVRCP_NOTIFICATION_ID);
         changePathDepth = 0;
@@ -2810,6 +2813,12 @@ public final class Avrcp_ext {
             Log.e(TAG,"invalid index for device");
             return;
         }
+        if (!deviceFeatures[deviceIndex].isActiveDevice) {
+            SendSetPlayerAppRspNative(AvrcpConstants.RSP_INTERNAL_ERR, address);
+            Log.e(TAG,"Set Command from inactive device reject it");
+            return;
+        }
+
         CreateMusicSettingsAppCmdLookupOrUpdate(AvrcpConstants.SET_ATTRIBUTE_VALUES,
                 deviceIndex, true);
         mAvrcpPlayerAppSettings.setPlayerAppSetting(num, attr_id, attr_val, address);
@@ -3123,6 +3132,11 @@ public final class Avrcp_ext {
             mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), true);
         }
 
+        if (mBrowsingActiveDevice != null && device.equals(mBrowsingActiveDevice)) {
+            Log.w(TAG,"setAvrcpDisconnect: Browse active device disconned reset it");
+            mBrowsingActiveDevice = null;
+        }
+
         if ((mCurrentBrowsingDevice != null) &&
             (mCurrentBrowsingDevice.equals(device))) {
             Log.v(TAG,"BT device is matched with browsing device:");
@@ -3311,7 +3325,11 @@ public final class Avrcp_ext {
         String address = Utils.getAddressStringFromByte(bdaddr);
         mCurrentBrowsingDevice = mAdapter.getRemoteDevice(address);
         // checking for error cases
-        if (mMediaPlayerInfoList.isEmpty()) {
+        BluetoothDevice device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(bdaddr);
+        if (mBrowsingActiveDevice != null && !device.equals(mBrowsingActiveDevice)) {
+            status = AvrcpConstants.RSP_INTERNAL_ERR;
+            Log.w(TAG, "setBrowsedPlayer: Cmd from browse inactive device reject it");
+        } else if (mMediaPlayerInfoList.isEmpty()) {
             status = AvrcpConstants.RSP_NO_AVBL_PLAY;
             Log.w(TAG, "setBrowsedPlayer: No available players! ");
         } else {
@@ -3982,9 +4000,16 @@ public final class Avrcp_ext {
     /* Handle getfolderitems for scope = VFS, Search, NowPlayingList */
     private void handleGetFolderItemBrowseResponse(AvrcpCmd.FolderItemsCmd folderObj, byte[] bdaddr) {
         int status = AvrcpConstants.RSP_NO_ERROR;
+        BluetoothDevice device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(bdaddr);
 
         /* Browsed player is already set */
         if (folderObj.mScope == AvrcpConstants.BTRC_SCOPE_FILE_SYSTEM) {
+            if (mBrowsingActiveDevice != null && !device.equals(mBrowsingActiveDevice)) {
+                Log.e(TAG, "handleGetFolderItemBrowse: Cmd from browse inactive device, reject it");
+                getFolderItemsRspNative(bdaddr, AvrcpConstants.RSP_INTERNAL_ERR, (short) 0,
+                        (byte) 0x00, 0, null, null, null, null, null, null, null, null);
+                return;
+            }
             if (mAvrcpBrowseManager.getBrowsedMediaPlayer(bdaddr) == null) {
                 Log.e(TAG, "handleGetFolderItemBrowseResponse: no browsed player set for "
                                 + Utils.getAddressStringFromByte(bdaddr));
@@ -4029,10 +4054,17 @@ public final class Avrcp_ext {
     }
 
     private void handlePlayItemResponse(byte[] bdaddr, byte[] uid, byte scope) {
+        BluetoothDevice device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(bdaddr);
         HeadsetService mService = HeadsetService.getHeadsetService();
         if ((mService != null) && mService.isScoOrCallActive()) {
             Log.w(TAG, "Remote requesting play item while call is active");
             playItemRspNative(bdaddr, AvrcpConstants.RSP_MEDIA_IN_USE);
+            return;
+        }
+
+        if (mBrowsingActiveDevice != null && !device.equals(mBrowsingActiveDevice)) {
+            Log.w(TAG, "play item Cmd from browse inactive device, reject it");
+            playItemRspNative(bdaddr, AvrcpConstants.RSP_INTERNAL_ERR);
             return;
         }
 
@@ -4062,7 +4094,14 @@ public final class Avrcp_ext {
             itemAttr.mUidCounter = sUIDCounter;
             Log.e(TAG, "handleGetItemAttr: invalid uid counter, assign new value = " + itemAttr.mUidCounter);
         }
-
+        BluetoothDevice device =
+                BluetoothAdapter.getDefaultAdapter().getRemoteDevice(itemAttr.mAddress);
+        if (mBrowsingActiveDevice != null && !device.equals(mBrowsingActiveDevice)) {
+            Log.e(TAG, "Item attributes from browse inactive device, reject it");
+            getItemAttrRspNative(
+                    itemAttr.mAddress, AvrcpConstants.RSP_INTERNAL_ERR, (byte) 0, null, null);
+            return;
+        }
         if (itemAttr.mScope == AvrcpConstants.BTRC_SCOPE_NOW_PLAYING) {
             if (mCurrAddrPlayerID == NO_PLAYER_ID) {
                 getItemAttrRspNative(
@@ -4083,6 +4122,13 @@ public final class Avrcp_ext {
     }
 
     private void handleGetTotalNumOfItemsResponse(byte[] bdaddr, byte scope) {
+        BluetoothDevice device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(bdaddr);
+        if (mBrowsingActiveDevice != null && !device.equals(mBrowsingActiveDevice)) {
+            getTotalNumOfItemsRspNative(bdaddr, AvrcpConstants.RSP_INTERNAL_ERR, 0, 0);
+            Log.w(TAG, "GetTotalNumOfItems: Cmd from browse inactive device reject it");
+            return;
+        }
+
         // for scope as media player list
         if (scope == AvrcpConstants.BTRC_SCOPE_PLAYER_LIST) {
             int numPlayers = 0;
@@ -4190,6 +4236,11 @@ public final class Avrcp_ext {
             + device);
         if (device == null) {
             Log.e(TAG, "onConnectionStateChanged Device is null");
+            return;
+        }
+        if (br_connected == true) {
+            mBrowsingActiveDevice = device;
+            Log.w(TAG, "onConnectionStateChanged Set Active browse device" + mBrowsingActiveDevice);
             return;
         }
         int newState = (rc_connected ? BluetoothProfile.STATE_CONNECTED :
