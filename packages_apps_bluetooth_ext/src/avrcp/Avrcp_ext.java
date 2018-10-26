@@ -888,6 +888,7 @@ public final class Avrcp_ext {
             {
                 BluetoothDevice device;
                 int playState = PLAYSTATUS_ERROR;
+                int current_playState = PLAYSTATUS_ERROR;
                 int position;
 
                 String address = Utils.getAddressStringFromByte((byte[]) msg.obj);
@@ -900,23 +901,12 @@ public final class Avrcp_ext {
                     break;
                 }
                 playState = convertPlayStateToPlayStatus(deviceFeatures[deviceIndex].mCurrentPlayState);
+                current_playState = playState;
                 if (mFastforward) {
                     playState = PLAYSTATUS_FWD_SEEK;
                 }
                 if (mRewind) {
                     playState = PLAYSTATUS_REV_SEEK;
-                }
-                /* IOT fix as some remote device just depends on playback state in CHANGED response
-                 * to update its playback status and trigger avrcp play/pause command. Somietimes,
-                 * after foward or backward, DUT update PAUSED to remote in CHANGED response, then
-                 * update PLAYING in get play status or playback INTERIM response, so that carkit
-                 * display incorrect playback status or trigger incorrect PLAY/PAUSE command.
-                 */
-                if (deviceFeatures[deviceIndex].mLastRspPlayStatus != playState &&
-                        deviceFeatures[deviceIndex].mLastRspPlayStatus != -1) {
-                    Log.w(TAG,"playback status has changed from last playback CHANGED response, " +
-                            "repsonse last CHANGED play status");
-                    playState = deviceFeatures[deviceIndex].mLastRspPlayStatus;
                 }
                 position = (int)getPlayPosition(device);
                 if(avrcp_playstatus_blacklist)
@@ -946,15 +936,36 @@ public final class Avrcp_ext {
                         }
                     }
                 }
-                if (DEBUG)
-                    Log.v(TAG, "Play Status for : " + device.getName() +
-                          " state: " + playState + " position: " + position);
                 if (position == -1) {
                     Log.v(TAG, "Force play postion to 0, for getPlayStatus Rsp");
                     position = 0;
                 }
-                if (deviceFeatures[deviceIndex].isPlayStatusTimeOut)
-                    playState = convertPlayStateToPlayStatus(mCurrentPlayerState);
+                if (avrcp_playstatus_blacklist && (playState == PLAYSTATUS_PLAYING) &&
+                     ((current_playState == PLAYSTATUS_PAUSED) ||
+                     (current_playState == PLAYSTATUS_STOPPED))) {
+                    Log.v(TAG, "Send play status for avrcp blacklist device");
+                } else {
+                    if (deviceFeatures[deviceIndex].isPlayStatusTimeOut) {
+                        Log.v(TAG, "Sending play status after timeout");
+                        playState = convertPlayStateToPlayStatus(mCurrentPlayerState);
+                    } else {
+                 /* IOT fix as some remote device just depends on playback state in CHANGED response
+                  * to update its playback status and trigger avrcp play/pause command. Somietimes,
+                  * after foward or backward, DUT update PAUSED to remote in CHANGED response, then
+                  * update PLAYING in get play status or playback INTERIM response, so that carkit
+                  * display incorrect playback status or trigger incorrect PLAY/PAUSE command.
+                  */
+                        if (deviceFeatures[deviceIndex].mLastRspPlayStatus != playState &&
+                              deviceFeatures[deviceIndex].mLastRspPlayStatus != -1) {
+                            Log.w(TAG,"playback status has changed from last playback CHANGED response, " +
+                                      "repsonse last CHANGED play status");
+                            playState = deviceFeatures[deviceIndex].mLastRspPlayStatus;
+                        }
+                    }
+                }
+                if (DEBUG)
+                    Log.v(TAG, "Play Status for : " + device.getName() +
+                          " state: " + playState + " position: " + position);
                 getPlayStatusRspNative(getByteAddress(device), playState, (int)mSongLengthMs, position);
                 break;
             }
@@ -2118,7 +2129,7 @@ public final class Avrcp_ext {
                         }
                     }
                 }
-                else if ((deviceFeatures[deviceIndex].mLastRspPlayStatus != currPlayState) &&
+                if ((deviceFeatures[deviceIndex].mLastRspPlayStatus != currPlayState) &&
                     (deviceFeatures[deviceIndex].mLastRspPlayStatus != -1)) {
                     registerNotificationRspPlayStatusNative(
                                 deviceFeatures[deviceIndex].mPlayStatusChangedNT,
@@ -2129,6 +2140,11 @@ public final class Avrcp_ext {
                                     "send CHANGED event with current playback status");
                     deviceFeatures[deviceIndex].mPlayStatusChangedNT =
                                         AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
+                    if (!deviceFeatures[deviceIndex].isPlayStatusTimeOut) {
+                        Message msg = mHandler.obtainMessage(MSG_PLAY_STATUS_CMD_TIMEOUT,
+                                                 0, 0, deviceFeatures[deviceIndex].mCurrentDevice);
+                        mHandler.sendMessageDelayed(msg, CMD_TIMEOUT_DELAY);
+                    }
                 }
                 else if ((currPlayState == PLAYSTATUS_PLAYING) &&
                     (deviceFeatures[deviceIndex].mLastRspPlayStatus == -1)) {
@@ -2139,6 +2155,11 @@ public final class Avrcp_ext {
                     Log.v(TAG, "Sending Stopped in INTERIM response when current_play_status is playing and device just got connected");
                     deviceFeatures[deviceIndex].mPlayStatusChangedNT =
                                         AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
+                    if (!deviceFeatures[deviceIndex].isPlayStatusTimeOut) {
+                        Message msg = mHandler.obtainMessage(MSG_PLAY_STATUS_CMD_TIMEOUT,
+                                                 0, 0, deviceFeatures[deviceIndex].mCurrentDevice);
+                        mHandler.sendMessageDelayed(msg, CMD_TIMEOUT_DELAY);
+                    }
                 }
                 registerNotificationRspPlayStatusNative(
                         deviceFeatures[deviceIndex].mPlayStatusChangedNT,
