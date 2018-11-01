@@ -50,6 +50,7 @@
 /*This will add sub SM for  secondary earbud's SCO connection */
 
 #include "bta_ag_int.h"
+#include "btif_hf.h"
 #include "internal_include/bt_trace.h"
 #include "device/include/controller.h"
 #include "bta_ag_twsp.h"
@@ -466,7 +467,8 @@ void print_bdaddr(const RawAddress& addr) {
 
 bool is_twsp_connected() {
     bool ret = false;
-    for (int i=0; i</*BTA_AG_NUM_SCB*/2; i++) {
+    APPL_TRACE_DEBUG("%s: max indicies %d\n", __func__, BTIF_HF_NUM_CB);
+    for (int i=0; i <BTIF_HF_NUM_CB; i++) {
         APPL_TRACE_DEBUG("%s: %s", __func__,
             bta_ag_cb.scb[i].peer_addr.ToString().c_str());
         if (BTM_SecIsTwsPlusDev(bta_ag_cb.scb[i].peer_addr)) {
