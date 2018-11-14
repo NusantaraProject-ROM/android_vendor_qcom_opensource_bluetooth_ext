@@ -1090,6 +1090,7 @@ public final class Avrcp_ext {
                                  0, 0, deviceFeatures[deviceIndex].mCurrentDevice),
                                  CMD_TIMEOUT_DELAY);
                         deviceFeatures[deviceIndex].mLastRequestedVolume = -1;
+                        deviceFeatures[deviceIndex].mLocalVolume = convertToAudioStreamVolume(absVol);
                         Log.v(TAG, "Reset cached lastreq vol = " +
                             deviceFeatures[deviceIndex].mLastRequestedVolume);
                     }
@@ -1158,6 +1159,7 @@ public final class Avrcp_ext {
                         mHandler.sendMessage(msg1);
                         deviceFeatures[deviceIndex].mRemoteVolume = absVol;
                         deviceFeatures[deviceIndex].mLocalVolume = volIndex;
+                        deviceFeatures[deviceIndex].mLastRequestedVolume = -1;
                         break;
                     }
                 }
@@ -1178,6 +1180,7 @@ public final class Avrcp_ext {
                     }
 
                     deviceFeatures[deviceIndex].mLocalVolume = volIndex;
+                    deviceFeatures[deviceIndex].mLastRequestedVolume = -1;
                     if (deviceFeatures[deviceIndex].mLastLocalVolume != -1
                         && msg.arg2 == AVRC_RSP_ACCEPT) {
                         if (deviceFeatures[deviceIndex].mLastLocalVolume != volIndex) {
@@ -1265,6 +1268,7 @@ public final class Avrcp_ext {
                               deviceFeatures[deviceIndex].mVolCmdSetInProgress = true;
                               deviceFeatures[deviceIndex].mLastRemoteVolume = avrcpVolume;
                               deviceFeatures[deviceIndex].mLastLocalVolume = msg.arg1;
+                              deviceFeatures[deviceIndex].mLastRequestedVolume = -1;
                          } else {
                             if (DEBUG) Log.d(TAG, "setVolumeNative failed");
                          }
