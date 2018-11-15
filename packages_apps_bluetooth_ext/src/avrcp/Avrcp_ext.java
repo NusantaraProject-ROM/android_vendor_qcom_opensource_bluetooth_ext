@@ -4676,6 +4676,10 @@ public final class Avrcp_ext {
         }
     }
 
+    public boolean startSHO(BluetoothDevice device, boolean PlayReq) {
+        return false;
+    }
+
     public void setActiveDevice(BluetoothDevice device) {
         if (device == null) {
           for (int i = 0; i < maxAvrcpConnections; i++) {
