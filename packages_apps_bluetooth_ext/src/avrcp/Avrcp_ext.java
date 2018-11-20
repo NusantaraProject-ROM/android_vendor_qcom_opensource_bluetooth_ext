@@ -4745,7 +4745,14 @@ public final class Avrcp_ext {
                 + " : " + storeVolume);
         mVolumeMap.put(device, storeVolume);
         pref.putInt(device.getAddress(), storeVolume);
-
+        if (device != null && device.isTwsPlusDevice()) {
+            AdapterService mAdapterService = AdapterService.getAdapterService();
+            BluetoothDevice peerDevice = mAdapterService.getTwsPlusPeerDevice(device);
+            if (peerDevice != null && getIndexForDevice(peerDevice) != INVALID_DEVICE_INDEX)
+                Log.d(TAG,"storeVolume to TWS+ pair device " + device + " : " + storeVolume);
+                mVolumeMap.put(peerDevice, storeVolume);
+                pref.putInt(device.getAddress(), storeVolume);
+        }
         // Always use apply() since it is asynchronous, otherwise the call can hang waiting for
         // storage to be written.
         pref.apply();
@@ -4782,6 +4789,7 @@ public final class Avrcp_ext {
                     deviceFeatures[i].mCurrentDevice.isTwsPlusDevice() &&
                     isTwsPlusPair(deviceFeatures[i].mCurrentDevice, device)) {
                     Log.d(TAG,"TWS+ pair connected, keep both devices active");
+                    deviceFeatures[i].isActiveDevice = true;
                 } else {
                     if(deviceIndex != i)
                         deviceFeatures[i].isActiveDevice = false;
