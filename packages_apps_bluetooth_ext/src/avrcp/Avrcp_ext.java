@@ -792,11 +792,12 @@ public final class Avrcp_ext {
                     if (deviceFeatures[deviceIndex].mAbsVolThreshold > 0 &&
                         deviceFeatures[deviceIndex].mAbsVolThreshold <
                         mAudioStreamMax &&
-                        vol > deviceFeatures[deviceIndex].mAbsVolThreshold)
+                        vol > deviceFeatures[deviceIndex].mAbsVolThreshold) {
                         if (DEBUG) Log.v(TAG, "remote inital volume too high " + vol + ">" +
                             deviceFeatures[deviceIndex].mAbsVolThreshold);
                         vol = deviceFeatures[deviceIndex].mAbsVolThreshold;
                         notifyVolumeChanged(vol, false);
+                    }
                 }
                 if (vol >= 0) {
                     vol = convertToAvrcpVolume(vol);
