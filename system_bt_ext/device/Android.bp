@@ -13,10 +13,13 @@ cc_library_static {
         "vendor/qcom/opensource/commonsys/system/bt/internal_include",
         "vendor/qcom/opensource/commonsys/system/bt/stack/include",
         "vendor/qcom/opensource/commonsys/bluetooth_ext/vhal/include",
+        "vendor/qcom/opensource/commonsys/system/bt/bta/include",
+        "vendor/qcom/opensource/commonsys/system/bt/utils/include/",
     ],
     srcs: [
         "src/interop.cc",
         "src/profile_config.cc",
+        "src/device_iot_config.cc",
     ],
     shared_libs: [
         "liblog",
@@ -25,8 +28,4 @@ cc_library_static {
         "libosi_qti",
         "libbluetooth-types",
     ],
-    cflags: [
-        "-DHAS_NO_BDROID_BUILDCFG"
-    ],
-
 }
