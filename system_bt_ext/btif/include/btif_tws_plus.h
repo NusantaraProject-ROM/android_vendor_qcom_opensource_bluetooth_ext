@@ -65,6 +65,8 @@ enum { LK_DERIVATION_REASON_PAIR, LK_DERIVATION_REASON_REPLACE_EB };
 
 typedef uint8_t tLK_DERIVATION_REASON;
 
+extern bool twsplus_enabled;
+
 /*******************************************************************************
  *  Functions
  ******************************************************************************/

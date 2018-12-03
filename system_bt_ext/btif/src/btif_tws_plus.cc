@@ -463,10 +463,12 @@ void btif_tws_plus_callback(tBTA_TWS_PLUS_EVT event, tBTA_TWS_PLUS* p_data) {
 bt_status_t btif_tws_plus_execute_service(bool b_enable) {
   BTIF_TRACE_DEBUG("%s enable:%d", __func__, b_enable);
 
-  if (b_enable) {
-    BTA_TwsPlusEnable(btif_tws_plus_callback);
-  } else {
-     BTA_TwsPlusDisable();
+  if (twsplus_enabled == true) {
+    if (b_enable) {
+      BTA_TwsPlusEnable(btif_tws_plus_callback);
+    } else {
+      BTA_TwsPlusDisable();
+    }
   }
   return BT_STATUS_SUCCESS;
 }
