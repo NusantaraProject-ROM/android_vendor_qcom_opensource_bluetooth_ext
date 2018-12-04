@@ -144,6 +144,10 @@ void  dispatch_event_twsp_peer_device(tBTA_AG_SCB *p_scb, uint8_t event) {
     tBTA_AG_SCB *other_scb = get_other_twsp_scb((p_scb->peer_addr));
     if (other_scb) {
         if (is_svc_connected(other_scb)) {
+           if (event == BTA_AG_SCO_OPEN_E) {
+              APPL_TRACE_WARNING("%s: Inform BTIF on SCO init", __func__);
+              bta_ag_cback_sco(other_scb, BTA_AG_AUDIO_OPENING_EVT);
+           }
            bta_ag_twsp_sco_event(other_scb, event);
         } else {
            APPL_TRACE_WARNING("%s: RFC is not up yet", __func__);
@@ -158,6 +162,10 @@ void  dispatch_event_primary_peer_device(tBTA_AG_SCB *p_scb, uint8_t event) {
     APPL_TRACE_DEBUG("%s: other_scb: %x", other_scb);
     if (other_scb) {
         if (is_svc_connected(other_scb)) {
+           if (event == BTA_AG_SCO_OPEN_E) {
+              APPL_TRACE_WARNING("%s: Inform BTIF on SCO init", __func__);
+              bta_ag_cback_sco(other_scb, BTA_AG_AUDIO_OPENING_EVT);
+           }
            bta_ag_sco_event(other_scb, event);
         } else {
            APPL_TRACE_WARNING("%s: RFC is not up yet", __func__);
@@ -189,6 +197,7 @@ void bta_ag_twsp_hfp_result(tBTA_AG_SCB* p_scb, tBTA_AG_API_RESULT* p_result) {
 void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
    //PONTING TO SECONDARY sco cb
    tBTA_AG_SCO_CB* p_sco = &bta_ag_cb.twsp_sec_sco;
+   tBTA_AG_SCB *other_scb = NULL;
 #if (BTA_AG_SCO_DEBUG == TRUE)
    uint8_t in_state = p_sco->state;
 #endif
@@ -286,16 +295,23 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
             case BTA_AG_SCO_CONN_OPEN_E:
                 /*SCO is up!*/
                 p_sco->state = BTA_AG_SCO_OPEN_ST;
-                if (bta_ag_sco_is_active_device(p_scb->peer_addr)) {
+                other_scb = get_other_twsp_scb((p_scb->peer_addr));
+                if (other_scb && twsp_sco_active(other_scb) == false) {
                     APPL_TRACE_WARNING("Calling SCO open");
                     dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_OPEN_E);
                 }
             break;
             case BTA_AG_SCO_CONN_CLOSE_E:
-                /* sco failed; create sco listen connection */
+                /*sco failed, create sco listen connection*/
                 bta_ag_create_sco(p_scb, false);
                 p_sco->state = BTA_AG_SCO_LISTEN_ST;
-             break;
+                other_scb = get_other_twsp_scb((p_scb->peer_addr));
+                if (other_scb && twsp_sco_active(other_scb) == false) {
+                    //Atleast try bringing up the other EB eSCO
+                    APPL_TRACE_WARNING("Calling SCO open for other EB");
+                    dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_OPEN_E);
+                }
+            break;
             default:
                 APPL_TRACE_WARNING("%s: BTA_AG_SCO_OPENING_ST: Ignoring event %d",
                              __func__, event);
