@@ -5272,8 +5272,14 @@ public final class Avrcp_ext {
             byte[] address);
 
     public static String getImgHandleFromTitle(String title) {
+        if (DEBUG) Log.d(TAG, " getImgHandleFromTitle title:" + title);
         if (mAvrcpBipRsp != null && title != null)
             return mAvrcpBipRsp.getImgHandle(mAvrcpBipRsp.getAlbumName(title));
-        return null;
+        return "";
+    }
+
+    public static String getImgHandleFromTitle(byte[] bdaddr, String title) {
+        if (DEBUG) Log.d(TAG, " getImgHandleFromTitle bdaddr:" + bdaddr + " title:" + title);
+        return getImgHandleFromTitle(title);
     }
 }
