@@ -3630,7 +3630,9 @@ public final class Avrcp_ext {
                         mPackageManager.queryIntentServices(intent, PackageManager.MATCH_ALL);
 
                 for (ResolveInfo info : playerList) {
-                    String displayableName = info.loadLabel(mPackageManager).toString();
+                    CharSequence displayName = info.loadLabel(mPackageManager);
+                    String displayableName =
+                            (displayName != null) ? displayName.toString():new String();
                     String serviceName = info.serviceInfo.name;
                     String packageName = info.serviceInfo.packageName;
 
