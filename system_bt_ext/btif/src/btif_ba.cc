@@ -534,10 +534,12 @@ static bool btif_ba_state_idle_audio_pending_handler(btif_sm_event_t event,
         case BTIF_BA_AUDIO_START_REQ_EVT:
             ba_acknowledge_audio_cmd(BTIF_BA_AUDIO_START_REQ_EVT,
                                                     BA_CTRL_ACK_FAILURE);
+            FALLTHROUGH;
         case BTIF_BA_AUDIO_PAUSE_REQ_EVT:
             BTIF_TRACE_DEBUG(" %s already in paused state ", __FUNCTION__);
             ba_acknowledge_audio_cmd(BTIF_BA_AUDIO_PAUSE_REQ_EVT,
                                                     BA_CTRL_ACK_SUCCESS);
+            FALLTHROUGH;
         case BTIF_SM_EXIT_EVT:
              btif_ba_cb.prev_state = BTIF_BA_STATE_IDLE_AUDIO_PENDING;
             break;
@@ -584,10 +586,12 @@ static bool btif_ba_state_idle_audio_streaming_handler(btif_sm_event_t event,
         case BTIF_BA_AUDIO_START_REQ_EVT:
             ba_acknowledge_audio_cmd(BTIF_BA_AUDIO_START_REQ_EVT,
                                                     BA_CTRL_ACK_FAILURE);
+            FALLTHROUGH;
         case BTIF_BA_AUDIO_PAUSE_REQ_EVT:
             BTIF_TRACE_DEBUG(" %s already in paused state ", __FUNCTION__);
             ba_acknowledge_audio_cmd(BTIF_BA_AUDIO_PAUSE_REQ_EVT,
                                                     BA_CTRL_ACK_SUCCESS);
+            FALLTHROUGH;
         case BTIF_SM_EXIT_EVT:
             btif_ba_cb.prev_state = BTIF_BA_STATE_IDLE_AUDIO_STREAMING;
             break;
@@ -655,10 +659,12 @@ static bool btif_ba_state_idle_audio_ns_handler(btif_sm_event_t event,
         case BTIF_BA_AUDIO_START_REQ_EVT:
             ba_acknowledge_audio_cmd(BTIF_BA_AUDIO_START_REQ_EVT,
                                                     BA_CTRL_ACK_FAILURE);
+            FALLTHROUGH;
         case BTIF_BA_AUDIO_PAUSE_REQ_EVT:
             BTIF_TRACE_DEBUG(" %s already in paused state ", __FUNCTION__);
             ba_acknowledge_audio_cmd(BTIF_BA_AUDIO_PAUSE_REQ_EVT,
                                                     BA_CTRL_ACK_SUCCESS);
+            FALLTHROUGH;
         case BTIF_SM_EXIT_EVT:
             btif_ba_cb.prev_state = BTIF_BA_STATE_IDLE_AUDIO_NS;
             break;

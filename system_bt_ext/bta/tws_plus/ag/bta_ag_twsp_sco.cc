@@ -275,6 +275,7 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                 //SCO failed back to LISTEN
                 bta_ag_create_sco(p_scb, false);
                 p_sco->state = BTA_AG_SCO_LISTEN_ST;
+                break;
              default:
                   APPL_TRACE_WARNING("%s: BTA_AG_SCO_CODEC_ST: Ignoring event %d",
                              __func__, event);
