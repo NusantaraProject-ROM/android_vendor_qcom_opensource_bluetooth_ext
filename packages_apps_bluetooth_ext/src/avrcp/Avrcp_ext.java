@@ -179,6 +179,7 @@ public final class Avrcp_ext {
          "9C:DF:03", //9C:DF:03:D3:C0:17, Name: Benz S600L
          "00:0A:08",  //00:0A:08:51:1E:E7, Name: BMW530
          "00:04:79", //00-04-79-00-06-bc, Name: radius HP-BTL01
+         "28:A1:83", //28-A1-83-94-90-AE, Name: VW Radio
      };
     private static final String playerStateUpdateBlackListedNames[] = {
        "Audi",
