@@ -792,11 +792,12 @@ public final class Avrcp_ext {
                     if (deviceFeatures[deviceIndex].mAbsVolThreshold > 0 &&
                         deviceFeatures[deviceIndex].mAbsVolThreshold <
                         mAudioStreamMax &&
-                        vol > deviceFeatures[deviceIndex].mAbsVolThreshold)
+                        vol > deviceFeatures[deviceIndex].mAbsVolThreshold) {
                         if (DEBUG) Log.v(TAG, "remote inital volume too high " + vol + ">" +
                             deviceFeatures[deviceIndex].mAbsVolThreshold);
                         vol = deviceFeatures[deviceIndex].mAbsVolThreshold;
                         notifyVolumeChanged(vol, false);
+                    }
                 }
                 if (vol >= 0) {
                     vol = convertToAvrcpVolume(vol);
@@ -2738,7 +2739,7 @@ public final class Avrcp_ext {
 
     private int convertToAudioStreamVolume(int volume) {
         // Rescale volume to match AudioSystem's volume
-        return (int) Math.floor((double) volume*mAudioStreamMax/AVRCP_MAX_VOL);
+        return (int) Math.round((double) volume*mAudioStreamMax/AVRCP_MAX_VOL);
     }
 
     private int convertToAvrcpVolume(int volume) {
@@ -5271,8 +5272,14 @@ public final class Avrcp_ext {
             byte[] address);
 
     public static String getImgHandleFromTitle(String title) {
+        if (DEBUG) Log.d(TAG, " getImgHandleFromTitle title:" + title);
         if (mAvrcpBipRsp != null && title != null)
             return mAvrcpBipRsp.getImgHandle(mAvrcpBipRsp.getAlbumName(title));
-        return null;
+        return "";
+    }
+
+    public static String getImgHandleFromTitle(byte[] bdaddr, String title) {
+        if (DEBUG) Log.d(TAG, " getImgHandleFromTitle bdaddr:" + bdaddr + " title:" + title);
+        return getImgHandleFromTitle(title);
     }
 }

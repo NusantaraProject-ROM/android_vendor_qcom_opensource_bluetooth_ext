@@ -63,6 +63,7 @@ namespace android {
 static jmethodID method_onBredrCleanup;
 static jmethodID method_iotDeviceBroadcast;
 static jmethodID method_devicePropertyChangedCallback;
+static jmethodID method_adapterPropertyChangedCallback;
 
 static btvendor_interface_t *sBluetoothVendorInterface = NULL;
 static jobject mCallbacksObj = NULL;
@@ -135,6 +136,49 @@ static void iot_device_broadcast_callback(RawAddress* bd_addr, uint16_t error,
                     (jint)manufacturer_id, (jint)power_level, (jint)rssi, (jint)link_quality,
                     (jint)glitch_count);
 }
+
+static void adapter_vendor_properties_callback(bt_status_t status,
+                          int num_properties,
+                          bt_vendor_property_t *properties) {
+  CallbackEnv sCallbackEnv(__func__);
+  if (!sCallbackEnv.valid()) return;
+  ALOGE("%s: Status is: %d, Properties: %d", __func__, status, num_properties);
+  if (status != BT_STATUS_SUCCESS) {
+    ALOGE("%s: Status %d is incorrect", __func__, status);
+    return;
+  }
+  ScopedLocalRef<jbyteArray> val(
+      sCallbackEnv.get(),
+      (jbyteArray)sCallbackEnv->NewByteArray(num_properties));
+  if (!val.get()) {
+    ALOGE("%s: Error allocating byteArray", __func__);
+    return;
+  }
+  ScopedLocalRef<jclass> mclass(sCallbackEnv.get(),
+                                sCallbackEnv->GetObjectClass(val.get()));
+  ScopedLocalRef<jobjectArray> props(
+      sCallbackEnv.get(),
+      sCallbackEnv->NewObjectArray(num_properties, mclass.get(), NULL));
+  if (!props.get()) {
+    ALOGE("%s: Error allocating object Array for properties", __func__);
+    return;
+  }
+  ScopedLocalRef<jintArray> types(
+      sCallbackEnv.get(), (jintArray)sCallbackEnv->NewIntArray(num_properties));
+  if (!types.get()) {
+    ALOGE("%s: Error allocating int Array for values", __func__);
+    return;
+  }
+  jintArray typesPtr = types.get();
+  jobjectArray propsPtr = props.get();
+  if (get_properties(num_properties, properties, &typesPtr, &propsPtr) < 0) {
+    return;
+  }
+  sCallbackEnv->CallVoidMethod(mCallbacksObj,
+                               method_adapterPropertyChangedCallback,
+                               types.get(), props.get());
+}
+
 static void remote_device_properties_callback(bt_status_t status,
                           RawAddress *bd_addr, int num_properties,
                           bt_vendor_property_t *properties) {
@@ -191,6 +235,7 @@ static btvendor_callbacks_t sBluetoothVendorCallbacks = {
     iot_device_broadcast_callback,
     remote_device_properties_callback,
     NULL,
+    adapter_vendor_properties_callback,
 };
 
 static void classInitNative(JNIEnv* env, jclass clazz) {
@@ -199,6 +244,8 @@ static void classInitNative(JNIEnv* env, jclass clazz) {
     method_iotDeviceBroadcast = env->GetMethodID(clazz, "iotDeviceBroadcast", "([BIIIIIIIIII)V");
     method_devicePropertyChangedCallback = env->GetMethodID(
       clazz, "devicePropertyChangedCallback", "([B[I[[B)V");
+    method_adapterPropertyChangedCallback = env->GetMethodID(
+      clazz, "adapterPropertyChangedCallback", "([I[[B)V");
     ALOGI("%s: succeeds", __FUNCTION__);
 }
 
