@@ -322,7 +322,7 @@ void process_twsp_state_change (int eb_idx, uint8_t state) {
               if (peer_scb != NULL) {
                  select_microphone_path(peer_scb);
               } else {
-                 APPL_TRACE_WARNING("%s: peer_scb is NULL, No mic switch");
+                 APPL_TRACE_WARNING("%s: peer_scb is NULL, No mic switch", __func__);
               }
           }
         }
