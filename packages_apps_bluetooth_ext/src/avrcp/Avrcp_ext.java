@@ -172,6 +172,7 @@ public final class Avrcp_ext {
     HashMap<BluetoothDevice, Integer> mVolumeMap = new HashMap();
     public static final String VOLUME_MAP = "bluetooth_volume_map";
 
+    private boolean twsShoEnabled = false;
     private static final String playerStateUpdateBlackListedAddr[] = {
          "BC:30:7E", //bc-30-7e-5e-f6-27, Name: Porsche BT 0310; bc-30-7e-8c-22-cb, Name: Audi MMI 1193
          "00:1E:43", //00-1e-43-14-f0-68, Name: Audi MMI 4365
@@ -464,7 +465,10 @@ public final class Avrcp_ext {
         mBrowsingActiveDevice = null;
 
         initNative(maxAvrcpConnections);
-
+        String twsSho = SystemProperties.get("persist.vendor.btstack.enable.twsplussho");
+        if (!twsSho.isEmpty() && twsSho.equals("true")) {
+            twsShoEnabled = true;
+        }
         mMediaSessionManager = (MediaSessionManager) context.getSystemService(
             Context.MEDIA_SESSION_SERVICE);
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
@@ -856,9 +860,22 @@ public final class Avrcp_ext {
                     mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
                             true);
                 } else if (device.isTwsPlusDevice()) {
-                    Log.v(TAG,"TWS+ device, update abs vol as true ");
-                    mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
-                            true);
+                    if (twsShoEnabled) {
+                        //SHO is enabled, check if TWS+ device is active
+                        BluetoothDevice mDevice = mA2dpService.getActiveDevice();
+                        int index = -1;
+                        if (mDevice != null) index = getIndexForDevice(mDevice);
+                        if (mDevice == null || (mDevice != null && (mDevice.isTwsPlusDevice() ||
+                            (index != INVALID_DEVICE_INDEX && isAbsoluteVolumeSupported(index))))) {
+                            Log.v(TAG,"TWS+ device, update abs vol as true in RC FEATURE handle");
+                            mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), true);
+                            if (updateAbsVolume) updateAbsVolume = false;
+                        } else {
+                            updateAbsVolume = true;
+                            Log.d(TAG,"TWS+ is not active, set absVolume flag later");
+                        }
+                    } else
+                        mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), true);
                 } else {
                     mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
                         isAbsoluteVolumeSupported(deviceIndex));
@@ -1180,6 +1197,11 @@ public final class Avrcp_ext {
                         isShowUI = false;
                     }
                     device = mA2dpService.getActiveDevice();
+                    if (deviceFeatures[deviceIndex].mCurrentDevice.isTwsPlusDevice() &&
+                        device != null && !device.isTwsPlusDevice()) {
+                        Log.d(TAG,"TWS+ device is not active, ignore volume change type: " + msg.arg2);
+                        break;
+                    }
                     /* If the volume has successfully changed */
                     if (device != null && !deviceFeatures[deviceIndex].isActiveDevice &&
                            (msg.arg2 == AVRC_RSP_CHANGED || msg.arg2 == AVRC_RSP_INTERIM)) {
@@ -1630,12 +1652,14 @@ public final class Avrcp_ext {
     }
 
     private boolean areMultipleDevicesConnected() {
+        int connections = 0;
         for (int deviceIndex = 0; deviceIndex < maxAvrcpConnections; deviceIndex++) {
-            if (deviceFeatures[deviceIndex].mCurrentDevice == null) {
-                return false;
+            if (deviceFeatures[deviceIndex].mCurrentDevice != null) {
+                connections++;
             }
         }
-        return true;
+        if (connections > 1) return true;
+        else return false;
     }
     private void updatePlayerStateAndPosition(PlaybackState state) {
         if (DEBUG) Log.v(TAG, "updatePlayerStateAndPosition, old=" +
@@ -2996,7 +3020,8 @@ public final class Avrcp_ext {
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
             if (deviceFeatures[i].mCurrentDevice == null) {
                 deviceFeatures[i].mCurrentDevice = device;
-                if ((device.isTwsPlusDevice())) {
+                if ((device.isTwsPlusDevice()) &&
+                     !twsShoEnabled) {
                     Log.v(TAG,"TWS+ device connected, set it to active");
                     deviceFeatures[i].isActiveDevice = true;
                     updateAbsVolume = false;
@@ -3078,7 +3103,9 @@ public final class Avrcp_ext {
         //validating device is connected
         int index = getIndexForDevice(device);
         if(index != INVALID_DEVICE_INDEX) {
-                if (mDevice != null && mDevice.equals(deviceFeatures[index].mCurrentDevice)) {
+                if (mDevice != null &&
+                    (mDevice.equals(deviceFeatures[index].mCurrentDevice) ||
+                    (mDevice.isTwsPlusDevice() && device.isTwsPlusDevice()))) {
                     setActiveDevice(mDevice);
                     //below line to send setAbsolute volume if device is suporting absolute volume
                     setAbsVolumeFlag(mDevice);
@@ -4788,6 +4815,18 @@ public final class Avrcp_ext {
             return;
         }
         deviceFeatures[deviceIndex].isActiveDevice = true;
+        if (updateAbsVolume == true && deviceFeatures[deviceIndex].mCurrentDevice.isTwsPlusDevice()) {
+            Log.d(TAG,"setting absVolume flag for TWS+ device");
+            mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),true);
+            AdapterService mAdapterService = AdapterService.getAdapterService();
+            BluetoothDevice peer_device =
+                 mAdapterService.getTwsPlusPeerDevice(deviceFeatures[deviceIndex].mCurrentDevice);
+            if (peer_device != null &&
+                getIndexForDevice(peer_device) == INVALID_DEVICE_INDEX) {
+                Log.d(TAG,"Other TWS+ earbud not connected, reset updateAbsVolume flag");
+                updateAbsVolume = false;
+            }
+        }
         if (maxAvrcpConnections > 1) {
             for (int i = 0; i < maxAvrcpConnections; i++) {
                 if (deviceIndex != i && deviceFeatures[i].mCurrentDevice != null &&
@@ -4795,6 +4834,11 @@ public final class Avrcp_ext {
                     isTwsPlusPair(deviceFeatures[i].mCurrentDevice, device)) {
                     Log.d(TAG,"TWS+ pair connected, keep both devices active");
                     deviceFeatures[i].isActiveDevice = true;
+                    if (updateAbsVolume == true) {
+                        Log.d(TAG,"Setting absVolume flag to TWS+ pair");
+                        mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),true);
+                        updateAbsVolume = false;
+                    }
                 } else {
                     if(deviceIndex != i)
                         deviceFeatures[i].isActiveDevice = false;
