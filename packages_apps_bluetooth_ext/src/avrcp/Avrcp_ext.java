@@ -1711,6 +1711,19 @@ public final class Avrcp_ext {
         }
     }
 
+    private boolean isPlayerPaused() {
+        if (mCurrentPlayerState == null)
+            return false;
+
+        int state = mCurrentPlayerState.getState();
+        Log.d(TAG, "isPlayerPaused: state=" + state);
+
+        return (state == PlaybackState.STATE_PAUSED ||
+            state == PlaybackState.STATE_STOPPED ||
+            state == PlaybackState.STATE_NONE);
+    }
+
+
     private boolean areMultipleDevicesConnected() {
         int connections = 0;
         for (int deviceIndex = 0; deviceIndex < maxAvrcpConnections; deviceIndex++) {
@@ -2459,7 +2472,7 @@ public final class Avrcp_ext {
                     return -1L;
             }
 
-            if (isPlayingState(deviceFeatures[deviceIndex].mCurrentPlayState)) {
+            if (isPlayingState(deviceFeatures[deviceIndex].mCurrentPlayState) && !isPlayerPaused()) {
                 long sinceUpdate =
                      SystemClock.elapsedRealtime() - deviceFeatures[deviceIndex].mLastStateUpdate;
                 currPosition = sinceUpdate + deviceFeatures[deviceIndex].mCurrentPlayState.getPosition();
@@ -2606,7 +2619,7 @@ public final class Avrcp_ext {
         mHandler.removeMessages(currMsgPlayIntervalTimeout);
         if ((deviceFeatures[i].mCurrentDevice != null) &&
             (deviceFeatures[i].mPlayPosChangedNT == AvrcpConstants.NOTIFICATION_TYPE_INTERIM) &&
-                 (isPlayingState(deviceFeatures[i].mCurrentPlayState))) {
+                 (isPlayingState(deviceFeatures[i].mCurrentPlayState)) && !isPlayerPaused()) {
             Message msg = mHandler.obtainMessage(currMsgPlayIntervalTimeout, 0, 0,
                                                  deviceFeatures[i].mCurrentDevice);
             long delay = deviceFeatures[i].mPlaybackIntervalMs;
