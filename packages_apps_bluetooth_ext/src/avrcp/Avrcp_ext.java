@@ -356,7 +356,6 @@ public final class Avrcp_ext {
         private int mLocalVolume;
         private int mLastLocalVolume;
         private int mBlackListVolume;
-        private int mAbsVolThreshold;
         private int mLastPassthroughcmd;
         private int mReportedPlayerID;
 
@@ -398,15 +397,10 @@ public final class Avrcp_ext {
             mLastRequestedVolume = -1;
             mLocalVolume = -1;
             mLastLocalVolume = -1;
-            mAbsVolThreshold = 0;
             mAbsoluteVolume = -1;
             mLastRspPlayStatus = -1;
             mLastPassthroughcmd = KeyEvent.KEYCODE_UNKNOWN;
             mReportedPlayerID = NO_PLAYER_ID;
-            Resources resources = context.getResources();
-            if (resources != null) {
-                mAbsVolThreshold = resources.getInteger(R.integer.a2dp_absolute_volume_initial_threshold);
-            }
         }
     };
     DeviceDependentFeature[] deviceFeatures;
@@ -795,13 +789,11 @@ public final class Avrcp_ext {
                 mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
                                                           isAbsoluteVolumeSupported(deviceIndex));
                 if (isAbsoluteVolumeSupported(deviceIndex)) {
-                    if (deviceFeatures[deviceIndex].mAbsVolThreshold > 0 &&
-                        deviceFeatures[deviceIndex].mAbsVolThreshold <
-                        mAudioStreamMax &&
-                        vol > deviceFeatures[deviceIndex].mAbsVolThreshold) {
+                    if (mAbsVolThreshold > 0 && mAbsVolThreshold < mAudioStreamMax &&
+                        vol > mAbsVolThreshold) {
                         if (DEBUG) Log.v(TAG, "remote inital volume too high " + vol + ">" +
-                            deviceFeatures[deviceIndex].mAbsVolThreshold);
-                        vol = deviceFeatures[deviceIndex].mAbsVolThreshold;
+                            mAbsVolThreshold);
+                        vol = mAbsVolThreshold;
                         notifyVolumeChanged(vol, false);
                     }
                 }
@@ -1173,14 +1165,12 @@ public final class Avrcp_ext {
                         deviceFeatures[deviceIndex].mBlackListVolume = -1;
                         break;
                     }
-                    else if (deviceFeatures[deviceIndex].mAbsVolThreshold > 0 &&
-                        deviceFeatures[deviceIndex].mAbsVolThreshold <
-                        mAudioStreamMax &&
-                        volIndex > deviceFeatures[deviceIndex].mAbsVolThreshold) {
+                    else if (mAbsVolThreshold > 0 && mAbsVolThreshold < mAudioStreamMax &&
+                        volIndex > mAbsVolThreshold) {
                         if (DEBUG) Log.v(TAG, "remote inital volume too high " + volIndex + ">" +
-                            deviceFeatures[deviceIndex].mAbsVolThreshold);
+                            mAbsVolThreshold);
                         Message msg1 = mHandler.obtainMessage(MSG_SET_ABSOLUTE_VOLUME,
-                            deviceFeatures[deviceIndex].mAbsVolThreshold , 0);
+                            mAbsVolThreshold , 0);
                         mHandler.sendMessage(msg1);
                         deviceFeatures[deviceIndex].mRemoteVolume = absVol;
                         deviceFeatures[deviceIndex].mLocalVolume = volIndex;
