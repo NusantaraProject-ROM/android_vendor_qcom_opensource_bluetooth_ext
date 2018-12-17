@@ -3093,14 +3093,19 @@ public final class Avrcp_ext {
         BluetoothDevice mDevice = mA2dpService.getActiveDevice();
         //validating device is connected
         int index = getIndexForDevice(device);
-        if(index != INVALID_DEVICE_INDEX) {
-                if (mDevice != null &&
-                    (mDevice.equals(deviceFeatures[index].mCurrentDevice) ||
-                    (mDevice.isTwsPlusDevice() && device.isTwsPlusDevice()))) {
-                    setActiveDevice(mDevice);
-                    //below line to send setAbsolute volume if device is suporting absolute volume
-                    setAbsVolumeFlag(mDevice);
-                }
+        if (index != INVALID_DEVICE_INDEX && mDevice != null &&
+            (mDevice.equals(deviceFeatures[index].mCurrentDevice) ||
+             (mDevice.isTwsPlusDevice() && device.isTwsPlusDevice()))) {
+            setActiveDevice(mDevice);
+            //below line to send setAbsolute volume if device is suporting absolute volume
+            setAbsVolumeFlag(mDevice);
+            //When A2dp playing on DUT and Remote got connected, send proper playstatus
+            if (isPlayingState(mCurrentPlayerState) &&
+                mA2dpService.isA2dpPlaying(device)) {
+                deviceFeatures[index].mCurrentPlayState = mCurrentPlayerState;
+                Log.i(TAG,"Send correct playstatus to remote when it gets connected: " +
+                                                      deviceFeatures[index].mCurrentPlayState);
+            }
         }
         Log.i(TAG,"Exit setAvrcpConnectedDevice");
     }
