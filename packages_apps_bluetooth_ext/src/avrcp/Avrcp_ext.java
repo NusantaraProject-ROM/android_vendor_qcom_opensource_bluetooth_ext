@@ -2285,7 +2285,7 @@ public final class Avrcp_ext {
                         builder.setState(PlaybackState.STATE_PLAYING,
                                 PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
                         newState = builder.build();
-                    } else if (!mAudioManagerIsPlaying && !mAudioManager.isMusicActive()){
+                    } else if (!mAudioManagerIsPlaying) {
                         builder.setState(PlaybackState.STATE_PAUSED,
                                 PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0.0f);
                         newState = builder.build();
