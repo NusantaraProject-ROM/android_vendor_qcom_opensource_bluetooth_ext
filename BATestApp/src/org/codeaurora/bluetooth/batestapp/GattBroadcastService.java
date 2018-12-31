@@ -832,7 +832,12 @@ public class GattBroadcastService extends Service {
                 mAddress = new byte[BROADCAST_ADDRESS_LENGTH];
                 mAddress[0] = 0x00;
                 if (mBluetoothAdapter != null) {
-                    setBroadcastAddress(mBluetoothAdapter.getAddress());
+                    String bdAddr = mBluetoothAdapter.getAddress();
+                    if (bdAddr != null) {
+                        setBroadcastAddress(bdAddr);
+                    } else {
+                        Log.e(TAG, "Adapter address is null");
+                    }
                 }
             }
 
