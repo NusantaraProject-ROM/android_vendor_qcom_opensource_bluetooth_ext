@@ -459,6 +459,16 @@ btav_a2dp_codec_index_t A2DP_VendorSourceCodecIndexAptxTWS(
 const char* A2DP_VendorCodecIndexStrAptxTWS(void) { return "aptX-TWS"; }
 
 bool A2DP_VendorInitCodecConfigAptxTWS(tAVDT_CFG* p_cfg) {
+  if (A2DP_GetOffloadStatus()) {
+    if (!A2DP_IsCodecEnabledInOffload((btav_a2dp_codec_index_t)
+                                    BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
+      LOG_ERROR(LOG_TAG, "%s: APTX-TWS disabled in offload mode", __func__);
+      return false;
+    }
+  } else {
+    LOG_ERROR(LOG_TAG, "%s: APTX-TWS is not supported in Non-Split mode", __func__);
+    return false;
+  }
   if (A2DP_BuildInfoAptxTWS(AVDT_MEDIA_TYPE_AUDIO, &a2dp_aptx_tws_caps,
                            p_cfg->codec_info) != A2DP_SUCCESS) {
     return false;
