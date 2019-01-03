@@ -15,7 +15,6 @@ cc_library_static {
         "vendor/qcom/opensource/commonsys/system/bt/bta/ag/",
         "vendor/qcom/opensource/commonsys/system/bt/utils/include/",
         "vendor/qcom/opensource/commonsys/system/bt/stack/l2cap/",
-        "hardware/qcom/bt/bthost_ipc/",
         "vendor/qcom/opensource/commonsys/bluetooth_ext/system_bt_ext/include/",
         "vendor/qcom/opensource/commonsys/bluetooth_ext/system_bt_ext/device/include/",
         "vendor/qcom/opensource/commonsys/bluetooth_ext/system_bt_ext/btif/include/",
