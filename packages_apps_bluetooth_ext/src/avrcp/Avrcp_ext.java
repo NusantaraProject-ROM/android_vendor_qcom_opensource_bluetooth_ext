@@ -2084,6 +2084,10 @@ public final class Avrcp_ext {
                     && (mA2dpState == BluetoothA2dp.STATE_PLAYING)) {
                 Log.i(TAG, "Players updated current playback state is none," +
                             " skip updating playback state");
+            } else if (device == null && newState != null &&
+                    newState.getState() == PlaybackState.STATE_ERROR) {
+                Log.i(TAG, "Players updated current playback state is error," +
+                            " skip updating playback state");
             } else {
                 updatePlaybackState(newState, device);
             }
