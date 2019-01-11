@@ -4659,7 +4659,7 @@ public final class Avrcp_ext {
                     deviceFeatures[i].isActiveDevice) {
                     addr = getByteAddress(deviceFeatures[i].mCurrentDevice);
                     index = i;
-                    break; 
+                    break;
                 }
             }
 
@@ -4690,7 +4690,7 @@ public final class Avrcp_ext {
                 if (deviceFeatures[i].isActiveDevice) {
                     addr = getByteAddress(deviceFeatures[i].mCurrentDevice);
                     deviceFeatures[i].mNowPlayingListChangedNT = type;
-                    break; 
+                    break;
                 }
             }
             if (addr == null) {
@@ -5061,7 +5061,7 @@ public final class Avrcp_ext {
 
         KeyEvent event = new KeyEvent(action, code);
 
-        if (!KeyEvent.isMediaKey(code)) {
+        if (!KeyEvent.isMediaSessionKey(code)) {
             Log.w(TAG, "Passthrough non-media key " + op + " (code " + code + ") state " + state);
         } else {
             if (code == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD) {
