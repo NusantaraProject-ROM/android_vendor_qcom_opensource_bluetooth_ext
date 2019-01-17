@@ -38,6 +38,7 @@ namespace android {
 static btvendor_hf_interface_t *sBluetoothVendorHfInterface = NULL;
 static jobject mCallbacksObj = NULL;
 static jmethodID method_onSWB;
+static jmethodID method_onTwsBatteryStateCallback;
 
 static jbyteArray marshall_bda(RawAddress* bd_addr) {
   CallbackEnv sCallbackEnv(__func__);
@@ -65,14 +66,41 @@ static void SwbCallback(uint16_t swb_config, RawAddress* bd_addr) {
                                  addr.get());
 }
 
+void bt_twsp_battery_status_callback(char* at_string, RawAddress* bd_addr) {
+    ALOGD("TwsBatteryStateCallback :%s, BD_ADDR: %s",
+          at_string, bd_addr->ToString().c_str());
+    CallbackEnv sCallbackEnv(__func__);
+    if (!sCallbackEnv.valid() || !mCallbacksObj) return;
+
+    ScopedLocalRef<jbyteArray> addr(sCallbackEnv.get(), marshall_bda(bd_addr));
+    if (addr.get() == nullptr) return;
+
+    char null_str[] = "";
+    if (!sCallbackEnv.isValidUtf(at_string)) {
+      android_errorWriteLog(0x534e4554, "109838537");
+      ALOGE("%s: at_string is not a valid UTF string.", __func__);
+      at_string = null_str;
+    }
+
+    ScopedLocalRef<jstring> js_at_string(sCallbackEnv.get(),
+                                         sCallbackEnv->NewStringUTF(at_string));
+
+    sCallbackEnv->CallVoidMethod(mCallbacksObj, method_onTwsBatteryStateCallback,
+                                 js_at_string.get(), addr.get());
+}
+
 static btvendor_hf_callbacks_t sBluetoothVendorHfCallbacks = {
     sizeof(sBluetoothVendorHfCallbacks),
     SwbCallback,
+    bt_twsp_battery_status_callback
 };
 
 static void classInitNative(JNIEnv* env, jclass clazz) {
 
     method_onSWB = env->GetMethodID(clazz, "onSWB", "(I[B)V");
+    method_onTwsBatteryStateCallback =
+         env->GetMethodID(clazz, "onTwsBatteryStateCallback",
+                                 "(Ljava/lang/String;[B)V");
     ALOGI("%s: succeeds", __FUNCTION__);
 }
 

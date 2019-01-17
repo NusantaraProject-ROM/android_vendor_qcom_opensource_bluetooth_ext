@@ -34,6 +34,7 @@
 #ifndef _BTA_AG_TWS_H_
 #define _BTA_AG_TWS_H_
 
+#include "btif_twsp_hf.h"
 #include "bta_ag_int.h"
 
 #define VS_QHCI_TWS_ESCO_SETUP_OPCODE 0x0D

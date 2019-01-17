@@ -47,6 +47,9 @@
 #define TWSPLUS_MIN_BATTERY_CHARGE_STATE_POWERFAULT 2
 #define TWSPLUS_MAX_BATTERY_CHARGE 255
 
+#define TWSPLUS_MIN_BATTERY_LEVEL 0
+#define TWSPLUS_MAX_BATTERY_LEVEL 100
+
 #define TWSPLUS_INVALID_MICPATH_DELAY  (-1)
 #define TWSPLUS_MAX_MICPATH_DELAY   (65535)
 #define TWSPLUS_MIN_MICPATH_DELAY  (0)
@@ -82,7 +85,8 @@ enum {
 typedef struct {
    tBTA_AG_SCB *p_scb;
    uint8_t mic_quality;
-   uint8_t battery_charge;
+   uint16_t battery_state;
+   uint16_t battery_level;
    uint8_t state;
    int16_t mic_path_delay;
    uint8_t role;
@@ -91,8 +95,9 @@ typedef struct {
    uint8_t ring_sent;
 } tTWSPLUS_DEVICE;
 
-void twsp_handle_vs_at_events(tBTA_AG_SCB* p_scb, uint16_t cmd, int16_t int_arg);
 void update_twsp_device(tBTA_AG_SCB* p_scb);
+void twsp_handle_vs_at_events(tBTA_AG_SCB* p_scb, uint16_t cmd,
+                                    tBTA_AG_VAL* val , int16_t int_arg);
 void reset_twsp_device(int eb_idx);
 bool twsp_set_ring_sent(tBTA_AG_SCB *p_scb, bool ring_sent);
 void twsp_clr_all_ring_sent();

@@ -43,11 +43,14 @@ void btif_handle_vendor_hf_events(uint16_t event, uint16_t swb_config, RawAddres
 /* SWB callback events */
 typedef void (* bt_swb_update_callback)(uint16_t swb_codec_config, RawAddress *bd_addr);
 
+typedef void (* bt_twsp_battery_status_callback)(char* at_string, RawAddress *bd_addr);
+
 /** BT-Vendor hf callback structure. */
 typedef struct {
     /** set to sizeof(BtVendorhfCallbacks) */
     size_t      size;
     bt_swb_update_callback  swb_codec_cb;
+    bt_twsp_battery_status_callback twsp_batt_status_cb;
 } btvendor_hf_callbacks_t;
 
 

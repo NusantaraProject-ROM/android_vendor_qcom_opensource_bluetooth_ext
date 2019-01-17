@@ -73,6 +73,13 @@ final class vendorhfservice {
         sendMessageToService(event);
     }
 
+    private void onTwsBatteryStateCallback(String atString, byte[] address) {
+        /*HeadsetStackEvent event = new HeadsetStackEvent(
+                HeadsetStackEvent.EVENT_TYPE_TWSP_BATTERY_STATE, atString,
+                getDevice(address));
+        sendMessageToService(event);*/
+    }
+
     private void sendMessageToService(HeadsetStackEvent event) {
         HeadsetService service = HeadsetService.getHeadsetService();
         if (service != null) {

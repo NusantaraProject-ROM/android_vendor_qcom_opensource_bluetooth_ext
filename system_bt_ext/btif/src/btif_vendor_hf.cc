@@ -39,6 +39,8 @@
 #define LOG_TAG "bt_btif_vendor_hf"
 
 #include <hardware/vendor_hf.h>
+#include "bta_ag_swb.h"
+#include "btif_twsp_hf.h"
 #include "btif_api.h"
 
 btvendor_hf_callbacks_t *bt_vendor_hf_callbacks = NULL;
@@ -85,8 +87,25 @@ static const btvendor_hf_interface_t btvendorhfInterface = {
     enable_swb,
 };
 
-void btif_handle_vendor_hf_events(uint16_t event, uint16_t swb_config, RawAddress *bd_addr) {
-    HAL_CBACK(bt_vendor_hf_callbacks, swb_codec_cb, swb_config, bd_addr);
+void btif_handle_vendor_hf_events(uint16_t event, tBTA_AG* data,
+                                  RawAddress *bd_addr) {
+    BTIF_TRACE_EVENT("%s: event: %d", __func__, event)
+    switch (event) {
+        case BTA_AG_SWB_EVT:
+            HAL_CBACK(bt_vendor_hf_callbacks, swb_codec_cb, data->val.num,
+                        bd_addr);
+            break;
+        case BTA_AG_AT_QCS_EVT:
+            HAL_CBACK(bt_vendor_hf_callbacks, swb_codec_cb, data->val.num,
+                        bd_addr);
+            break;
+        case BTA_AG_TWSP_BATTERY_UPDATE:
+            HAL_CBACK(bt_vendor_hf_callbacks, twsp_batt_status_cb,
+                        data->val.str, bd_addr);
+            break;
+        default:
+            BTIF_TRACE_EVENT("%s: unknown vendor hf event: %d", __func__,event);
+    }
 }
 
 bool get_swb_codec_status() {
