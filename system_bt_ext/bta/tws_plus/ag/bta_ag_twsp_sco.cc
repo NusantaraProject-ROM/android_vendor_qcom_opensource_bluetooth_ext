@@ -276,6 +276,14 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                 bta_ag_create_sco(p_scb, false);
                 p_sco->state = BTA_AG_SCO_LISTEN_ST;
                 break;
+            case BTA_AG_SCO_SHUTDOWN_E:
+                /* remove listening connection */
+                bta_ag_remove_sco(p_scb, false);
+
+                if (p_scb == p_sco->p_curr_scb) p_sco->p_curr_scb = NULL;
+
+                p_sco->state = BTA_AG_SCO_SHUTDOWN_ST;
+             break;
              default:
                   APPL_TRACE_WARNING("%s: BTA_AG_SCO_CODEC_ST: Ignoring event %d",
                              __func__, event);
