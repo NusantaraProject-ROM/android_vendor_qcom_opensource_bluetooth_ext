@@ -185,6 +185,8 @@ typedef struct {
     /** Sends connectivity network type used by Voip currently to stack */
     bt_status_t (*voip_network_type_wifi) (bthf_voip_state_t is_voip_started,
                                            bthf_voip_call_network_type_t is_network_wifi);
+    void (*hciclose)(void);
+
 
 } btvendor_interface_t;
 

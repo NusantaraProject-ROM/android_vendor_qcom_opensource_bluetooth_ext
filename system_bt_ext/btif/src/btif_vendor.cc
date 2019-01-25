@@ -290,6 +290,13 @@ static void bredrcleanup(void)
                           NULL, 0, NULL);
 }
 
+static void hciclose(void)
+{
+    LOG_INFO(LOG_TAG,"hciclose");
+    btif_hci_close();
+}
+
+
 #if HCI_RAW_CMD_INCLUDED == TRUE
 // Callback invoked on receiving HCI event
 static void btif_vendor_hci_event_callback ( tBTM_RAW_CMPL *p)
@@ -435,6 +442,7 @@ static const btvendor_interface_t btvendorInterface = {
     set_property_callouts,
     cleanup,
     voip_network_type_wifi,
+    hciclose,
 };
 
 /*******************************************************************************

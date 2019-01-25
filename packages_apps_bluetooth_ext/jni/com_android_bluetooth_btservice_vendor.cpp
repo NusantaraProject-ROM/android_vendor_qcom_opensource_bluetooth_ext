@@ -278,6 +278,17 @@ static bool bredrstartupNative(JNIEnv *env, jobject obj) {
     return JNI_TRUE;
 }
 
+static bool hcicloseNative(JNIEnv *env, jobject obj) {
+
+    ALOGI("%s", __FUNCTION__);
+
+    jboolean result = JNI_FALSE;
+    if (!sBluetoothVendorInterface) return result;
+
+    sBluetoothVendorInterface->hciclose();
+    return JNI_TRUE;
+}
+
 static bool setWifiStateNative(JNIEnv *env, jobject obj, jboolean status) {
 
     ALOGI("%s", __FUNCTION__);
@@ -331,6 +342,7 @@ static JNINativeMethod sMethods[] = {
     {"getProfileInfoNative", "(II)Z", (void*) getProfileInfoNative},
     {"getQtiStackStatusNative", "()Z", (void*) getQtiStackStatusNative},
     {"voipNetworkWifiInfoNative", "(ZZ)Z", (void *)voipNetworkWifiInfoNative},
+    {"hcicloseNative", "()V", (void*) hcicloseNative},
 };
 
 int register_com_android_bluetooth_btservice_vendor(JNIEnv* env)
