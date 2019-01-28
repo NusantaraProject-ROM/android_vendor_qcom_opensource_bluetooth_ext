@@ -166,6 +166,7 @@ static void btif_vendor_bredr_cleanup_event(uint16_t event, char *p_param)
     }
     btif_queue_release();
     btif_dm_bredr_disable();
+    BTA_DmBredrCleanup();
     HAL_CBACK(bt_vendor_callbacks, bredr_cleanup_cb, true);
 }
 
@@ -276,6 +277,12 @@ void btif_vendor_iot_device_broadcast_event(RawAddress* bd_addr,
             manufacturer_id, power_level, rssi, link_quality,
             glitch_count);
 }
+static void bredrstartup(void)
+{
+    LOG_INFO(LOG_TAG,"bredrstartup");
+    BTA_DmBredrStartup();
+}
+
 static void bredrcleanup(void)
 {
     LOG_INFO(LOG_TAG,"bredrcleanup");
@@ -422,6 +429,7 @@ static const btvendor_interface_t btvendorInterface = {
     NULL,
 #endif
     bredrcleanup,
+    bredrstartup,
     set_wifi_state,
     get_profile_info,
     set_property_callouts,
