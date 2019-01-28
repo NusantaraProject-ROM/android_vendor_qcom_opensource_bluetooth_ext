@@ -25,6 +25,8 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.android.bluetooth.map.BluetoothMapSmsPdu.SmsPdu;
 
@@ -100,6 +102,9 @@ public class BluetoothMapbMessageExtEmail extends BluetoothMapbMessageMime {
        int pos1 = 0;
        //PARSE SUBJECT
        setSubject(parseSubjectEmail(body));
+       setmRecipientTo(parseEmails(body, "To:"));
+       setmRecipientCc(parseEmails(body, "Cc:"));
+       setmRecipientBCc(parseEmails(body, "Bcc:"));
        //Parse Boundary
        String boundary = parseBoundaryEmail(body);
        if (boundary != null && !boundary.equalsIgnoreCase("")) {
@@ -289,4 +294,37 @@ public class BluetoothMapbMessageExtEmail extends BluetoothMapbMessageMime {
        }
        return encodeGeneric(bodyFragments);
    }
+
+    private ArrayList<String> parseEmails(String body , String type){
+        ArrayList<String> emailList =new ArrayList<>();
+        try {
+            int pos = body.indexOf(type);
+            if (pos > 0) {
+                int beginVersionPos = pos + type.length();
+                int endVersionPos = body.indexOf("\n", beginVersionPos);
+                String data= body.substring(beginVersionPos, endVersionPos);
+                if (data == null || data.isEmpty()) {
+                    return emailList;
+                }
+                Matcher m = Pattern.compile("[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+")
+                        .matcher(data);
+                while (m.find()) {
+                    String email = m.group();
+                    if (email.startsWith(".")) {
+                        email= email.substring(1);
+                    } if (email.endsWith(".")) {
+                        email= email.substring(0,email.length()-1);
+                    }
+                    if (emailList == null) {
+                        emailList=new ArrayList<>();
+                    } if(!emailList.contains(email)) {
+                        emailList.add(email);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG," parseEmails " + e.toString());
+        }
+        return emailList;
+    }
 }
