@@ -73,7 +73,16 @@ void update_twsp_device(tBTA_AG_SCB* p_scb) {
             twsp_devices[i].p_scb = p_scb;
             twsp_devices[i].battery_charge = TWSPLUS_MIN_BATTERY_CHARGE;
             twsp_devices[i].state = TWSPLUS_EB_STATE_OFF;
-            twsp_devices[i].role =  TWSPLUS_EB_ROLE_LEFT;
+
+            int other_idx = (i == PRIMARY_EB_IDX) ? SECONDARY_EB_IDX : PRIMARY_EB_IDX;
+            if (twsp_devices[other_idx].p_scb != NULL &&
+                    twsp_devices[other_idx].role == TWSPLUS_EB_ROLE_LEFT) {
+                twsp_devices[i].role = TWSPLUS_EB_ROLE_RIGHT;
+            } else {
+                twsp_devices[i].role = TWSPLUS_EB_ROLE_LEFT;
+            }
+
+            APPL_TRACE_WARNING("%s: idx: %d, role: %d", __func__, i, twsp_devices[i].role);
             twsp_devices[i].mic_path_delay = TWSPLUS_INVALID_MICPATH_DELAY;
             twsp_devices[i].mic_quality = TWSPLUS_MIN_MIC_QUALITY;
             twsp_devices[i].qdsp_nr = TWSPLUS_INVALID_QDSP_VALUE;
