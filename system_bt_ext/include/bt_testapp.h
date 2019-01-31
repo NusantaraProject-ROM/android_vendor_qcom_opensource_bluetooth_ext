@@ -147,7 +147,9 @@ typedef struct
 
     //GATT Client APIs
     tGATT_STATUS (*cConfigureMTU) (uint16_t conn_id, uint16_t  mtu);
-    tGATT_STATUS (*cDiscover) (uint16_t conn_id, tGATT_DISC_TYPE disc_type, tGATT_DISC_PARAM *p_param );
+    tGATT_STATUS (*cDiscover) (uint16_t conn_id, tGATT_DISC_TYPE disc_type,
+                            uint16_t start_handle, uint16_t end_handle,
+                            const bluetooth::Uuid& uuid);
     tGATT_STATUS (*cRead) (uint16_t conn_id, tGATT_READ_TYPE type, tGATT_READ_PARAM *p_read);
     tGATT_STATUS (*cWrite) (uint16_t conn_id, tGATT_WRITE_TYPE type, tGATT_VALUE *p_write);
     tGATT_STATUS (*cExecuteWrite) (uint16_t conn_id, bool is_execute);
@@ -169,7 +171,7 @@ typedef struct
     bool (*PairCancel) (RawAddress bd_addr);
     void (*SecurityGrant)(RawAddress bd_addr, uint8_t res);
     void (*PasskeyReply) (RawAddress bd_addr, uint8_t res, uint32_t passkey);
-    bool (*Encrypt) (uint8_t *key, uint8_t key_len, uint8_t *plain_text, uint8_t pt_len, tSMP_ENC *p_out);
+    Octet16 (*Encrypt) (Octet16 key, Octet16 message);
 }btsmp_interface_t;
 typedef struct
 {

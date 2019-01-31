@@ -82,10 +82,12 @@ extern void bond_state_changed(bt_status_t status, const RawAddress& bd_addr,
 bt_status_t btif_tws_plus_replace_earbud ( RawAddress *addr,
                                     RawAddress* peer_bd_addr) {
     bt_status_t status = BT_STATUS_FAIL;
-    LINK_KEY link_key;
-    size_t size = sizeof(link_key);
+
+    LinkKey link_key;
+    size_t size = OCTET16_LEN;
+    uint8_t *key = &link_key[0];
     if (btif_config_get_bin(addr->ToString().c_str(), "LinkKey",
-                                                link_key, &size)) {
+                                                key, &size)) {
         if(btif_tws_plus_derive_link_key( *addr, *peer_bd_addr, link_key,
                                      LK_DERIVATION_REASON_REPLACE_EB)) {
           status = BT_STATUS_SUCCESS;
@@ -323,7 +325,7 @@ bool btif_tws_plus_load_tws_devices(void) {
 }
 
 bool btif_tws_plus_derive_link_key ( RawAddress eb_addr, RawAddress peer_eb_addr,
-                    LINK_KEY src_key, tLK_DERIVATION_REASON reason) {
+                    LinkKey src_key, tLK_DERIVATION_REASON reason) {
   BTIF_TRACE_DEBUG("%s() Derive link for Bd addr %s ", __func__,
                peer_eb_addr.ToString().c_str());
   BTA_TwsPlusDeriveLinkKey( eb_addr, peer_eb_addr, src_key, reason);
@@ -332,8 +334,9 @@ bool btif_tws_plus_derive_link_key ( RawAddress eb_addr, RawAddress peer_eb_addr
 
 static void btif_tws_plus_upstreams_evt(uint16_t event, char* p_param) {
   tBTA_TWS_PLUS* p_data = (tBTA_TWS_PLUS*)p_param;
-  LINK_KEY link_key;
-  size_t size = sizeof(link_key);
+  LinkKey link_key;
+  uint8_t *key = &link_key[0];
+  size_t size = OCTET16_LEN;
 
   BTIF_TRACE_EVENT("%s:  event = %d", __func__, event);
   switch (event) {
@@ -347,7 +350,7 @@ static void btif_tws_plus_upstreams_evt(uint16_t event, char* p_param) {
           btif_tws_plus_set_peer_eb_addr(&p_data->sdp_search_comp.eb_addr,
                                         &p_data->sdp_search_comp.peer_eb_addr);
           if (btif_config_get_bin(p_data->sdp_search_comp.eb_addr.ToString().c_str(),
-                                  "LinkKey", link_key, &size)) {
+                                  "LinkKey", key, &size)) {
             btif_tws_plus_derive_link_key(p_data->sdp_search_comp.eb_addr,
                                           p_data->sdp_search_comp.peer_eb_addr,
                                           link_key, LK_DERIVATION_REASON_PAIR);

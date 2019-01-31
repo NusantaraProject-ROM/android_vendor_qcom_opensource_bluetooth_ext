@@ -2037,20 +2037,20 @@ static void l2test_l2c_connect_ind_cb(const RawAddress& bd_addr, uint16_t lcid, 
        if (psm == 200)
        {
            printf("No Resources Available\n");
-           result = L2CAP_LE_NO_RESOURCES;
-           sL2capInterface->LeConnectRsp (bd_addr, id, lcid, result,L2CAP_LE_CONN_OK,&local_coc_cfg);
+           result = L2CAP_LE_RESULT_NO_RESOURCES;
+           sL2capInterface->LeConnectRsp (bd_addr, id, lcid, result,L2CAP_LE_RESULT_CONN_OK,&local_coc_cfg);
        }
        else if(psm == 201)
        {
            printf("L2CAP_LE_CONN_INSUFFI_AUTHORIZATION \n");
-           result = L2CAP_LE_INSUFFICIENT_AUTHORIZATION;
-           sL2capInterface->LeConnectRsp (bd_addr, id, lcid, result,L2CAP_LE_CONN_OK,&local_coc_cfg);
+           result = L2CAP_LE_RESULT_INSUFFICIENT_AUTHORIZATION;
+           sL2capInterface->LeConnectRsp (bd_addr, id, lcid, result,L2CAP_LE_RESULT_CONN_OK,&local_coc_cfg);
        }
        else
        {
 
-           result = L2CAP_LE_CONN_OK;
-           sL2capInterface->LeConnectRsp (bd_addr, id, lcid, result,L2CAP_LE_CONN_OK,&local_coc_cfg);
+           result = L2CAP_LE_RESULT_CONN_OK;
+           sL2capInterface->LeConnectRsp (bd_addr, id, lcid, result,L2CAP_LE_RESULT_CONN_OK,&local_coc_cfg);
        }
        return;
    }
@@ -2079,7 +2079,7 @@ static void l2test_l2c_connect_cfm_cb(uint16_t lcid, uint16_t result)
     if (le_conn_info&&L2C_IS_VALID_LE_PSM(le_conn_info->psm))
     {
 
-        if (result == L2CAP_LE_CONN_OK) {
+        if (result == L2CAP_LE_RESULT_CONN_OK) {
             g_ConnectionState = CONNECT;
         }
         else if(le_conn_info && !le_conn_info->is_server)
@@ -2765,13 +2765,12 @@ void do_le_client_discover(char *p)
 {
     int        uuid_len = 0, uuid_len_bytes = 0;
     tGATT_STATUS Ret =0;
-    tGATT_DISC_PARAM param;
     tGATT_DISC_TYPE disc_type; //GATT_DISC_SRVC_ALL , GATT_DISC_SRVC_BY_UUID
     bool is_valid = false;
 
     disc_type = get_int(&p, -1);  // arg1
-    param.s_handle = get_hex(&p, -1);  // arg2
-    param.e_handle = get_hex(&p, -1);  // arg3
+    uint16_t s_handle = get_hex(&p, -1);  // arg2
+    uint16_t e_handle = get_hex(&p, -1);  // arg3
 
     uuid_len    = get_int(&p, -1);  // arg4 - Size in bits for the uuid (16, 32, or 128)
     if((16==uuid_len) || (32==uuid_len) || (128==uuid_len))
@@ -2785,12 +2784,12 @@ void do_le_client_discover(char *p)
     }
 
     std::string uuid_str = get_uuid_str(&p, uuid_len_bytes);
-    param.service = Uuid::FromString(uuid_str, &is_valid);
+    Uuid service = Uuid::FromString(uuid_str, &is_valid);
 
     printf("%s:: disc_type = %d is_valid = %d\n", __FUNCTION__, disc_type, is_valid);
 
     //if(FALSE == GetDiscType(p, &disc_type))    return;        //TODO - add the function if user input is needed
-    Ret = sGattInterface->cDiscover(g_conn_id, disc_type, &param);
+    Ret = sGattInterface->cDiscover(g_conn_id, disc_type, s_handle, e_handle, service);
     printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
 }
 

@@ -40,6 +40,11 @@
 #include "btif_api.h"
 #include "bt_utils.h"
 #include "smp_api.h"
+#include "stack/crypto_toolbox/crypto_toolbox.h"
+
+using crypto_toolbox::aes_128;
+
+
 
 #ifdef TEST_APP_INTERFACE
 #include <bt_testapp.h>
@@ -84,14 +89,12 @@ static void PasskeyReply(RawAddress bd_addr, uint8_t res, uint32_t passkey)
     printf("%s:: executed \n", __FUNCTION__);
 }
 
-static bool Encrypt(uint8_t *key, uint8_t key_len,
-                                        uint8_t *plain_text, uint8_t pt_len,
-                                        tSMP_ENC *p_out)
+static Octet16 Encrypt(Octet16 key, Octet16 message)
 {
-    bool Ret = 0;
-    Ret = SMP_Encrypt(key, key_len, plain_text, pt_len, p_out);
-    printf("%s:: Ret=%d\n", __FUNCTION__, Ret);
-    return Ret;
+    Octet16 output;
+
+    output= aes_128(key, message);
+    return output;
 }
 
 static const btsmp_interface_t btsmpInterface = {

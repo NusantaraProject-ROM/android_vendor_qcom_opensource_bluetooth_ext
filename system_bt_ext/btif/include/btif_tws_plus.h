@@ -81,7 +81,7 @@ bool btif_tws_plus_get_dev_type(RawAddress *addr, int *tws_plus_dev_type);
 bool btif_is_tws_plus_device(const RawAddress *remote_bd_addr);
 
 bool btif_tws_plus_derive_link_key ( RawAddress eb_addr, RawAddress peer_eb_addr,
-                    LINK_KEY src_key, tLK_DERIVATION_REASON reason);
+                    LinkKey src_key, tLK_DERIVATION_REASON reason);
 
 bool btif_tws_plus_process_eir(tBTA_DM_SEARCH *p_search_data,
                                         RawAddress *peer_eb_bd_addr);

@@ -103,7 +103,7 @@ typedef struct {
   BT_HDR hdr;
   RawAddress bd_addr;
   RawAddress peer_eb_addr;        /* peer eb addr for which lk has to derived */
-  LINK_KEY key;                /* Link key associated with peer device. */
+  LinkKey key;                /* Link key associated with peer device. */
   uint8_t reason;
 } tBTA_TWS_PLUS_API_DERIVE_LINKKEY;
 

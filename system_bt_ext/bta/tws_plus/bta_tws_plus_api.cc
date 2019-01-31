@@ -179,7 +179,7 @@ tBTA_TWS_PLUS_STATUS BTA_TwsPlusSdpSearch(RawAddress bd_addr) {
  *
  ******************************************************************************/
 tBTA_TWS_PLUS_STATUS BTA_TwsPlusDeriveLinkKey(RawAddress eb_addr,
-          RawAddress peer_eb_addr, LINK_KEY key, uint8_t reason) {
+          RawAddress peer_eb_addr, LinkKey key, uint8_t reason) {
   tBTA_TWS_PLUS_API_DERIVE_LINKKEY* p_msg =
       (tBTA_TWS_PLUS_API_DERIVE_LINKKEY*)osi_malloc(sizeof(tBTA_TWS_PLUS_API_DERIVE_LINKKEY));
 
@@ -188,7 +188,7 @@ tBTA_TWS_PLUS_STATUS BTA_TwsPlusDeriveLinkKey(RawAddress eb_addr,
   p_msg->hdr.event = BTA_TWS_PLUS_API_DERIVE_LINK_KEY_EVT;
   p_msg->peer_eb_addr =  peer_eb_addr;
   p_msg->bd_addr = eb_addr;
-  memcpy(p_msg->key, key, sizeof(LINK_KEY));
+  p_msg->key = key;
   p_msg->reason = reason;
   bta_sys_sendmsg(p_msg);
 

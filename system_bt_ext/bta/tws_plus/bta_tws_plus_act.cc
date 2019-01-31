@@ -319,17 +319,19 @@ void bta_tws_plus_sdp_search(tBTA_TWS_PLUS_MSG* p_data) {
  ******************************************************************************/
 void bta_tws_plus_derive_linkkey(tBTA_TWS_PLUS_MSG* p_data) {
   tBTA_TWS_PLUS_STATUS status = BTA_TWS_PLUS_FAILURE;
-  int i = 0;
   tBTA_TWS_PLUS result;
   memset(&result, 0, sizeof(result));
   APPL_TRACE_DEBUG("%s in, sdp_active:%d", __func__, bta_tws_plus_cb.sdp_active);
-  if(SMP_DeriveBrEdrLinkKey(p_data->derive_lk.peer_eb_addr,
-    ( uint8_t *) p_data->derive_lk.key,(uint8_t *) result.lk_derived.key)) {
-     APPL_TRACE_DEBUG("%s link key for 2nd device derived", __func__);
-     for(i = 0; i< 16 ; i++)
-      APPL_TRACE_DEBUG("%s result.key [%d] is %d", __func__, i, result.lk_derived.key[i]);
-     status = BTA_TWS_PLUS_SUCCESS;
-  }
+
+  int i = 0;
+  result.lk_derived.key = SMP_DeriveBrEdrLinkKey(p_data->derive_lk.peer_eb_addr,
+       p_data->derive_lk.key);
+
+  APPL_TRACE_DEBUG("%s link key for 2nd device derived", __func__);
+  for(i = 0; i< 16 ; i++)
+    APPL_TRACE_DEBUG("%s result.key [%d] is %d", __func__, i, result.lk_derived.key[i]);
+  status = BTA_TWS_PLUS_SUCCESS;
+
   if (bta_tws_plus_cb.p_dm_cback) {
     result.lk_derived.peer_eb_addr =  p_data->derive_lk.peer_eb_addr;
     result.lk_derived.bd_addr = p_data->derive_lk.bd_addr;

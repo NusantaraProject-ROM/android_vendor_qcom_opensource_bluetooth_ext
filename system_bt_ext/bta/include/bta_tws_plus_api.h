@@ -89,7 +89,7 @@ typedef struct {
   tBTA_TWS_PLUS_STATUS status;
   RawAddress bd_addr;
   RawAddress  peer_eb_addr;
-  LINK_KEY key;                /* Link key associated with peer device. */
+  LinkKey key;                /* Link key associated with peer device. */
   uint8_t reason;
 } tBTA_TWS_PLUS_LK_DERIVED;
 
@@ -162,7 +162,7 @@ extern tBTA_TWS_PLUS_STATUS BTA_TwsPlusDisable(void);
 extern tBTA_TWS_PLUS_STATUS BTA_TwsPlusSdpSearch(RawAddress bd_addr);
 
 extern tBTA_TWS_PLUS_STATUS BTA_TwsPlusDeriveLinkKey(RawAddress eb_addr,
-                    RawAddress peer_eb_addr, LINK_KEY key, uint8_t reason);
+                    RawAddress peer_eb_addr, LinkKey key, uint8_t reason);
 
 extern tBTA_TWS_PLUS_STATUS BTA_TwsPlusUpdatePeerEbAddr(RawAddress eb_addr,
                                                    RawAddress peer_eb_addr);

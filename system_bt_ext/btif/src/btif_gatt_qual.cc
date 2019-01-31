@@ -104,10 +104,12 @@ bool Gatt_Listen (tGATT_IF gatt_if, bool start, RawAddress& bd_addr)
         return Ret;
     }
 
-    tGATT_STATUS Gatt_Discover (uint16_t conn_id, tGATT_DISC_TYPE disc_type, tGATT_DISC_PARAM *p_param )
+	tGATT_STATUS Gatt_Discover(uint16_t conn_id, tGATT_DISC_TYPE disc_type,
+                            uint16_t start_handle, uint16_t end_handle,
+                            const Uuid& uuid)
     {
         tGATT_STATUS Ret = 0;
-        Ret = GATTC_Discover(conn_id, disc_type, p_param);
+        Ret = GATTC_Discover(conn_id, disc_type, start_handle, end_handle, uuid);
         printf("%s::Ret=%d, conn_id=%d, disc_type=%d \n", __FUNCTION__, Ret, conn_id, disc_type);
         return Ret;
     }
