@@ -6,7 +6,7 @@ LOCAL_SRC_FILES:= gatt_test.cpp
 
 LOCAL_C_INCLUDES += . \
     vendor/qcom/opensource/commonsys/system/bt/stack/include \
-    vendor/qcom/opensource/commonsys/system/bt/include \
+    system/bt/include \
     system/bt/types \
     vendor/qcom/opensource/commonsys/system/bt/internal_include \
     vendor/qcom/opensource/commonsys/system/bt/stack/l2cap \

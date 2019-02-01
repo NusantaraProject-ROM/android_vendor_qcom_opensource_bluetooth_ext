@@ -68,6 +68,7 @@
 #include <time.h>
 
 #include <base/bind.h>
+#include <base/callback.h>
 
 using bluetooth::Uuid;
 #define bluetooth_module_t "bluetooth_test"
@@ -116,6 +117,11 @@ typedef struct {
 #define INTERVAL_LOW     1
 #define INTERVAL_MEDIUM  2
 #define INTERVAL_HIGH    3
+
+#define L2CAP_LE_DEFAULT_MTU 512
+#define L2CAP_LE_DEFAULT_MPS 230
+#define L2CAP_LE_MAX_CREDIT 65535
+#define L2CAP_LE_DEFAULT_CREDIT 1
 
 /************************************************************************************
 **  Local type definitions
@@ -2524,7 +2530,8 @@ void do_le_conn_param_update(char *p)
     timeout      =  get_hex(&p, -1);
     if(FALSE == GetBdAddr(p, &bd_addr))    return;
 
-    Ret = sGattIfaceScan->client->conn_parameter_update(bd_addr, min_interval, max_interval, latency, timeout);
+    Ret = sGattIfaceScan->client->conn_parameter_update(bd_addr, min_interval,
+                max_interval, latency, timeout, 0, 0);
     printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
 
 }
