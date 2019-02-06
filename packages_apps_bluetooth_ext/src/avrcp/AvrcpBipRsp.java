@@ -83,7 +83,7 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
 
     public AvrcpBipRsp (Context context, int maxBipConnections) {
         mContext = context;
-        mMaxBipDevices = getMaxDevices();
+        mMaxBipDevices = maxBipConnections;
         mAdapter = BluetoothAdapter.getDefaultAdapter();
         mHandlerThread = new HandlerThread("BipHandlerThread");
         mHandlerThread.start();

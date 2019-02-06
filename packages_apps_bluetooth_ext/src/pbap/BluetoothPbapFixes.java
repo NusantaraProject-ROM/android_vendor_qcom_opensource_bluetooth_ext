@@ -111,7 +111,7 @@ public class BluetoothPbapFixes {
 
     private static final int ORDER_BY_ALPHABETICAL = 1;
 
-    static final int MAX_CONNECTED_DEVICES = 2;
+    static final int MAX_CONNECTED_DEVICES = 5;
 
     // Stores map of BD address to isRebonded for the given BT Session
     protected static HashMap<String,String> PbapSdpResponse = new HashMap <String,String>();
