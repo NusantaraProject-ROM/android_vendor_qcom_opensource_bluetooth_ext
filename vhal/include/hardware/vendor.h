@@ -124,6 +124,9 @@ typedef void (* remote_dev_prop_callback)(bt_status_t status,
                           RawAddress *bd_addr, int num_properties,
                           bt_vendor_property_t *properties);
 
+/** Callback to handle SSR */
+typedef void (* ssr_vendor_callback)(void);
+
 /** Bluetooth HCI event Callback */
 /* Receive any HCI event from controller for raw commands */
 typedef void (* hci_event_recv_callback)(uint8_t event_code, uint8_t *buf, uint8_t len);
@@ -143,6 +146,7 @@ typedef struct {
     remote_dev_prop_callback         rmt_dev_prop_cb;
     hci_event_recv_callback  hci_event_recv_cb;
     adapter_vendor_prop_callback     adapter_vendor_prop_cb;
+    ssr_vendor_callback         ssr_vendor_cb;
 } btvendor_callbacks_t;
 
 typedef int (*property_set_callout)(const char* key, const char* value);

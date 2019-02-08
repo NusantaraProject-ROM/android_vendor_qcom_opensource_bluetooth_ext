@@ -150,6 +150,12 @@ final class Vendor {
         intent.putExtra(BluetoothDevice.EXTRA_GLITCH_COUNT, glitchCount);
         mService.sendBroadcast(intent, AdapterService.BLUETOOTH_PERM);
     }
+
+    void ssr_cleanup_callback() {
+        Log.e(TAG,"ssr_cleanup_callback");
+        mService.ssrCleanupCallback();
+    }
+
     void devicePropertyChangedCallback(byte[] address, int[] types, byte[][] values) {
         byte[] val;
         int type;
