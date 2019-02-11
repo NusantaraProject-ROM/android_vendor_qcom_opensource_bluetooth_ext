@@ -486,8 +486,9 @@ public class BATService extends ProfileService {
             } else {// a2dp active device is null.
                 // inform BA device as disconnected. we have to send noisy intent
                 // because BA seems to be last device.
-                mAudioManager.setBluetoothA2dpDeviceConnectionState(
-                    mBADevice, BluetoothProfile.STATE_DISCONNECTED,BluetoothProfile.A2DP);
+                mAudioManager.setBluetoothA2dpDeviceConnectionStateSuppressNoisyIntent(
+                        mBADevice, BluetoothProfile.STATE_DISCONNECTED,BluetoothProfile.A2DP,
+                        false, -1);
             }
             if (!checkAbsVolSupport()) {
                 //Abs vol not supported by AVRCP, we should update false from BA.
