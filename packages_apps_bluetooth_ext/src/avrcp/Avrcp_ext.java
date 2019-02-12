@@ -41,6 +41,7 @@ import android.content.res.Resources;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.media.AudioManager;
+import android.media.AudioAttributes;
 import android.media.AudioPlaybackConfiguration;
 import android.media.MediaDescription;
 import android.media.MediaMetadata;
@@ -49,6 +50,7 @@ import android.media.session.MediaSession;
 import android.media.session.MediaSession.QueueItem;
 import android.media.session.MediaSessionManager;
 import android.media.session.PlaybackState;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -511,7 +513,13 @@ public final class Avrcp_ext {
         NotificationChannel mChannel = new NotificationChannel(AVRCP_NOTIFICATION_ID,
                 mContext.getString(R.string.avrcp_notification_name), NotificationManager.IMPORTANCE_DEFAULT);
         mChannel.setDescription(mContext.getString(R.string.bluetooth_advanced_feat_description));
+        // setDefaults(int defaults) This method was deprecated in API level 26. use
+        // NotificationChannel.enableVibration(boolean) and
+        // NotificationChannel.enableLights(boolean) and
+        // NotificationChannel.setSound(Uri, AudioAttributes) instead.
         mChannel.enableLights(true);
+        mChannel.enableVibration(false);
+        mChannel.setSound(Uri.EMPTY, Notification.AUDIO_ATTRIBUTES_DEFAULT);
         mChannel.setLightColor(Color.GREEN);
         mNotificationManager.createNotificationChannel(mChannel);
 
@@ -902,13 +910,14 @@ public final class Avrcp_ext {
                         BTRC_FEAT_AVRC_UI_UPDATE) != 0)
                 {
                     int NOTIFICATION_ID = android.R.drawable.stat_sys_data_bluetooth;
-                    Notification notification = new Notification.Builder(mContext)
+                    //Notification.Builder (Context context) constructor was deprecated in API level 26.
+                    //use Notification.Builder (Context context,String channelId) instead.
+                    Notification notification = new Notification.Builder(mContext, AVRCP_NOTIFICATION_ID)
                         .setContentTitle(mContext.getString(R.string.bluetooth_rc_feat_title))
                         .setContentText(mContext.getString(R.string.bluetooth_rc_feat_content))
                         .setSubText(mContext.getString(R.string.bluetooth_rc_feat_subtext))
                         .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
                         .setChannelId(AVRCP_NOTIFICATION_ID)
-                        .setDefaults(Notification.DEFAULT_ALL)
                         .build();
 
                     if (mNotificationManager != null )

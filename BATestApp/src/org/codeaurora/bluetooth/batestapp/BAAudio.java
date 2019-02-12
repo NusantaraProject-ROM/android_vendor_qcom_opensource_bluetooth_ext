@@ -30,6 +30,8 @@
 package org.codeaurora.bluetooth.batestapp;
 
 import android.app.Service;
+import android.media.AudioFocusRequest;
+import android.media.AudioAttributes;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothBATransmitter;
 import android.bluetooth.BluetoothBAEncryptionKey;
@@ -38,10 +40,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.bluetooth.BluetoothProfile;
 import android.util.Log;
 import android.os.IBinder;
-
+import android.content.Context;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -72,10 +75,14 @@ public class BAAudio {
     public static final String EXTRA_CONN_STATE = "android.bluetooth.extra.conn.state";
     private static final String TAG = Utils.TAG + "BAAudio";
     private static final int SAMPLE_RATE = 16000;
-    private static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_CONFIGURATION_MONO;
+    /* CHANNEL_CONFIGURATION_MONO @deprecated Use {@link #CHANNEL_OUT_MONO} or {@link #CHANNEL_IN_MONO} instead.  */
+    private static final int CHANNEL_CONFIG_RECORD = AudioFormat.CHANNEL_IN_MONO;
+    private static final int CHANNEL_CONFIG_PLAYBACK = AudioFormat.CHANNEL_OUT_MONO;
     private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
     private static final int RECORD_BUF_SIZE = AudioRecord.getMinBufferSize(SAMPLE_RATE,
-            CHANNEL_CONFIG, AUDIO_FORMAT);
+            CHANNEL_CONFIG_RECORD, AUDIO_FORMAT);
+    private static final int PLAYBACK_BUF_SIZE = AudioTrack.getMinBufferSize(SAMPLE_RATE,
+            CHANNEL_CONFIG_PLAYBACK, AUDIO_FORMAT);
     private final static int MSG_STOP_RECORD_PLAY = 1;
     private final static int MSG_START_RECORD_PLAY = 2;
     private final static int MSG_AUDIO_FOCUS_CHANGE = 3;
@@ -96,6 +103,8 @@ public class BAAudio {
     private AudioManager mAudioManager;
     private BAMsgHandler mHandler;
     private StreamingThread mStrThread;
+    // This is returned when requesting focus from AudioManager
+    private AudioFocusRequest mfocusRequest;
     private OnAudioFocusChangeListener mAudioFocusListener = new OnAudioFocusChangeListener() {
         public void onAudioFocusChange(int focusVal) {
             Log.d(TAG, "focusChangs val = " + focusVal);
@@ -129,6 +138,14 @@ public class BAAudio {
         thread.start();
         Looper looper = thread.getLooper();
         mHandler = new BAMsgHandler(looper);
+        AudioAttributes streamAttributes =
+             new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                                          .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                          .build();
+        mfocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                                      .setAudioAttributes(streamAttributes)
+                                      .setOnAudioFocusChangeListener(mAudioFocusListener)
+                                      .build();
 
     }
 
@@ -144,7 +161,7 @@ public class BAAudio {
         Log.v(TAG," cleanup ");
         if ((mCurrAudioFocusState == AudioManager.AUDIOFOCUS_GAIN) ||
                 (mCurrAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)) {
-            mAudioManager.abandonAudioFocus(mAudioFocusListener);
+            mAudioManager.abandonAudioFocusRequest(mfocusRequest);
         }
         if (mContext != null) {
             mContext.unregisterReceiver(mReceiver);
@@ -246,7 +263,7 @@ public class BAAudio {
 
     private synchronized void initAudioRecordSink() {
         mAudioRecord = new AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, SAMPLE_RATE,
-                CHANNEL_CONFIG, AUDIO_FORMAT, RECORD_BUF_SIZE);
+                CHANNEL_CONFIG_RECORD, AUDIO_FORMAT, RECORD_BUF_SIZE);
         Log.d(TAG," mAudioRecord initialized = " + mAudioRecord.getState());
         if (AutomaticGainControl.isAvailable()) {
             AutomaticGainControl agc = AutomaticGainControl.create(mAudioRecord.getAudioSessionId
@@ -285,9 +302,21 @@ public class BAAudio {
         } else {
             Log.d(TAG, "aec is unavailable");
         }
-        mAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, SAMPLE_RATE, CHANNEL_CONFIG,
-                AUDIO_FORMAT,
-                RECORD_BUF_SIZE, AudioTrack.MODE_STREAM);
+        //AudioTrack(int, int, int, int, int, int)' is deprecated
+        //use AudioTrack.Builder or
+        //AudioTrack(AudioAttributes attributes, AudioFormat format, int bufferSizeInBytes, int mode, int sessionId)
+        AudioManager am = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
+        AudioFormat audioFormat = (new AudioFormat.Builder())
+                             .setChannelMask(CHANNEL_CONFIG_PLAYBACK)
+                             .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                             .setSampleRate(SAMPLE_RATE)
+                             .build();
+        AudioAttributes audioAttributes = (new AudioAttributes.Builder())
+                                .setUsage(AudioAttributes.USAGE_MEDIA)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .build();
+        mAudioTrack = new AudioTrack(audioAttributes, audioFormat, PLAYBACK_BUF_SIZE,
+                                        AudioTrack.MODE_STREAM, am.generateAudioSessionId());
     }
 
     public boolean startRecordAndPlay() {
@@ -418,9 +447,9 @@ public class BAAudio {
                     if (mCurrAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
                         Log.d(TAG, " Transient Loss occused, call must be in progress, don't " +
                                 "start now ");
-                    int focusGranted = mAudioManager.requestAudioFocus(mAudioFocusListener,
-                            AudioManager.STREAM_MUSIC,
-                            AudioManager.AUDIOFOCUS_GAIN);
+                    //requestAudioFocus (AudioManager.OnAudioFocusChangeListener l, int, int)
+                    // method was deprecated in API level 26. use requestAudioFocus(AudioFocusRequest)
+                    int focusGranted = mAudioManager.requestAudioFocus(mfocusRequest);
                     Log.d(TAG, " Focus Granted = " + focusGranted);
                     if (focusGranted == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
                         if (mStrThread == null) {
@@ -457,8 +486,11 @@ public class BAAudio {
                         mAudioTrack = null;
                     }
                     mStrThread = null;
-                    if (mCurrAudioFocusState == AudioManager.AUDIOFOCUS_GAIN)
-                        mAudioManager.abandonAudioFocus(mAudioFocusListener);
+                    if (mCurrAudioFocusState == AudioManager.AUDIOFOCUS_GAIN) {
+                        //abandonAudioFocus (AudioManager.OnAudioFocusChangeListener l) method was
+                        //deprecated in API level 26. use abandonAudioFocusRequest(AudioFocusRequest)
+                        mAudioManager.abandonAudioFocusRequest(mfocusRequest);
+                    }
                     break;
                 case MSG_AUDIO_FOCUS_CHANGE:
                     mCurrAudioFocusState = msg.arg1;
@@ -473,7 +505,7 @@ public class BAAudio {
                             break;
                         case AudioManager.AUDIOFOCUS_LOSS:
                             // abandon audio focus in this case
-                            mAudioManager.abandonAudioFocus(mAudioFocusListener);
+                            mAudioManager.abandonAudioFocusRequest(mfocusRequest);
                             mHandler.obtainMessage(MSG_STOP_RECORD_PLAY).sendToTarget();
                             break;
                         case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
