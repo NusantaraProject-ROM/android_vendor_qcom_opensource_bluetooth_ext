@@ -214,19 +214,10 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
         mMasInstance = masInstance;
         mMasId = mMasInstance.getMasId();
         mMapSupportedFeatures = mMasInstance.getRemoteFeatureMask();
-        if (D) Log.d(TAG, "BluetoothMapContentObserverEmail: Supported features " +
-                Integer.toHexString(mMapSupportedFeatures) ) ;
-
-        if((BluetoothMapUtils.MAP_FEATURE_EXTENDED_EVENT_REPORT_11_BIT
-                & mMapSupportedFeatures) != 0){
-            mMapEventReportVersion = BluetoothMapUtils.MAP_EVENT_REPORT_V11;
-        }
-        // Make sure support for all formats result in latest version returned
-        if((BluetoothMapUtils.MAP_FEATURE_EVENT_REPORT_V12_BIT
-                & mMapSupportedFeatures) != 0){
-            mMapEventReportVersion = BluetoothMapUtils.MAP_EVENT_REPORT_V12;
-        }
-
+        if (D) Log.d(TAG, "Supported features " +
+                Integer.toHexString(mMapSupportedFeatures));
+        setObserverRemoteFeatureMask(mMapSupportedFeatures);
+        super.setObserverRemoteFeatureMask(mMapSupportedFeatures);
         if(account != null) {
             mAuthority = Uri.parse(account.mBase_uri).getAuthority();
             Log.d(TAG,"mAuthority: "+mAuthority);
@@ -279,9 +270,19 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
         if ((BluetoothMapUtils.MAP_FEATURE_EVENT_REPORT_V12_BIT
                 & mMapSupportedFeatures) != 0) {
             mMapEventReportVersion = BluetoothMapUtils.MAP_EVENT_REPORT_V12;
+        } else if (((BluetoothMapUtils.MAP_FEATURE_PARTICIPANT_PRESENCE_CHANGE_BIT
+                | BluetoothMapUtils.MAP_FEATURE_PARTICIPANT_CHAT_STATE_CHANGE_BIT)
+                & mMapSupportedFeatures) != 0) {
+            // Warning according to page 46/123 of MAP 1.3 spec
+            Log.w(TAG, "setObserverRemoteFeatureMask: Extended Event Reports 1.2 is not set even"
+                    + "though PARTICIPANT_PRESENCE_CHANGE_BIT or PARTICIPANT_CHAT_STATE_CHANGE_BIT"
+                    + " were set, mMapSupportedFeatures=" + mMapSupportedFeatures);
         }
-        if (V) Log.d(TAG, "setObserverRemoteFeatureMask Email: " + mMapEventReportVersion
-            + " mMapSupportedFeatures Email: " + mMapSupportedFeatures);
+        if (D) {
+            Log.d(TAG, "setObserverRemoteFeatureMask: mMapEventReportVersion="
+                    + mMapEventReportVersion + " mMapSupportedFeatures= "
+                    +Integer.toHexString(mMapSupportedFeatures));
+        }
     }
 
     private static boolean sendEventNewMessage(long eventFilter) {
@@ -542,8 +543,8 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
                         /* We must filter out any actions made by the MCE, hence do not send e.g.
                          * a message deleted and/or MessageShift for messages deleted by the MCE. */
                         if (msg == null) {
-                            if(V) Log.v(TAG, "handleMsgListChangesMsg id: " + id + "folderId: "
-                                + folderId + " newFolder: " +newFolder);
+                            if(V) Log.v(TAG, "handleMsgListChangesMsg id: " + id + ", folderId: "
+                                + folderId + ", newFolder: " +newFolder);
                             listChanged = true;
                             /* New message - created with message unread */
                             msg = new Msg(id, folderId, readFlag);
