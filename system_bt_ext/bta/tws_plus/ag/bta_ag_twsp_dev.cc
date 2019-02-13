@@ -38,7 +38,11 @@
 #include "internal_include/bt_trace.h"
 #include "bta_ag_int.h"
 
+
 #if (TWS_AG_ENABLED == TRUE)
+//forward declarations
+void select_microphone_path(tBTA_AG_SCB *best_scb);
+
 
 tTWSPLUS_DEVICE twsp_devices[MAX_TWSPLUS_DEVICES];
 
@@ -48,22 +52,45 @@ uint8_t get_lat_selected_mic_eb_role() {
     return g_latest_selected_eb_role;
 }
 
+tBTA_AG_SCB* get_twsp_with_role(uint8_t role) {
+   int i;
+   for (i=0; i<MAX_TWSPLUS_DEVICES; i++) {
+      if (twsp_devices[i].p_scb != NULL &&
+          twsp_devices[i].role == role) {
+          return twsp_devices[i].p_scb;
+      }
+   }
+   return NULL;
+}
+
 void reset_twsp_device(int  eb_idx) {
     if (eb_idx < PRIMARY_EB_IDX || eb_idx > SECONDARY_EB_IDX) {
         APPL_TRACE_WARNING("%s: Invalid eb_idx: %d\n", __func__, eb_idx);
         return;
     }
 
-     APPL_TRACE_WARNING("%s: eb idx: %d\n", __func__, eb_idx);
-     twsp_devices[eb_idx].p_scb = NULL;
-     twsp_devices[eb_idx].battery_charge = TWSPLUS_MIN_BATTERY_CHARGE;
-     twsp_devices[eb_idx].state = TWSPLUS_EB_STATE_OFF;
-     twsp_devices[eb_idx].role =  TWSPLUS_EB_ROLE_INVALID;
-     twsp_devices[eb_idx].mic_path_delay = TWSPLUS_INVALID_MICPATH_DELAY;
-     twsp_devices[eb_idx].mic_quality = TWSPLUS_MIN_MIC_QUALITY;
-     twsp_devices[eb_idx].qdsp_nr = TWSPLUS_INVALID_QDSP_VALUE;
-     twsp_devices[eb_idx].qdsp_ec = TWSPLUS_INVALID_QDSP_VALUE;
-     twsp_devices[eb_idx].ring_sent = false;
+    if (get_lat_selected_mic_eb_role() == twsp_devices[eb_idx].role) {
+        //Trigger Microphone Switch
+        uint8_t other_twsp_role =
+            (twsp_devices[eb_idx].role == TWSPLUS_EB_ROLE_LEFT) ?
+                        TWSPLUS_EB_ROLE_RIGHT : TWSPLUS_EB_ROLE_LEFT;
+        tBTA_AG_SCB *peer_scb = get_twsp_with_role(other_twsp_role);
+        if (peer_scb != NULL) {
+             select_microphone_path(peer_scb);
+        } else {
+             APPL_TRACE_WARNING("%s: peer_scb is NULL, No mic switch", __func__);
+        }
+     }
+
+    twsp_devices[eb_idx].p_scb = NULL;
+    twsp_devices[eb_idx].battery_charge = TWSPLUS_MIN_BATTERY_CHARGE;
+    twsp_devices[eb_idx].state = TWSPLUS_EB_STATE_OFF;
+    twsp_devices[eb_idx].role =  TWSPLUS_EB_ROLE_INVALID;
+    twsp_devices[eb_idx].mic_path_delay = TWSPLUS_INVALID_MICPATH_DELAY;
+    twsp_devices[eb_idx].mic_quality = TWSPLUS_MIN_MIC_QUALITY;
+    twsp_devices[eb_idx].qdsp_nr = TWSPLUS_INVALID_QDSP_VALUE;
+    twsp_devices[eb_idx].qdsp_ec = TWSPLUS_INVALID_QDSP_VALUE;
+    twsp_devices[eb_idx].ring_sent = false;
 }
 
 void update_twsp_device(tBTA_AG_SCB* p_scb) {
