@@ -146,7 +146,6 @@ static bt_status_t init( btvendor_callbacks_t* callbacks)
     broadcast_cb_timer = alarm_new("btif_vnd.cb_timer");
     LOG_INFO(LOG_TAG,"init");
     LOG_INFO(LOG_TAG,"init done");
-    btif_enable_service(BTA_TWS_PLUS_SERVICE_ID);
     return BT_STATUS_SUCCESS;
 }
 
