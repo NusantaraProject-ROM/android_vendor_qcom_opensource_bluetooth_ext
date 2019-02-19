@@ -500,7 +500,7 @@ typedef struct {
 
     /* Get folder item list response from TG to CT */
      bt_status_t (*get_folder_items_list_rsp)(RawAddress *bd_addr, btrc_status_t rsp_status,
-        uint16_t uid_counter, uint8_t num_items, btrc_folder_items_t *p_items);
+        uint16_t uid_counter, uint16_t num_items, btrc_folder_items_t *p_items);
 
     /* Change path response from TG to CT */
     bt_status_t (*change_path_rsp)(RawAddress *bd_addr, btrc_status_t rsp_status,
