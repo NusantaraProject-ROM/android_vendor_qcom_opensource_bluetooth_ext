@@ -85,6 +85,7 @@ typedef struct {
 
 typedef struct {
    char map_email_support[VALUE_MAX_LENGTH];
+   char map_0104_support[VALUE_MAX_LENGTH];
 } map_feature_t;
 
 typedef struct {
@@ -131,6 +132,7 @@ static const char* profile_feature_string_(const profile_info_t feature)
     CASE_RETURN_STR(AVRCP_0103_SUPPORT)
     CASE_RETURN_STR(USE_SIM_SUPPORT)
     CASE_RETURN_STR(MAP_EMAIL_SUPPORT)
+    CASE_RETURN_STR(MAP_0104_SUPPORT)
     CASE_RETURN_STR(PBAP_0102_SUPPORT)
     CASE_RETURN_STR(END_OF_FEATURE_LIST)
   }
@@ -347,6 +349,14 @@ bool profile_feature_fetch(const profile_t profile, profile_info_t feature_name)
           LOG_WARN(LOG_TAG, "profile_feature_fetch:MAP_EMAIL_SUPPORT found %d" , feature_set);
         }
         break;
+        case MAP_0104_SUPPORT:
+        {
+          if (strncasecmp("true", db_entry->profile_feature_type.map_feature_entry.map_0104_support,
+              strlen("true")) == 0)
+            feature_set = true;
+          LOG_WARN(LOG_TAG, "profile_feature_fetch:MAP_0104_SUPPORT found %d" , feature_set);
+        }
+        break;
         default:
         {
           LOG_WARN(LOG_TAG, "profile_feature_fetch:profile = %d , feature %d not found" , profile, feature_name);
@@ -449,6 +459,14 @@ static bool load_to_database(int profile_id, char *key, char *value)
         {
           memset(&entry->profile_feature_type.map_feature_entry.map_email_support, '\0', VALUE_MAX_LENGTH);
           memcpy(&entry->profile_feature_type.map_feature_entry.map_email_support, value, strlen(value));
+        }
+        break;
+        case MAP_0104_SUPPORT:
+        {
+          memset(&entry->profile_feature_type.map_feature_entry.map_0104_support,
+              '\0', VALUE_MAX_LENGTH);
+          memcpy(&entry->profile_feature_type.map_feature_entry.map_0104_support,
+              value, strlen(value));
         }
         break;
         default:

@@ -75,6 +75,7 @@ typedef enum {
  USE_SIM_SUPPORT,
  MAP_EMAIL_SUPPORT,
  PBAP_0102_SUPPORT,
+ MAP_0104_SUPPORT,
  END_OF_FEATURE_LIST
  } profile_info_t;
 

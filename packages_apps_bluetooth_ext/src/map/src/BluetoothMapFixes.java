@@ -40,6 +40,8 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseArray;
 import com.android.bluetooth.Utils;
+import com.android.bluetooth.btservice.AdapterService;
+import com.android.bluetooth.btservice.AbstractionLayer;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -225,9 +227,11 @@ public class BluetoothMapFixes {
     /* Checks if notification for Version Upgrade is required */
     static void showNotification(BluetoothMapService service,
             BluetoothDevice remoteDevice) {
-        if (service == null || remoteDevice == null || Utils.isPtsTestMode()) {
+        if (service == null || remoteDevice == null || Utils.isPtsTestMode()
+                || isMapAdvDisabled()) {
             Log.d(TAG, "Ignore showNotification , service: " + service + " remoteDevice: "
-                    + remoteDevice +" isPtsTestMode :" + Utils.isPtsTestMode());
+                    + remoteDevice +" isPtsTestMode :" + Utils.isPtsTestMode()
+                    + " isMapAdvDisabled :" + isMapAdvDisabled());
             return;
         }
         boolean hasMap14Support = isRemoteSupportsAdvMap(remoteDevice);
@@ -253,5 +257,20 @@ public class BluetoothMapFixes {
             if (mNotificationManager != null)
                 mNotificationManager.cancel(MAP_ADV_NOTIFICATION_ID);
         }
+    }
+
+    public static boolean isMapAdvDisabled(){
+        boolean ismap14Enabled = false;
+        int MAP_0104_SUPPORT = 7;
+        try {
+            AdapterService adapterService = AdapterService.getAdapterService();
+            if (adapterService != null) {
+                ismap14Enabled = adapterService.getProfileInfo(AbstractionLayer.MAP,
+                        MAP_0104_SUPPORT);
+            }
+        } catch(Exception e) {
+            Log.w(TAG," isMapadvEnabled : " + e);
+        }
+        return !ismap14Enabled;
     }
 }
