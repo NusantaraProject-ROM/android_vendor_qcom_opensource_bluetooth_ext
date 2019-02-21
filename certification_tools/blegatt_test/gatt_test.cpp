@@ -326,18 +326,18 @@ enum {
 tL2CAP_FCR_OPTS ertm_fcr_opts_def = {
     L2CAP_FCR_ERTM_MODE,
     3, /* Tx window size */
-    MCA_FCR_OPT_MAX_TX_B4_DISCNT, /* Maximum transmissions before disconnecting */
+    20, /* Maximum transmissions before disconnecting */
     2000, /* Retransmission timeout (2 secs) */
-    MCA_FCR_OPT_MONITOR_TOUT, /* Monitor timeout (12 secs) */
+    12000, /* Monitor timeout (12 secs) */
     100 /* MPS segment size */
 };
 
 tL2CAP_FCR_OPTS stream_fcr_opts_def = {
     L2CAP_FCR_STREAM_MODE,
     3,/* Tx window size */
-    MCA_FCR_OPT_MAX_TX_B4_DISCNT, /* Maximum transmissions before disconnecting */
+    20, /* Maximum transmissions before disconnecting */
     2000, /* Retransmission timeout (2 secs) */
-    MCA_FCR_OPT_MONITOR_TOUT, /* Monitor timeout (12 secs) */
+    12000, /* Monitor timeout (12 secs) */
     100 /* MPS segment size */
 };
 static tL2CAP_ERTM_INFO t_ertm_info = {0, 0, 0, 0, 0, 0};

@@ -23,7 +23,6 @@ cc_library_static {
     ],
     srcs: [
         "src/btif_l2cap.cc",
-        "src/btif_mcap.cc",
         "src/btif_rfcomm.cc",
         "src/btif_vendor.cc",
         "src/btif_vendor_socket.cc",

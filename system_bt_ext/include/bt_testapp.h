@@ -50,7 +50,6 @@
 #include "sdp_api.h"
 #include "gatt_api.h"
 #include "gap_api.h"
-#include "mca_api.h"
 #include <hardware/hardware.h>
 #include "btm_api.h"
 #include "bt_types.h"
@@ -134,37 +133,6 @@ typedef struct {
     bool        (*LeFlowControl) (uint16_t lcid, uint16_t credits);
     void        (*LeFreeBuf)(BT_HDR *p_buf);
 } btl2cap_interface_t;
-
-typedef struct
-{
-    size_t    size;
-    void (*Init)(void);
-    tMCA_HANDLE (*Register)(tMCA_REG *p_reg, tMCA_CTRL_CBACK *p_cback);
-    void        (*Deregister)(tMCA_HANDLE handle);
-    tMCA_RESULT (*CreateDep)(tMCA_HANDLE handle, tMCA_DEP *p_dep, tMCA_CS *p_cs);
-    tMCA_RESULT (*DeleteDep)(tMCA_HANDLE handle, tMCA_DEP dep);
-    tMCA_RESULT (*ConnectReq)(tMCA_HANDLE handle, RawAddress bd_addr,
-                                          uint16_t ctrl_psm,
-                                          uint16_t sec_mask);
-    tMCA_RESULT (*DisconnectReq)(tMCA_CL mcl);
-    tMCA_RESULT (*CreateMdl)(tMCA_CL mcl, tMCA_DEP dep, uint16_t data_psm,
-                                         uint16_t mdl_id, uint8_t peer_dep_id,
-                                         uint8_t cfg, const tMCA_CHNL_CFG *p_chnl_cfg);
-    tMCA_RESULT (*CreateMdlRsp)(tMCA_CL mcl, tMCA_DEP dep,
-                                            uint16_t mdl_id, uint8_t cfg, uint8_t rsp_code,
-                                            const tMCA_CHNL_CFG *p_chnl_cfg);
-    tMCA_RESULT (*CloseReq)(tMCA_DL mdl);
-    tMCA_RESULT (*ReconnectMdl)(tMCA_CL mcl, tMCA_DEP dep, uint16_t data_psm,
-                                            uint16_t mdl_id, const tMCA_CHNL_CFG *p_chnl_cfg);
-    tMCA_RESULT (*ReconnectMdlRsp)(tMCA_CL mcl, tMCA_DEP dep,
-                                               uint16_t mdl_id, uint8_t rsp_code,
-                                               const tMCA_CHNL_CFG *p_chnl_cfg);
-    tMCA_RESULT (*DataChnlCfg)(tMCA_CL mcl, const tMCA_CHNL_CFG *p_chnl_cfg);
-    tMCA_RESULT (*Abort)(tMCA_CL mcl);
-    tMCA_RESULT (*Delete)(tMCA_CL mcl, uint16_t mdl_id);
-    tMCA_RESULT (*WriteReq)(tMCA_DL mdl, BT_HDR *p_pkt);
-    uint16_t (*GetL2CapChannel) (tMCA_DL mdl);
-}btmcap_interface_t;
 
 typedef struct
 {
