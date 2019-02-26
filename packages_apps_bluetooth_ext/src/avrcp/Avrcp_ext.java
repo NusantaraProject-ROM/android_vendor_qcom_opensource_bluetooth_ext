@@ -71,6 +71,7 @@ import com.android.bluetooth.ba.BATService;
 import com.android.bluetooth.R;
 import com.android.bluetooth.Utils;
 import com.android.bluetooth.avrcpcontroller.AvrcpControllerService;
+import com.android.bluetooth.ReflectionUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -2315,13 +2316,27 @@ public final class Avrcp_ext {
                 if (param <= 0)
                    param = 1;
 
-                boolean isSplitA2dpEnabled = false;
                 long update_interval = 0L;
-                String offloadSupported = SystemProperties.get("persist.vendor.btstack.enable.splita2dp");
-                if (offloadSupported.isEmpty() || "true".equals(offloadSupported)) {
-                    isSplitA2dpEnabled = true;
-                    Log.v(TAG,"split enabled");
+                // Split A2dp will be enabled by default
+                boolean isSplitA2dpEnabled = true;
+                AdapterService adapterService = AdapterService.getAdapterService();
+                if (adapterService != null) {
+                    //Todo, Once KS TAG is available, need to remove ReflectionUtils
+                    //isSplitA2dpEnabled= adapterService.isSplitA2dpEnabled();
+                    ReflectionUtils rUtils = new ReflectionUtils();
+                    if (rUtils.isMethodAvailable(adapterService,"isSplitA2dpEnabled", null)) {
+                      Object obj = rUtils.invokeMethod(adapterService,"isSplitA2dpEnabled", null);
+                      if (obj != null) {
+                          isSplitA2dpEnabled = (boolean)obj;
+                      } else {
+                          Log.v(TAG,"Obj is null");
+                      }
+                    } else {
+                      Log.v(TAG,"isSplitA2dpEnabled method is not available");
+                    }
+                    Log.v(TAG,"split enabled: " + isSplitA2dpEnabled);
                 }
+
                 if (isSplitA2dpEnabled) {
                     update_interval = SystemProperties.getLong("persist.vendor.btstack.avrcp.pos_time", 3000L);
                 } else {

@@ -56,9 +56,12 @@
 #include "utils/Log.h"
 #include "android_runtime/AndroidRuntime.h"
 #include <cutils/properties.h>
-
+#include "bt_configstore.h"
+#include <vector>
+#include <dlfcn.h>
 
 namespace android {
+int load_bt_configstore_lib();
 
 static jmethodID method_onBredrCleanup;
 static jmethodID method_iotDeviceBroadcast;
@@ -68,6 +71,12 @@ static jmethodID method_ssrCleanupCallback;
 
 static btvendor_interface_t *sBluetoothVendorInterface = NULL;
 static jobject mCallbacksObj = NULL;
+
+static char soc_name[16];
+static char a2dp_offload_Cap[PROPERTY_VALUE_MAX] = {'\0'};
+static bt_configstore_interface_t* bt_configstore_intf = NULL;
+static void *bt_configstore_lib_handle = NULL;
+static jboolean spilt_a2dp_supported;
 
 static int get_properties(int num_properties, bt_vendor_property_t* properties,
                           jintArray* types, jobjectArray* props) {
@@ -267,6 +276,29 @@ static void initNative(JNIEnv *env, jobject object) {
     const bt_interface_t* btInf;
     bt_status_t status;
 
+    load_bt_configstore_lib();
+
+    if (bt_configstore_intf != NULL) {
+       std::vector<vendor_property_t> vPropList;
+
+       bt_configstore_intf->get_vendor_properties(BT_PROP_ALL, vPropList);
+       for (auto&& vendorProp : vPropList) {
+          if (vendorProp.type == BT_PROP_SOC_TYPE) {
+            strlcpy(soc_name, vendorProp.value, sizeof(soc_name));
+            ALOGI("%s:: soc_name = %s",__func__, soc_name);
+          } else if(vendorProp.type == BT_PROP_SPILT_A2DP) {
+            if (!strncasecmp(vendorProp.value, "true", sizeof("true"))) {
+              spilt_a2dp_supported = true;
+            } else {
+              spilt_a2dp_supported = false;
+            }
+          } else if(vendorProp.type == BT_PROP_A2DP_OFFLOAD_CAP) {
+            strlcpy(a2dp_offload_Cap, vendorProp.value, sizeof(a2dp_offload_Cap));
+            ALOGI("%s:: a2dp_offload_Cap = %s", __func__, a2dp_offload_Cap);
+          }
+       }
+    }
+
     if ( (btInf = getBluetoothInterface()) == NULL) {
         ALOGE("Bluetooth module is not loaded");
         return;
@@ -297,6 +329,12 @@ static void initNative(JNIEnv *env, jobject object) {
 static void cleanupNative(JNIEnv *env, jobject object) {
     const bt_interface_t* btInf;
 
+    if (bt_configstore_lib_handle) {
+      dlclose(bt_configstore_lib_handle);
+      bt_configstore_lib_handle = NULL;
+      bt_configstore_intf = NULL;
+    }
+
     if ( (btInf = getBluetoothInterface()) == NULL) {
         ALOGE("Bluetooth module is not loaded");
         return;
@@ -322,6 +360,13 @@ static bool bredrcleanupNative(JNIEnv *env, jobject obj) {
     ALOGI("%s", __FUNCTION__);
 
     jboolean result = JNI_FALSE;
+
+    if (bt_configstore_lib_handle) {
+      dlclose(bt_configstore_lib_handle);
+      bt_configstore_lib_handle = NULL;
+      bt_configstore_intf = NULL;
+    }
+
     if (!sBluetoothVendorInterface) return result;
 
     sBluetoothVendorInterface->bredrcleanup();
@@ -393,6 +438,26 @@ static jboolean voipNetworkWifiInfoNative(JNIEnv *env, jobject object,
     return (status == BT_STATUS_SUCCESS) ? JNI_TRUE : JNI_FALSE;
 }
 
+static jstring getSocNameNative(JNIEnv* env) {
+
+    ALOGI("%s", __FUNCTION__);
+
+    return env->NewStringUTF(soc_name);
+}
+
+static jstring getA2apOffloadCapabilityNative(JNIEnv* env) {
+
+    ALOGI("%s", __FUNCTION__);
+
+    return env->NewStringUTF(a2dp_offload_Cap);
+}
+
+static jboolean isSplitA2dpEnabledNative(JNIEnv* env) {
+
+    ALOGI("%s", __FUNCTION__);
+    return spilt_a2dp_supported;
+}
+
 static JNINativeMethod sMethods[] = {
     {"classInitNative", "()V", (void *) classInitNative},
     {"initNative", "()V", (void *) initNative},
@@ -404,7 +469,46 @@ static JNINativeMethod sMethods[] = {
     {"getQtiStackStatusNative", "()Z", (void*) getQtiStackStatusNative},
     {"voipNetworkWifiInfoNative", "(ZZ)Z", (void *)voipNetworkWifiInfoNative},
     {"hcicloseNative", "()V", (void*) hcicloseNative},
+    {"getSocNameNative", "()Ljava/lang/String;", (void*) getSocNameNative},
+    {"getA2apOffloadCapabilityNative", "()Ljava/lang/String;",
+            (void*) getA2apOffloadCapabilityNative},
+    {"isSplitA2dpEnabledNative", "()Z", (void*) isSplitA2dpEnabledNative},
 };
+
+int load_bt_configstore_lib() {
+    const char* sym = BT_CONFIG_STORE_INTERFACE_STRING;
+
+    bt_configstore_lib_handle = dlopen("libbtconfigstore.so", RTLD_NOW);
+    if (!bt_configstore_lib_handle) {
+        const char* err_str = dlerror();
+        LOG(ERROR) << __func__ << ": failed to load Bt Config store library, error="
+                   << (err_str ? err_str : "error unknown");
+        goto error;
+    }
+
+    // Get the address of the bt_configstore_interface_t.
+    bt_configstore_intf = (bt_configstore_interface_t*)dlsym(bt_configstore_lib_handle, sym);
+    if (!bt_configstore_intf) {
+        LOG(ERROR) << __func__ << ": failed to load symbol from bt config store library"
+                   << sym;
+        goto error;
+    }
+
+    // Success.
+    LOG(INFO) << __func__ << " loaded HAL: bt_configstore_interface_t=" << bt_configstore_intf
+              << ", bt_configstore_lib_handle=" << bt_configstore_lib_handle;
+
+    return 0;
+
+  error:
+    if (bt_configstore_lib_handle) {
+      dlclose(bt_configstore_lib_handle);
+      bt_configstore_lib_handle = NULL;
+      bt_configstore_intf = NULL;
+    }
+
+    return -EINVAL;
+}
 
 int register_com_android_bluetooth_btservice_vendor(JNIEnv* env)
 {
