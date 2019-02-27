@@ -50,7 +50,6 @@ import android.text.format.DateUtils;
 import android.util.Log;
 import android.util.Xml;
 import android.text.TextUtils;
-import android.text.format.Time;
 
 import org.xmlpull.v1.XmlSerializer;
 
@@ -925,8 +924,6 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
             synchronized(getMsgListMsg()) {
                 // Now insert the empty message into folder
                 ContentValues values = new ContentValues();
-                Time timeObj = new Time();
-                timeObj.setToNow();
                 folderId = folderElement.getFolderId();
                 values.put(BluetoothMapEmailContract.ExtEmailMessageColumns.MAILBOX_KEY,
                         folderId);
@@ -937,7 +934,7 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
                     values.put(BluetoothMapContract.MessageColumns.SUBJECT, "");
                 }
                 values.put("syncServerTimeStamp", 0);
-                values.put("timeStamp", timeObj.toMillis(false));
+                values.put("timeStamp", Calendar.getInstance().getTimeInMillis());
                 values.put("flagLoaded", "1");
                 values.put("flagFavorite", "0");
                 values.put("flagAttachment", "0");
@@ -1017,7 +1014,7 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
         //failPendingMessages();
         //removeDeletedMessages();
         if(mProviderClient != null) {
-            mProviderClient.release();
+            mProviderClient.close();
             mProviderClient = null;
         }
     }

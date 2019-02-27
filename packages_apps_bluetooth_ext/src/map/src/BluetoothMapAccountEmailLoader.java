@@ -212,7 +212,7 @@ public class BluetoothMapAccountEmailLoader extends BluetoothMapAccountLoader {
             return children;
         } finally {
             if (mProviderClient != null) {
-                mProviderClient.release();
+                mProviderClient.close();
             }
         }
 

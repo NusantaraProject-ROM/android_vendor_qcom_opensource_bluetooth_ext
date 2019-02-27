@@ -43,7 +43,6 @@ import android.os.RemoteException;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentFilter.MalformedMimeTypeException;
-import android.text.format.Time;
 import android.util.TimeFormatException;
 
 
@@ -68,6 +67,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -866,37 +866,17 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
 
     private String setWhereFilterPeriod(BluetoothMapAppParams ap, FilterInfo fi) {
         String where = "";
-
-        if ((ap.getFilterPeriodBegin() != -1)) {
-            if (fi.mMsgType == FilterInfo.TYPE_EMAIL) {
-                Time time = new Time();
-                SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
-                Date date = new Date(ap.getFilterPeriodBegin());
-                try {
-                    time.parse((format.format(date)).trim());
-                     where = " AND " + BluetoothMapEmailContract.ExtEmailMessageColumns.TIMESTAMP +
-                        " >= " + time.toMillis(false);
-                } catch (TimeFormatException e) {
-                    Log.d(TAG, "Bad formatted FilterPeriodEnd, Ignore"
-                          + ap.getFilterPeriodBegin());
-                }
+        if(fi.mMsgType == FilterInfo.TYPE_EMAIL) {
+            if ((ap.getFilterPeriodBegin() != -1)) {
+                where = " AND " + BluetoothMapEmailContract.ExtEmailMessageColumns.TIMESTAMP +
+                        " >= " + ap.getFilterPeriodBegin();
+            }
+            if ((ap.getFilterPeriodEnd() != -1)) {
+                where += " AND " + BluetoothMapEmailContract.ExtEmailMessageColumns.TIMESTAMP +
+                        " < " + ap.getFilterPeriodEnd();
             }
         }
-        if ((ap.getFilterPeriodEnd() != -1)) {
-            if (fi.mMsgType == FilterInfo.TYPE_EMAIL){
-                Time time = new Time();
-                SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
-                Date date = new Date(ap.getFilterPeriodEnd());
-                try {
-                    time.parse((format.format(date)).trim());
-                    where += " AND " + BluetoothMapEmailContract.ExtEmailMessageColumns.TIMESTAMP +
-                        " < " + (time.toMillis(false));
-                } catch (TimeFormatException e) {
-                    Log.d(TAG, "Bad formatted FilterPeriodEnd, Ignore"
-                          + ap.getFilterPeriodEnd());
-                }
-            }
-        }
+        if (V) Log.v(TAG," setWhereFilterPeriod :" + where);
         return where;
     }
 
@@ -1702,7 +1682,8 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                             if (msgBody != null) {
                                 msgBody = msgBody.replaceAll("(?s)(<title>)(.*?)(</title>)", "");
                                 msgBody = msgBody.replaceAll("(?s)(<style type=\"text/css\".*?>)(.*?)(</style>)", "");
-                                CharSequence msgText = Html.fromHtml(msgBody);
+                                CharSequence msgText = Html.fromHtml(msgBody,
+                                        Html.FROM_HTML_MODE_LEGACY);
                                 emailBody = msgText.toString();
                                 emailBody = emailBody.replaceAll("(?s)(<!--)(.*?)(-->)", "");
                                 // Solves problem with Porche Car-kit and Gmails.

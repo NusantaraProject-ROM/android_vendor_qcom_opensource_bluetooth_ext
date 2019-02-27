@@ -42,7 +42,6 @@ import android.content.IntentFilter;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
-import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemProperties;
 import android.util.Log;
@@ -51,17 +50,11 @@ public class BTOppUtils {
 
     private static final String TAG = "BtOppUtils";
 
-    private static final boolean V = Constants.VERBOSE;
-
     private static final boolean D = Constants.DEBUG;
-
-    private static WakeLock mWakeLock;
 
     protected static boolean isA2DPPlaying;
 
     public static boolean isA2DPConnected;
-
-    private static boolean isScreenOff = false;
 
     protected static final int UPDATE_PROVIDER = 5;
 
@@ -121,41 +114,19 @@ public class BTOppUtils {
         }
     }
 
-    protected static void acquireFullWakeLock(PowerManager pm, String tag) {
-        mWakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK
-                | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
-                tag);
-    }
-
     protected static void isTurnOnScreen(Context context, boolean needConfirm) {
         if (D)
-            Log.d(TAG, "Received incoming file request");
+            Log.d(TAG, "Received incoming file request : " + needConfirm);
         if (needConfirm) {
-            if (!mWakeLock.isHeld() && isScreenOff) {
-                if (D)
-                    Log.d(TAG, "acquire full WakeLock");
-                mWakeLock.acquire();
-            }
             sendVendorDebugBroadcast(context);
         }
     }
 
     protected static void acquirePartialWakeLock(WakeLock partialWakeLock) {
-        if (mWakeLock.isHeld()) {
-            mWakeLock.release();
-        }
         if (!partialWakeLock.isHeld()) {
             if (D)
                 Log.d(TAG, "acquire partial WakeLock");
             partialWakeLock.acquire();
-        }
-    }
-
-    protected static void releaseFullWakeLock() {
-        if (mWakeLock.isHeld()) {
-            if (D)
-                Log.d(TAG, "releasing full wakelock");
-            mWakeLock.release();
         }
     }
 
@@ -183,11 +154,7 @@ public class BTOppUtils {
 
     protected static void checkAction(Intent intent) {
         String action = intent.getAction();
-        if (action.equals(Intent.ACTION_SCREEN_OFF)) {
-            isScreenOff = true;
-        } else if (action.equals(Intent.ACTION_SCREEN_ON)) {
-            isScreenOff = false;
-        } else if (action.equals(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)) {
+        if (action.equals(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)) {
             int newState = intent.getIntExtra(BluetoothProfile.EXTRA_STATE,
                     BluetoothProfile.STATE_DISCONNECTED);
             BluetoothDevice device = intent
@@ -221,8 +188,6 @@ public class BTOppUtils {
     }
 
     protected static void addA2dpFilter(IntentFilter filter) {
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
         filter.addAction(BluetoothA2dp.ACTION_PLAYING_STATE_CHANGED);
     }
@@ -269,4 +234,7 @@ public class BTOppUtils {
             fileToDelete.delete();
     }
 
+    protected static void acquireFullWakeLock(Object pm, String tag) { }
+
+    protected static void releaseFullWakeLock() { }
 }

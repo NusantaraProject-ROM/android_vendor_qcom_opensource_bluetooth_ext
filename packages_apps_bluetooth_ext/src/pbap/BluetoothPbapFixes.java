@@ -481,12 +481,10 @@ public class BluetoothPbapFixes {
         String contentText = isUpgrade ? "Re-pair for Advance Phonebook Feature.":
                 "Re-pair for Phonebook Access Version Compatibility";
         int NOTIFICATION_ID = android.R.drawable.stat_sys_data_bluetooth;
-        Notification notification = new Notification.Builder(context)
+        Notification notification = new Notification.Builder(context,PBAP_NOTIFICATION_ID)
             .setContentTitle(title)
             .setContentText(contentText)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
-            .setChannelId(PBAP_NOTIFICATION_ID)
-            .setDefaults(Notification.DEFAULT_ALL)
             .setAutoCancel(true)
             .build();
 
