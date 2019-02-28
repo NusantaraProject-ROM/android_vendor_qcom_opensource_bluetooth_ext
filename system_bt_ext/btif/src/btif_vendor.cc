@@ -185,18 +185,20 @@ void btif_vendor_update_add_on_features() {
     uint8_t add_on_features_len = 0;
     bt_vendor_property_t vnd_prop;
     char buf[8];
+    vnd_prop.len = 0;
     const controller_t* controller = controller_get_interface();
     if(controller) {
         const bt_device_features_t* dev_features = controller->get_add_on_features(
                                     &add_on_features_len);
+
+        vnd_prop.type = BT_VENDOR_PROPERTY_SOC_ADD_ON_FEATURES;
+        vnd_prop.val = (void*)buf;
         if(dev_features && add_on_features_len > 0) {
-            vnd_prop.type = BT_VENDOR_PROPERTY_SOC_ADD_ON_FEATURES;
-            vnd_prop.val = (void*)buf;
             vnd_prop.len = add_on_features_len;
             memcpy(vnd_prop.val, dev_features, add_on_features_len);
-            HAL_CBACK(bt_vendor_callbacks, adapter_vendor_prop_cb,
-                                   BT_STATUS_SUCCESS, 1, &vnd_prop);
-         }
+        }
+        HAL_CBACK(bt_vendor_callbacks, adapter_vendor_prop_cb,
+                               BT_STATUS_SUCCESS, 1, &vnd_prop);
     }
 }
 
