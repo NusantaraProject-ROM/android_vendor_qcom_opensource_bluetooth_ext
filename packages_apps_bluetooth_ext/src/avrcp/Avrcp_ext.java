@@ -2406,8 +2406,17 @@ public final class Avrcp_ext {
                      SystemClock.elapsedRealtime() - deviceFeatures[deviceIndex].mLastStateUpdate;
                 currPosition = sinceUpdate + deviceFeatures[deviceIndex].mCurrentPlayState.getPosition();
             } else {
-                currPosition = deviceFeatures[deviceIndex].mCurrentPlayState.getPosition();
-
+                if (isPlayingState(deviceFeatures[deviceIndex].mCurrentPlayState) &&
+                    (avrcp_playstatus_blacklist && isPlayerStateUpdateBlackListed(
+                     deviceFeatures[deviceIndex].mCurrentDevice.getAddress(),
+                     deviceFeatures[deviceIndex].mCurrentDevice.getName()))) {
+                 currPosition = mCurrentPlayerState.getPosition();
+                 Log.d(TAG, "Remote is BLed for playstatus, So send playposition by fetching from "+
+                                   "mCurrentPlayerState." + currPosition);
+                } else {
+                  currPosition = deviceFeatures[deviceIndex].mCurrentPlayState.getPosition();
+                  Log.d(TAG, "getPlayPosition(): currPosition = " + currPosition);
+                }
             }
         } else {
             if (mCurrentPlayerState == null) {
