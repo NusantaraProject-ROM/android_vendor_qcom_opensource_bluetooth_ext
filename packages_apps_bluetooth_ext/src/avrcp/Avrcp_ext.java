@@ -3232,9 +3232,6 @@ public final class Avrcp_ext {
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
             if (deviceFeatures[i].mCurrentDevice !=null &&
                     deviceFeatures[i].mCurrentDevice.equals(device)) {
-                //for BT ON/OFF case sometime disconnect is coming for 1 or all device
-                //so storing volume before disconnect
-                storeVolumeForAllDevice(device);
                 // initiate cleanup for all variables;
                 Message msg = mHandler.obtainMessage(MESSAGE_DEVICE_RC_CLEANUP, STACK_CLEANUP,
                        0, device);
@@ -4859,27 +4856,6 @@ public final class Avrcp_ext {
         return INVALID_DEVICE_INDEX;
     }
 
-    public void storeVolumeForAllDevice(BluetoothDevice device) {
-        SharedPreferences.Editor pref = getVolumeMap().edit();
-        for (int i = 0; i < maxAvrcpConnections; i++) {
-            if (deviceFeatures[i].mCurrentDevice != null &&
-               deviceFeatures[i].mLocalVolume != -1) { //2nd condition to avoid -1 update to audio
-                if(deviceFeatures[i].isActiveDevice)//to get exact volume for active device
-                    deviceFeatures[i].mLocalVolume =
-                        mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-                if(getVolume(deviceFeatures[i].mCurrentDevice) != deviceFeatures[i].mLocalVolume) {
-                    Log.i(TAG, "storeVolumeForAllDevice: Storing stream volume level for device " +
-                        deviceFeatures[i].mCurrentDevice + " : " + deviceFeatures[i].mLocalVolume);
-                    mVolumeMap.put(deviceFeatures[i].mCurrentDevice, deviceFeatures[i].mLocalVolume);
-                    pref.putInt(deviceFeatures[i].mCurrentDevice.getAddress(),
-                        deviceFeatures[i].mLocalVolume);
-                    // Always use apply() since it is asynchronous, otherwise the call
-                    //can hang waiting for storage to be written.
-                    pref.apply();
-                }
-            }
-        }
-   }
 
     public void storeVolumeForDevice(BluetoothDevice device) {
         SharedPreferences.Editor pref = getVolumeMap().edit();
