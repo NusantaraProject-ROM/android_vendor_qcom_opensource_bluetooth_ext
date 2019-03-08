@@ -459,16 +459,12 @@ btav_a2dp_codec_index_t A2DP_VendorSourceCodecIndexAptxTWS(
 const char* A2DP_VendorCodecIndexStrAptxTWS(void) { return "aptX-TWS"; }
 
 bool A2DP_VendorInitCodecConfigAptxTWS(tAVDT_CFG* p_cfg) {
-  if (A2DP_GetOffloadStatus()) {
-    if (!A2DP_IsCodecEnabledInOffload((btav_a2dp_codec_index_t)
-                                    BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
-      LOG_ERROR(LOG_TAG, "%s: APTX-TWS disabled in offload mode", __func__);
-      return false;
-    }
-  } else {
-    LOG_ERROR(LOG_TAG, "%s: APTX-TWS is not supported in Non-Split mode", __func__);
+  if (!A2DP_IsCodecEnabled((btav_a2dp_codec_index_t)
+                                  BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
+    LOG_ERROR(LOG_TAG, "%s: APTX-TWS disabled in both SW and HW mode", __func__);
     return false;
   }
+
   if (A2DP_BuildInfoAptxTWS(AVDT_MEDIA_TYPE_AUDIO, &a2dp_aptx_tws_caps,
                            p_cfg->codec_info) != A2DP_SUCCESS) {
     return false;
@@ -490,7 +486,8 @@ A2dpCodecConfigAptxTWS::A2dpCodecConfigAptxTWS(
     : A2dpCodecConfig((btav_a2dp_codec_index_t)BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS,
                       "aptX-TWS", codec_priority) {
   // Compute the local capability
-    if (A2DP_GetOffloadStatus()) {
+    if (A2DP_IsCodecEnabledInOffload((btav_a2dp_codec_index_t)
+                                  BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
       a2dp_aptx_tws_caps = a2dp_aptx_tws_offload_caps;
       a2dp_aptx_tws_default_config = a2dp_aptx_tws_default_offload_config;
     } else {
@@ -516,17 +513,13 @@ A2dpCodecConfigAptxTWS::~A2dpCodecConfigAptxTWS() {}
 bool A2dpCodecConfigAptxTWS::init() {
   if (!isValid()) return false;
 
-  if (A2DP_GetOffloadStatus()) {
-    if (A2DP_IsCodecEnabledInOffload((btav_a2dp_codec_index_t)
-                                   BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
-      LOG_ERROR(LOG_TAG, "%s: APTX-TWS enabled in offload mode", __func__);
-      return true;
-    } else {
-      LOG_ERROR(LOG_TAG, "%s: APTX-TWS disabled in offload mode", __func__);
-      return false;
-    }
-  } else {
-    LOG_ERROR(LOG_TAG,"APTX-TWS not enabled in non-split mode");
+  if (A2DP_IsCodecEnabledInOffload((btav_a2dp_codec_index_t)
+                                 BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
+    LOG_ERROR(LOG_TAG, "%s: APTX-Tws enabled in HW mode", __func__);
+    return true;
+  } else if(!A2DP_IsCodecEnabledInSoftware((btav_a2dp_codec_index_t)
+                                 BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)){
+    LOG_ERROR(LOG_TAG, "%s: APTX-Tws disabled in both SW and HW mode", __func__);
     return false;
   }
   return true;
