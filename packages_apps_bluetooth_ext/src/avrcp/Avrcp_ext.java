@@ -27,6 +27,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothAvrcp;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
+import android.bluetooth.BluetoothUuid;
 import android.content.BroadcastReceiver;
 import com.android.bluetooth.a2dp.A2dpService;
 import android.content.ComponentName;
@@ -76,6 +77,7 @@ import com.android.bluetooth.avrcpcontroller.AvrcpControllerService;
 import com.android.bluetooth.ReflectionUtils;
 import com.android.bluetooth.hearingaid.HearingAidService;
 
+import com.android.internal.util.ArrayUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1961,6 +1963,20 @@ public final class Avrcp_ext {
             state == PlaybackState.STATE_NONE);
     }
 
+    private boolean isPeerDeviceAvrcpOnly(BluetoothDevice device) {
+        if (device == null)
+            return false;
+        AdapterService adapterService = AdapterService.getAdapterService();
+        boolean isA2dpSupported =
+                ArrayUtils.contains(adapterService.getRemoteUuids(device),
+                                            BluetoothUuid.A2DP_SINK);
+        boolean isAvrcpSupported =
+                ArrayUtils.contains(adapterService.getRemoteUuids(device),
+                                            BluetoothUuid.AVRCP_CONTROLLER);
+
+        Log.i(TAG,"A2dpSupported " + isA2dpSupported + " AvrcpSupported " + isAvrcpSupported);
+        return (!isA2dpSupported && isAvrcpSupported);
+    }
 
     private boolean areMultipleDevicesConnected() {
         int connections = 0;
@@ -1992,7 +2008,8 @@ public final class Avrcp_ext {
             /*Discretion is required only when updating play state changed as playing*/
             boolean isInCall = headsetService != null && headsetService.isScoOrCallActive();
             if ((state.getState() != PlaybackState.STATE_PLAYING) ||
-                                isPlayStateToBeUpdated(deviceIndex) && !isInCall) {
+                    (!isInCall && (isPlayStateToBeUpdated(deviceIndex) ||
+                    isPeerDeviceAvrcpOnly(deviceFeatures[deviceIndex].mCurrentDevice)))) {
                 updatePlayStatusForDevice(deviceIndex, state);
                 deviceFeatures[deviceIndex].mLastStateUpdate = mLastStateUpdate;
             } else if ((state.getState() == PlaybackState.STATE_PLAYING) &&
@@ -2043,12 +2060,17 @@ public final class Avrcp_ext {
                           deviceFeatures[i].mLastRspPlayStatus == PLAYSTATUS_PLAYING &&
                           (state != null && state.getState() == PlaybackState.STATE_PLAYING) &&
                           (!isTwsPlusPair(deviceFeatures[i].mCurrentDevice, deviceFeatures[deviceIndex].mCurrentDevice))) {
-                         PlaybackState.Builder playState = new PlaybackState.Builder();
-                         playState.setState(PlaybackState.STATE_PAUSED,
-                                          PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
-                         Log.i(TAG,"Updating PAUSE to inactive devices");
-                         updatePlayStatusForDevice(i, playState.build());
-                     }
+                         if (isPeerDeviceAvrcpOnly(deviceFeatures[i].mCurrentDevice)) {
+                             Log.i(TAG, "Updating state to AVRCP only devices");
+                             updatePlayStatusForDevice(i, state);
+                         } else {
+                             PlaybackState.Builder playState = new PlaybackState.Builder();
+                             playState.setState(PlaybackState.STATE_PAUSED,
+                                              PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
+                             Log.i(TAG,"Updating PAUSE to inactive devices");
+                             updatePlayStatusForDevice(i, playState.build());
+                         }
+                    }
                 }
             }
         }
@@ -5464,23 +5486,22 @@ public final class Avrcp_ext {
             Log.w(TAG, "Ignoring passthrough of unknown key " + op + " state " + state);
             return;
         }
-        BluetoothDevice device;
         String address = Utils.getAddressStringFromByte(bdaddr);
-        device = mAdapter.getRemoteDevice(address);
+        BluetoothDevice device = mAdapter.getRemoteDevice(address);
         int deviceIndex = getIndexForDevice(device);
         if (deviceIndex == INVALID_DEVICE_INDEX) {
             Log.e(TAG,"Invalid device index for passthrough command");
             return;
         }
         Log.d(TAG, "passthrough from device: " + address);
-        if (mA2dpService != null)
-            Log.d(TAG, "Active device: " + mA2dpService.getActiveDevice());
 
         int action = KeyEvent.ACTION_DOWN;
         if (state == AvrcpConstants_ext.KEY_STATE_RELEASE) action = KeyEvent.ACTION_UP;
         BluetoothDevice a2dp_active_device = null;
-        boolean skip = false;;
+        boolean skip = false;
+        boolean rc_only_device = isPeerDeviceAvrcpOnly(device);
         if (mA2dpService != null) a2dp_active_device = mA2dpService.getActiveDevice();
+        Log.d(TAG, "Active device: " + a2dp_active_device);
         if (a2dp_active_device != null) {
             if (a2dp_active_device.isTwsPlusDevice() &&
                 (isTwsPlusPair(a2dp_active_device, device) ||
@@ -5491,7 +5512,7 @@ public final class Avrcp_ext {
         }
         if (a2dp_active_device == null &&
             code == KeyEvent.KEYCODE_MEDIA_PLAY) {
-            if (action == KeyEvent.ACTION_DOWN) {
+            if (action == KeyEvent.ACTION_DOWN && !rc_only_device) {
                 deviceFeatures[deviceIndex].cache_play_cmd = true;
             } else if (action == KeyEvent.ACTION_UP &&
                        deviceFeatures[deviceIndex].cache_play_cmd) {
@@ -5507,15 +5528,17 @@ public final class Avrcp_ext {
                     ignore_play = true;
                     deviceFeatures[deviceIndex].cache_play_cmd = false;
                 }
-                if (action == KeyEvent.ACTION_DOWN) {
+                if (action == KeyEvent.ACTION_DOWN && !rc_only_device) {
                     Log.d(TAG, "AVRCP Trigger Handoff");
                     startSHO(device, true);
                 } else {
                     Log.d(TAG, "release for play PT from inactive device");
                 }
             } else {
-                Log.d(TAG, "Ignore passthrough from inactive device");
-                return;
+                if (!rc_only_device) {
+                    Log.d(TAG, "Ignore passthrough from inactive device");
+                    return;
+                }
             }
         }
 
