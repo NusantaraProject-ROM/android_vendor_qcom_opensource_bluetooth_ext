@@ -469,6 +469,7 @@ bt_status_t btif_tws_plus_execute_service(bool b_enable) {
   if (twsplus_enabled == true) {
     if (b_enable) {
       BTA_TwsPlusEnable(btif_tws_plus_callback);
+      btif_tws_plus_load_tws_devices();
     } else {
       BTA_TwsPlusDisable();
     }
