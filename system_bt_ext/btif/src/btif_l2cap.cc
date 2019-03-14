@@ -182,7 +182,7 @@ static bt_status_t L2cap_Register (uint16_t psm, bool ConnType, uint16_t SecLeve
         }
     }
 #endif
-    g_Psm = L2CA_Register (psm, pl2test_l2c_appl);
+    g_Psm = L2CA_Register (psm, pl2test_l2c_appl, true);
     if(0 == g_Psm) {
         BTIF_TRACE_DEBUG("Error:: L2CA_Register failed");
         return BT_STATUS_FAIL;
