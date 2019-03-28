@@ -262,6 +262,15 @@ const ba_transmitter_interface_t *btif_bat_get_interface()
     return &batInterface;
 }
 
+bool btif_ba_is_active()
+{
+    LOG_INFO(LOG_TAG,"%s:",__func__);
+    if (btif_ba_get_state() > BTIF_BA_STATE_IDLE_AUDIO_NS)
+        return true;
+    else
+        return false;
+}
+
 btif_ba_state_t btif_ba_get_state()
 {
     if (btif_ba_cb.sm_handle == NULL) {

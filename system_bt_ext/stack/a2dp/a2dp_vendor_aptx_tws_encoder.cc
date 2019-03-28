@@ -136,7 +136,8 @@ void a2dp_vendor_aptx_tws_encoder_init(
     A2dpCodecConfig* a2dp_codec_config,
     a2dp_source_read_callback_t read_callback,
     a2dp_source_enqueue_callback_t enqueue_callback) {
-  if (A2DP_GetOffloadStatus()) {
+  if (A2DP_IsCodecEnabledInOffload((btav_a2dp_codec_index_t)
+                                  BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
     LOG_INFO(LOG_TAG,"aptX-TWS is running in offload mode");
     return;
   }
@@ -158,7 +159,8 @@ void a2dp_vendor_aptx_tws_feeding_reset(void) {
   LOG_ERROR(LOG_TAG,"a2dp_vendor_aptx_tws_feeding_reset: Not supported in legacy mode");
   return;
 
-  if (A2DP_GetOffloadStatus()) {
+  if (A2DP_IsCodecEnabledInOffload((btav_a2dp_codec_index_t)
+                                  BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
     LOG_INFO(LOG_TAG,"a2dp_vendor_aptx_tws_feeding_reset: aptx-TWS is in offload mode");
     return;
   } else {
@@ -168,7 +170,8 @@ void a2dp_vendor_aptx_tws_feeding_reset(void) {
 }
 
 void a2dp_vendor_aptx_tws_feeding_flush(void) {
-  if (A2DP_GetOffloadStatus()) {
+  if (A2DP_IsCodecEnabledInOffload((btav_a2dp_codec_index_t)
+                                  BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
     LOG_INFO(LOG_TAG,"a2dp_vendor_aptx_tws_feeding_flush: aptx-TWS is in offload mode");
     return;
   } else {
@@ -178,7 +181,8 @@ void a2dp_vendor_aptx_tws_feeding_flush(void) {
 }
 
 period_ms_t a2dp_vendor_aptx_tws_get_encoder_interval_ms(void) {
-  if (A2DP_GetOffloadStatus()) {
+  if (A2DP_IsCodecEnabledInOffload((btav_a2dp_codec_index_t)
+                                  BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
     LOG_INFO(LOG_TAG,"a2dp_vendor_aptx_tws_get_encoder_interval_ms:"
              "aptx-TWS is in offload mode");
     return 0;
@@ -187,7 +191,8 @@ period_ms_t a2dp_vendor_aptx_tws_get_encoder_interval_ms(void) {
 }
 
 void a2dp_vendor_aptx_tws_send_frames(uint64_t timestamp_us) {
-  if (A2DP_GetOffloadStatus()) {
+  if (A2DP_IsCodecEnabledInOffload((btav_a2dp_codec_index_t)
+                                  BTAV_A2DP_CODEC_INDEX_SOURCE_APTX_TWS)) {
     LOG_INFO(LOG_TAG,"a2dp_vendor_aptx_hd_send_frames: aptx-HD is in offload mode");
     return;
   }

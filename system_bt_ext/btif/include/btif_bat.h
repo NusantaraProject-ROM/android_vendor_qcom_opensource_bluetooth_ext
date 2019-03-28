@@ -122,6 +122,7 @@ void getBACodecConfig(uint8_t* p_codec_config);
 void btif_ba_bta_callback(uint16_t event, uint8_t result);
 void ba_send_message(uint8_t event, uint8_t size, char* ptr, bool is_btif_thread);
 uint16_t btif_get_ba_latency();
+bool btif_ba_is_active();
 /*
 uint8_t get_curr_vol_level();
 uint8_t get_max_vol_level();
