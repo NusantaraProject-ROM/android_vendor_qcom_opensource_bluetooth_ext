@@ -4385,7 +4385,7 @@ public final class Avrcp_ext {
         deviceFeatures[index].mLastLocalVolume = -1;
     }
 
-    private synchronized void onConnectionStateChanged(
+    private void onConnectionStateChanged(
             boolean rc_connected, boolean br_connected, byte[] address) {
         BluetoothDevice device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(address);
         Log.d(TAG, "onConnectionStateChanged " + rc_connected + " " + br_connected + " Addr:"
