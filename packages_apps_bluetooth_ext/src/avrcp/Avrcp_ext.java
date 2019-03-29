@@ -236,7 +236,6 @@ public final class Avrcp_ext {
     private final static int MESSAGE_SET_MEDIA_SESSION = 24;
     private final static int MSG_SET_AVRCP_CONNECTED_DEVICE = 25;
     private final static int MESSAGE_UPDATE_ABS_VOLUME_STATUS = 31;
-    private final static int MESSAGE_UPDATE_ABSOLUTE_VOLUME = 32;
     private static final int MSG_PLAY_STATUS_CMD_TIMEOUT = 33;
     private final static int MESSAGE_START_SHO = 34;
 
@@ -838,19 +837,6 @@ public final class Avrcp_ext {
                 break;
             }
 
-           case MESSAGE_UPDATE_ABSOLUTE_VOLUME:
-            {
-                int vol = msg.arg2;
-                deviceIndex = msg.arg1;
-                Log.e(TAG, "Device switch: setting volume: " + vol);
-                if(deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice) {
-                    notifyVolumeChanged(vol, false);
-                } else {
-                    mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, vol, 0);
-                }
-                break;
-            }
-
             case MSG_NATIVE_REQ_GET_RC_FEATURES:
             {
                 String address = (String) msg.obj;
@@ -1183,7 +1169,8 @@ public final class Avrcp_ext {
                     isShowUI = false;
                     deviceFeatures[deviceIndex].mInitialRemoteVolume = absVol;
                     //Avoid fluction of volume during device add in blacklist
-                    if(deviceFeatures[deviceIndex].mBlackListVolume != -1) {
+                    if(deviceFeatures[deviceIndex].mBlackListVolume != -1 &&
+                       deviceFeatures[deviceIndex].isActiveDevice) {
                         resetBlackList(address);
                         if (DEBUG) Log.v(TAG, "remote initial volume as audio stream volume : " +
                             deviceFeatures[deviceIndex].mBlackListVolume);
@@ -1197,7 +1184,7 @@ public final class Avrcp_ext {
                         break;
                     }
                     else if (mAbsVolThreshold > 0 && mAbsVolThreshold < mAudioStreamMax &&
-                        volIndex > mAbsVolThreshold) {
+                        volIndex > mAbsVolThreshold && deviceFeatures[deviceIndex].isActiveDevice) {
                         if (DEBUG) Log.v(TAG, "remote inital volume too high " + volIndex + ">" +
                             mAbsVolThreshold);
                         Message msg1 = mHandler.obtainMessage(MSG_SET_ABSOLUTE_VOLUME,
