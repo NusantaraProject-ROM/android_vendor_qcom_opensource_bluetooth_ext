@@ -33,4 +33,7 @@ cc_library_shared {
     required: [
         "bt_configstore.conf",
     ],
+    sanitize: {
+        never: true,
+    },
 }
