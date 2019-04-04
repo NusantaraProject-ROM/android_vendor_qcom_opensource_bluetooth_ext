@@ -2612,7 +2612,7 @@ public final class Avrcp_ext {
         }
         if (requested || ((deviceFeatures[i].mLastReportedPosition != playPositionMs) &&
              ((playPositionMs >= deviceFeatures[i].mNextPosMs) ||
-             (playPositionMs <= deviceFeatures[i].mPrevPosMs)))) {
+             (playPositionMs <= deviceFeatures[i].mPrevPosMs))) && deviceFeatures[i].isActiveDevice) {
             if (!requested) deviceFeatures[i].mPlayPosChangedNT = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
             if (deviceFeatures[i].mCurrentDevice != null)
                 registerNotificationRspPlayPosNative(deviceFeatures[i].mPlayPosChangedNT,
