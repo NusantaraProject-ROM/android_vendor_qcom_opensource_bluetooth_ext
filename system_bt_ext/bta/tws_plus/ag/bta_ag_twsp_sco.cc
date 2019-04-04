@@ -315,7 +315,8 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                 bta_ag_create_sco(p_scb, false);
                 p_sco->state = BTA_AG_SCO_LISTEN_ST;
                 other_scb = get_other_twsp_scb((p_scb->peer_addr));
-                if (other_scb && twsp_sco_active(other_scb) == false) {
+                if (other_scb && twsp_sco_active(other_scb) == false &&
+                     get_twsp_state(other_scb) == TWSPLUS_EB_STATE_INEAR) {
                     //Atleast try bringing up the other EB eSCO
                     APPL_TRACE_WARNING("Calling SCO open for other EB");
                     dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_OPEN_E);
