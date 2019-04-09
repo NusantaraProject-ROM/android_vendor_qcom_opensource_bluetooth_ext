@@ -57,7 +57,7 @@
 #include "a2dp_codec_api.h"
 #include "a2dp_vendor_aptx_tws_constants.h"
 #include "avdt_api.h"
-#include "bt_vendor_av.h"
+#include <hardware/bt_av.h>
 class A2dpCodecConfigAptxTWS : public A2dpCodecConfig {
  public:
   A2dpCodecConfigAptxTWS(btav_a2dp_codec_priority_t codec_priority);
