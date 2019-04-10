@@ -69,6 +69,7 @@ static config_t *config_dynamic;
 #define VALID_VNDR_PRDT_LEN   (13)
 #define VALID_MNFR_STR_LEN    (6)
 #define VALID_SSR_LAT_LEN   (15)
+#define VALID_VERSION_LEN   (6)
 #define VENDOR_VALUE_SEPARATOR  "-"
 
 #define ADDR_BASED    "Address_Based"
@@ -76,6 +77,7 @@ static config_t *config_dynamic;
 #define MNFR_BASED    "Manufacturer_Based"
 #define VNDR_PRDT_BASED   "Vndr_Prdt_Based"
 #define SSR_MAX_LAT_BASED   "SSR_Max_Lat_Based"
+#define VERSION_BASED   "Version_Based"
 
 struct config_t {
   list_t *sections;
@@ -98,12 +100,18 @@ typedef struct {
   interop_feature_t feature;
 } interop_hid_ssr_max_lat_t;
 
+typedef struct {
+  uint16_t version;
+  interop_feature_t feature;
+} interop_version_t;
+
 typedef enum {
     INTEROP_BL_TYPE_ADDR = 0,
     INTEROP_BL_TYPE_NAME,
     INTEROP_BL_TYPE_MANUFACTURE,
     INTEROP_BL_TYPE_VNDR_PRDT,
     INTEROP_BL_TYPE_SSR_MAX_LAT,
+    INTEROP_BL_TYPE_VERSION,
 
 } interop_bl_type;
 
@@ -123,6 +131,7 @@ typedef struct {
         interop_manufacturer_t mnfr_entry;
         interop_hid_multitouch_t vnr_pdt_entry;
         interop_hid_ssr_max_lat_t ssr_max_lat_entry;
+        interop_version_t version_entry;
     } entry_type;
 
 } interop_db_entry_t;
@@ -488,6 +497,18 @@ static void interop_database_add_( interop_db_entry_t *db_entry,
         interop_config_flush();
         break;
       }
+    case INTEROP_BL_TYPE_VERSION:
+      {
+        interop_feature_t feature =
+          db_entry->entry_type.version_entry.feature;
+        char m_vendor[KEY_MAX_LENGTH] = { '\0' };
+        snprintf(m_vendor, sizeof(m_vendor), "0x%04x",
+            db_entry->entry_type.version_entry.version);
+        interop_config_set_str(interop_feature_string_(feature),
+            m_vendor, VERSION_BASED);
+        interop_config_flush();
+        break;
+      }
   }
 }
 
@@ -594,6 +615,20 @@ static bool interop_database_match_( interop_db_entry_t *entry,
           }
           break;
         }
+      case INTEROP_BL_TYPE_VERSION:
+        {
+          interop_version_t *src = &entry->entry_type.version_entry;
+          interop_version_t *cur = &db_entry->entry_type.version_entry;
+
+          if ((src->feature == cur->feature) &&
+              (src->version == cur->version)) {
+            if (ret_entry) {
+              *ret_entry = db_entry;
+            }
+            found = true;
+          }
+          break;
+        }
     }
 
     if (found) {
@@ -687,6 +722,19 @@ static bool interop_database_remove_( interop_db_entry_t *entry)
             bdstr, src->max_lat);
         interop_config_remove(interop_feature_string_(feature),
             m_vendor);
+        interop_config_flush();
+        break;
+      }
+    case INTEROP_BL_TYPE_VERSION:
+      {
+        interop_version_t *src = &entry->entry_type.version_entry;
+
+        interop_feature_t feature = src->feature;
+        char m_version[KEY_MAX_LENGTH] = { '\0' };
+        snprintf(m_version, sizeof(m_version), "0x%04x",
+            src->version);
+        interop_config_remove(interop_feature_string_(feature),
+            m_version);
         interop_config_flush();
         break;
       }
@@ -923,6 +971,28 @@ bool load_to_database(int feature, char *key, char *value, interop_entry_type en
     entry->entry_type.ssr_max_lat_entry.length = len;
     entry->entry_type.ssr_max_lat_entry.max_lat = max_lat;
     interop_database_add_(entry, false);
+  } else if ( !strncasecmp( value, VERSION_BASED, strlen(VERSION_BASED))) {
+
+    uint16_t version;
+    char *e;
+
+    if ( strlen(key) != VALID_VERSION_LEN ) {
+      LOG_WARN(LOG_TAG,
+      " ignoring %s due to invalid version in config file", key);
+      return false;
+    }
+
+    version = (uint16_t)strtoul(key, &e, 16);
+    errno = 0;
+    if( *e || errno == EINVAL || errno == ERANGE )
+       return false;
+
+    interop_db_entry_t *entry = (interop_db_entry_t *)osi_calloc(sizeof(interop_db_entry_t));
+    entry->bl_type = INTEROP_BL_TYPE_VERSION;
+    entry->bl_entry_type = entry_type;
+    entry->entry_type.version_entry.feature = (interop_feature_t)feature;
+    entry->entry_type.version_entry.version = version;
+    interop_database_add_(entry, false);
   }
   LOG_WARN(LOG_TAG, " feature:: %d, key :: %s, value :: %s",
                     feature, key, value);
@@ -1065,6 +1135,17 @@ void interop_database_add_addr_max_lat(const interop_feature_t feature,
   interop_database_add_(entry, true);
 }
 
+void interop_database_add_version(const interop_feature_t feature, uint16_t version)
+{
+
+  interop_db_entry_t *entry = (interop_db_entry_t *)osi_calloc(sizeof(interop_db_entry_t));
+  entry->bl_type = INTEROP_BL_TYPE_VERSION;
+  entry->bl_entry_type = INTEROP_ENTRY_TYPE_DYNAMIC;
+  entry->entry_type.version_entry.feature = (interop_feature_t)feature;
+  entry->entry_type.version_entry.version = version;
+  interop_database_add_(entry, true);
+}
+
 bool interop_database_match_manufacturer(const interop_feature_t feature,
                       uint16_t manufacturer)
 {
@@ -1172,6 +1253,27 @@ bool interop_database_match_addr_get_max_lat(const interop_feature_t feature,
         __func__, addr->ToString().c_str(),
         interop_feature_string_(feature));
       *max_lat = ret_entry->entry_type.ssr_max_lat_entry.max_lat;
+    return true;
+  }
+
+  return false;
+}
+
+bool interop_database_match_version(const interop_feature_t feature, uint16_t version)
+{
+
+  interop_db_entry_t entry;
+  interop_db_entry_t *ret_entry = NULL;
+
+  entry.bl_type = INTEROP_BL_TYPE_VERSION;
+
+  entry.entry_type.version_entry.feature = (interop_feature_t)feature;
+  entry.entry_type.version_entry.version = version;
+  if (interop_database_match_(&entry, &ret_entry,  (interop_entry_type)(INTEROP_ENTRY_TYPE_STATIC  |
+    INTEROP_ENTRY_TYPE_DYNAMIC))) {
+    LOG_WARN(LOG_TAG,
+      "%s() Device with version: 0x%04x is a match for interop workaround %s", __func__, version,
+      interop_feature_string_(feature));
     return true;
   }
 
@@ -1290,4 +1392,26 @@ bool interop_database_remove_addr_max_lat(const interop_feature_t feature,
   }
   return false;
 }
+
+bool interop_database_remove_version(const interop_feature_t feature, uint16_t version)
+{
+
+  interop_db_entry_t entry;
+
+  entry.bl_type = INTEROP_BL_TYPE_VERSION;
+  entry.bl_entry_type = INTEROP_ENTRY_TYPE_DYNAMIC;
+
+  entry.entry_type.version_entry.feature = (interop_feature_t)feature;
+  entry.entry_type.version_entry.version = version;
+
+  if (interop_database_remove_(&entry)) {
+    LOG_WARN(LOG_TAG,
+      "%s() Device with version: 0x%04x is removed from"
+      "interop workaround %s", __func__, version,
+      interop_feature_string_(feature));
+    return true;
+  }
+  return false;
+}
+
 

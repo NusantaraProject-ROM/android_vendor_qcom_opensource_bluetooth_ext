@@ -34,6 +34,7 @@ void interop_database_add_manufacturer(const interop_feature_t feature, uint16_t
 void interop_database_add_vndr_prdt(const interop_feature_t feature, uint16_t vendor_id, uint16_t product_id);
 void interop_database_add_addr_max_lat(const interop_feature_t feature, const RawAddress *addr,
           size_t length, uint16_t max_lat);
+void interop_database_add_version(const interop_feature_t feature, uint16_t version);
 
 // API's for removing entries from dynamic interop database
 bool interop_database_remove_addr(const interop_feature_t feature, const RawAddress *addr);
@@ -42,6 +43,7 @@ bool interop_database_remove_manufacturer( const interop_feature_t feature, uint
 bool interop_database_remove_vndr_prdt(const interop_feature_t feature, uint16_t vendor_id, uint16_t product_id);
 bool interop_database_remove_addr_max_lat(const interop_feature_t feature,
           const RawAddress *addr, size_t length, uint16_t max_lat);
+bool interop_database_remove_version(const interop_feature_t feature, uint16_t version);
 
 // API's to match entries with in dynamic interop database
 bool interop_database_match_addr(const interop_feature_t feature, const RawAddress *addr);
@@ -50,4 +52,5 @@ bool interop_database_match_manufacturer(const interop_feature_t feature, uint16
 bool interop_database_match_vndr_prdt(const interop_feature_t feature, uint16_t vendor_id, uint16_t product_id);
 bool interop_database_match_addr_get_max_lat(const interop_feature_t feature,
           const RawAddress *addr, uint16_t *max_lat);
+bool interop_database_match_version(const interop_feature_t feature, uint16_t version);
 
