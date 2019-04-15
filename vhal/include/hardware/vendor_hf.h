@@ -36,6 +36,8 @@ __BEGIN_DECLS
 
 #define BT_PROFILE_VENDOR_HF_ID "vendorhfservice"
 
+bool get_swb_codec_status();
+
 void btif_handle_vendor_hf_events(uint16_t event, uint16_t swb_config, RawAddress *bd_addr);
 
 /* SWB callback events */

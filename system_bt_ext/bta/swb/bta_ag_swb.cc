@@ -33,14 +33,22 @@
 #include "bta_ag_int.h"
 #include "utl.h"
 #include "device/include/interop.h"
+#include <hardware/vendor_hf.h>
 
 #if (SWB_ENABLED == TRUE)
+
+#define SWB_CODECS_SUPPORTED "0,4,6,7"
+#define SWB_CODECS_UNSUPPORTD "0xFFFF"
 
 void bta_ag_swb_handle_vs_at_events(tBTA_AG_SCB* p_scb, uint16_t cmd, int16_t int_arg, tBTA_AG_VAL val)
 {
   APPL_TRACE_DEBUG("%s: p_scb : %x cmd : %d", __func__, p_scb, cmd);
   switch(cmd) {
     case BTA_AG_AT_QAC_EVT:
+      if (!get_swb_codec_status()) {
+        bta_ag_send_qac(p_scb, NULL);
+        break;
+      }
       p_scb->codec_updated = true;
       if (p_scb->peer_codecs &  BTA_AG_SCO_SWB_SETTINGS_Q0_MASK) {
         p_scb->sco_codec = BTA_AG_SCO_SWB_SETTINGS_Q0;
@@ -132,7 +140,12 @@ void bta_ag_send_qcs(tBTA_AG_SCB* p_scb, tBTA_AG_DATA* p_data) {
 void bta_ag_send_qac(tBTA_AG_SCB* p_scb, tBTA_AG_DATA* p_data) {
   /* send +BCS */
   APPL_TRACE_DEBUG("send +QAC codecs suuported");
-  bta_ag_send_result(p_scb, BTA_AG_LOCAL_RES_QAC, "0,4,6,7", 0);
+  if (!get_swb_codec_status()) {
+    bta_ag_send_result(p_scb, BTA_AG_LOCAL_RES_QAC, SWB_CODECS_UNSUPPORTD, 0);
+    return;
+  } else{
+    bta_ag_send_result(p_scb, BTA_AG_LOCAL_RES_QAC, SWB_CODECS_SUPPORTED, 0);
+  }
   if (p_scb->sco_codec == BTA_AG_SCO_SWB_SETTINGS_Q0) {
       p_scb->is_swb_codec = true;
   }
