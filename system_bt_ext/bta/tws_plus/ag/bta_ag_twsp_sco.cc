@@ -703,7 +703,8 @@ void send_twsp_esco_setup (const RawAddress& left_eb_addr, const RawAddress& rgh
    uint8_t *p_param = param;
    std::string leb, reb;
 
-   APPL_TRACE_DEBUG("%s: left_addr: %x, right_addr: %x, selected_mic: %d", __func__, left_eb_addr, rght_eb_addr, selected_mic);
+   APPL_TRACE_DEBUG("%s: left_addr: %s, right_addr: %s, selected_mic: %d", __func__,
+           left_eb_addr.ToString().c_str(), rght_eb_addr.ToString().c_str(), selected_mic);
 
    *p_param++ = VS_QHCI_TWS_ESCO_SETUP_SUBOPCODE;
 

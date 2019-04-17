@@ -63,6 +63,18 @@ tBTA_AG_SCB* get_twsp_with_role(uint8_t role) {
    return NULL;
 }
 
+bool twsp_is_odd_eb_addr(tBTA_AG_SCB* p_scb) {
+    bool ret;
+    if ((p_scb->peer_addr.address[5] & 0x01) == 0) {
+        ret = false;
+    } else {
+        ret = true;
+    }
+    APPL_TRACE_DEBUG("%s: eb addr: %s, ret: %d", __func__,
+            p_scb->peer_addr.ToString().c_str(), ret);
+    return ret;
+}
+
 void reset_twsp_device(int  eb_idx) {
     if (eb_idx < PRIMARY_EB_IDX || eb_idx > SECONDARY_EB_IDX) {
         APPL_TRACE_WARNING("%s: Invalid eb_idx: %d\n", __func__, eb_idx);
@@ -102,11 +114,15 @@ void update_twsp_device(tBTA_AG_SCB* p_scb) {
             twsp_devices[i].state = TWSPLUS_EB_STATE_UNKNOWN;
 
             int other_idx = (i == PRIMARY_EB_IDX) ? SECONDARY_EB_IDX : PRIMARY_EB_IDX;
-            if (twsp_devices[other_idx].p_scb != NULL &&
-                    twsp_devices[other_idx].role == TWSPLUS_EB_ROLE_LEFT) {
-                twsp_devices[i].role = TWSPLUS_EB_ROLE_RIGHT;
+            if (twsp_devices[other_idx].p_scb != NULL) {
+                twsp_devices[i].role =
+                    (twsp_devices[other_idx].role == TWSPLUS_EB_ROLE_LEFT) ?
+                    TWSPLUS_EB_ROLE_RIGHT : TWSPLUS_EB_ROLE_LEFT;
+
             } else {
-                twsp_devices[i].role = TWSPLUS_EB_ROLE_LEFT;
+                twsp_devices[i].role =
+                    (twsp_is_odd_eb_addr(p_scb) == true) ?
+                    TWSPLUS_EB_ROLE_LEFT : TWSPLUS_EB_ROLE_RIGHT;
             }
 
             APPL_TRACE_WARNING("%s: idx: %d, role: %d", __func__, i, twsp_devices[i].role);
