@@ -50,7 +50,7 @@ public class AddressedMediaPlayer_ext {
     static private final String GPM_BUNDLE_METADATA_KEY =
             "com.google.android.music.mediasession.music_metadata";
 
-    private AvrcpMediaRspInterface mMediaInterface;
+    private AvrcpMediaRspInterface_ext mMediaInterface;
     private Avrcp_ext mAvrcp = null;
     @NonNull private List<MediaSession.QueueItem> mNowPlayingList;
 
@@ -58,14 +58,14 @@ public class AddressedMediaPlayer_ext {
 
     private long mLastTrackIdSent;
 
-    public AddressedMediaPlayer(AvrcpMediaRspInterface mediaInterface) {
+    public AddressedMediaPlayer_ext(AvrcpMediaRspInterface_ext mediaInterface) {
         mEmptyNowPlayingList = new ArrayList<MediaSession.QueueItem>();
         mNowPlayingList = mEmptyNowPlayingList;
         mMediaInterface = mediaInterface;
         mLastTrackIdSent = MediaSession.QueueItem.UNKNOWN_ID;
     }
 
-    public AddressedMediaPlayer(AvrcpMediaRspInterface mediaInterface, Avrcp_ext mAvrcp_ext) {
+    public AddressedMediaPlayer_ext(AvrcpMediaRspInterface_ext mediaInterface, Avrcp_ext mAvrcp_ext) {
         this(mediaInterface);
         mAvrcp = mAvrcp_ext;
     }
@@ -80,29 +80,29 @@ public class AddressedMediaPlayer_ext {
     }
 
     /* get now playing list from addressed player */
-    void getFolderItemsNowPlaying(byte[] bdaddr, AvrcpCmd.FolderItemsCmd reqObj,
+    void getFolderItemsNowPlaying(byte[] bdaddr, AvrcpCmd_ext.FolderItemsCmd reqObj,
             @Nullable MediaController mediaController) {
         if (mediaController == null) {
             // No players (if a player exists, we would have selected it)
             Log.e(TAG, "mediaController = null, sending no available players response");
-            mMediaInterface.folderItemsRsp(bdaddr, AvrcpConstants.RSP_NO_AVBL_PLAY, null);
+            mMediaInterface.folderItemsRsp(bdaddr, AvrcpConstants_ext.RSP_NO_AVBL_PLAY, null);
             return;
         }
         List<MediaSession.QueueItem> items = updateNowPlayingList(mediaController);
-        getFolderItemsFilterAttr(bdaddr, reqObj, items, AvrcpConstants.BTRC_SCOPE_NOW_PLAYING,
+        getFolderItemsFilterAttr(bdaddr, reqObj, items, AvrcpConstants_ext.BTRC_SCOPE_NOW_PLAYING,
                 reqObj.mStartItem, reqObj.mEndItem, mediaController);
     }
 
     /* get item attributes for item in now playing list */
-    void getItemAttr(byte[] bdaddr, AvrcpCmd.ItemAttrCmd itemAttr,
+    void getItemAttr(byte[] bdaddr, AvrcpCmd_ext.ItemAttrCmd itemAttr,
             @Nullable MediaController mediaController) {
-        int status = AvrcpConstants.RSP_NO_ERROR;
+        int status = AvrcpConstants_ext.RSP_NO_ERROR;
         long mediaId = ByteBuffer.wrap(itemAttr.mUid).getLong();
         List<MediaSession.QueueItem> items = updateNowPlayingList(mediaController);
 
         // NOTE: this is out-of-spec (AVRCP 1.6.1 sec 6.10.4.3, p90) but we answer it anyway
         // because some CTs ask for it.
-        if (Arrays.equals(itemAttr.mUid, AvrcpConstants.TRACK_IS_SELECTED)) {
+        if (Arrays.equals(itemAttr.mUid, AvrcpConstants_ext.TRACK_IS_SELECTED)) {
             mediaId = getActiveQueueItemId(mediaController);
             if (DEBUG) {
                 Log.d(TAG, "getItemAttr: Remote requests for now playing contents, sending UID: "
@@ -121,7 +121,7 @@ public class AddressedMediaPlayer_ext {
         }
 
         // Couldn't find it, so the id is invalid
-        mMediaInterface.getItemAttrRsp(bdaddr, AvrcpConstants.RSP_INV_ITEM, null);
+        mMediaInterface.getItemAttrRsp(bdaddr, AvrcpConstants_ext.RSP_INV_ITEM, null);
     }
 
     /* Refresh and get the queue of now playing.
@@ -177,7 +177,7 @@ public class AddressedMediaPlayer_ext {
         if (DEBUG) {
             Log.d(TAG, "sendNowPlayingListChanged()");
         }
-        mMediaInterface.nowPlayingChangedRsp(AvrcpConstants.NOTIFICATION_TYPE_CHANGED);
+        mMediaInterface.nowPlayingChangedRsp(AvrcpConstants_ext.NOTIFICATION_TYPE_CHANGED);
     }
 
     private Bundle fillBundle(MediaMetadata metadata, Bundle currentExtras) {
@@ -224,7 +224,7 @@ public class AddressedMediaPlayer_ext {
 
         if (mediaController == null) {
             Log.e(TAG, "No mediaController when PlayItem " + qid + " requested");
-            mMediaInterface.playItemRsp(bdaddr, AvrcpConstants.RSP_INTERNAL_ERR);
+            mMediaInterface.playItemRsp(bdaddr, AvrcpConstants_ext.RSP_INTERNAL_ERR);
             return;
         }
 
@@ -233,7 +233,7 @@ public class AddressedMediaPlayer_ext {
 
         if (items == null) {
             Log.w(TAG, "nowPlayingItems is null");
-            mMediaInterface.playItemRsp(bdaddr, AvrcpConstants.RSP_INTERNAL_ERR);
+            mMediaInterface.playItemRsp(bdaddr, AvrcpConstants_ext.RSP_INTERNAL_ERR);
             return;
         }
 
@@ -243,13 +243,13 @@ public class AddressedMediaPlayer_ext {
                     Log.d(TAG, "Skipping to ID " + qid);
                 }
                 mediaControllerCntrl.skipToQueueItem(qid);
-                mMediaInterface.playItemRsp(bdaddr, AvrcpConstants.RSP_NO_ERROR);
+                mMediaInterface.playItemRsp(bdaddr, AvrcpConstants_ext.RSP_NO_ERROR);
                 return;
             }
         }
 
         Log.w(TAG, "Invalid now playing Queue ID " + qid);
-        mMediaInterface.playItemRsp(bdaddr, AvrcpConstants.RSP_INV_ITEM);
+        mMediaInterface.playItemRsp(bdaddr, AvrcpConstants_ext.RSP_INV_ITEM);
     }
 
     void getTotalNumOfItems(byte[] bdaddr, @Nullable MediaController mediaController) {
@@ -257,21 +257,21 @@ public class AddressedMediaPlayer_ext {
         if (DEBUG) {
             Log.d(TAG, "getTotalNumOfItems: " + items.size() + " items.");
         }
-        mMediaInterface.getTotalNumOfItemsRsp(bdaddr, AvrcpConstants.RSP_NO_ERROR, 0, items.size());
+        mMediaInterface.getTotalNumOfItemsRsp(bdaddr, AvrcpConstants_ext.RSP_NO_ERROR, 0, items.size());
     }
 
     void sendTrackChangeWithId(int type, @Nullable MediaController mediaController) {
         Log.d(TAG, "sendTrackChangeWithId (" + type + "): controller " + mediaController);
         long qid = getActiveQueueItemId(mediaController);
-        byte[] track = ByteBuffer.allocate(AvrcpConstants.UID_SIZE).putLong(qid).array();
+        byte[] track = ByteBuffer.allocate(AvrcpConstants_ext.UID_SIZE).putLong(qid).array();
         Log.d(TAG, "qid: " + qid );
-        if ((type == AvrcpConstants.NOTIFICATION_TYPE_INTERIM) &&
+        if ((type == AvrcpConstants_ext.NOTIFICATION_TYPE_INTERIM) &&
             (qid != MediaSession.QueueItem.UNKNOWN_ID) &&
             (qid != mLastTrackIdSent)) {
              byte[] lastTrack =
-                    ByteBuffer.allocate(AvrcpConstants.UID_SIZE).putLong(mLastTrackIdSent).array();
+                    ByteBuffer.allocate(AvrcpConstants_ext.UID_SIZE).putLong(mLastTrackIdSent).array();
              mMediaInterface.trackChangedRsp(type, lastTrack);
-             type = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
+             type = AvrcpConstants_ext.NOTIFICATION_TYPE_CHANGED;
         }
         // The nowPlayingList changed: the new list has the full data for the current item
         Log.d(TAG, "last_sent_qid: " + mLastTrackIdSent);
@@ -286,15 +286,15 @@ public class AddressedMediaPlayer_ext {
             return;
         }
         long qid = getActiveQueueItemId(mediaController);
-        byte[] track = ByteBuffer.allocate(AvrcpConstants.UID_SIZE).putLong(qid).array();
+        byte[] track = ByteBuffer.allocate(AvrcpConstants_ext.UID_SIZE).putLong(qid).array();
         Log.d(TAG, "qid: " + qid );
-        if ((type == AvrcpConstants.NOTIFICATION_TYPE_INTERIM) &&
+        if ((type == AvrcpConstants_ext.NOTIFICATION_TYPE_INTERIM) &&
             (qid != MediaSession.QueueItem.UNKNOWN_ID) &&
             (qid != mLastTrackIdSent)) {
              byte[] lastTrack =
-                    ByteBuffer.allocate(AvrcpConstants.UID_SIZE).putLong(mLastTrackIdSent).array();
+                    ByteBuffer.allocate(AvrcpConstants_ext.UID_SIZE).putLong(mLastTrackIdSent).array();
              mAvrcp.trackChangedAddressedRsp(type, lastTrack, bdaddr);
-             type = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
+             type = AvrcpConstants_ext.NOTIFICATION_TYPE_CHANGED;
         }
         // The nowPlayingList changed: the new list has the full data for the current item
         Log.d(TAG, "last_sent_qid: " + mLastTrackIdSent);
@@ -335,7 +335,7 @@ public class AddressedMediaPlayer_ext {
      * helper method to filter required attibutes before sending GetFolderItems
      * response
      */
-    private void getFolderItemsFilterAttr(byte[] bdaddr, AvrcpCmd.FolderItemsCmd folderItemsReqObj,
+    private void getFolderItemsFilterAttr(byte[] bdaddr, AvrcpCmd_ext.FolderItemsCmd folderItemsReqObj,
             @NonNull List<MediaSession.QueueItem> items, byte scope, long startItem, long endItem,
             @NonNull MediaController mediaController) {
         if (DEBUG) {
@@ -347,11 +347,11 @@ public class AddressedMediaPlayer_ext {
         /* check for index out of bound errors */
         if (resultItems == null) {
             Log.w(TAG, "getFolderItemsFilterAttr: resultItems is empty");
-            mMediaInterface.folderItemsRsp(bdaddr, AvrcpConstants.RSP_INV_RANGE, null);
+            mMediaInterface.folderItemsRsp(bdaddr, AvrcpConstants_ext.RSP_INV_RANGE, null);
             return;
         }
 
-        FolderItemsData folderDataNative = new FolderItemsData(resultItems.size());
+        FolderItemsData_ext folderDataNative = new FolderItemsData_ext(resultItems.size());
 
         /* variables to accumulate attrs */
         ArrayList<String> attrArray = new ArrayList<String>();
@@ -361,27 +361,27 @@ public class AddressedMediaPlayer_ext {
             MediaSession.QueueItem item = resultItems.get(itemIndex);
             // get the queue id
             long qid = item.getQueueId();
-            byte[] uid = ByteBuffer.allocate(AvrcpConstants.UID_SIZE).putLong(qid).array();
+            byte[] uid = ByteBuffer.allocate(AvrcpConstants_ext.UID_SIZE).putLong(qid).array();
 
             // get the array of uid from 2d to array 1D array
-            for (int idx = 0; idx < AvrcpConstants.UID_SIZE; idx++) {
-                folderDataNative.mItemUid[itemIndex * AvrcpConstants.UID_SIZE + idx] = uid[idx];
+            for (int idx = 0; idx < AvrcpConstants_ext.UID_SIZE; idx++) {
+                folderDataNative.mItemUid[itemIndex * AvrcpConstants_ext.UID_SIZE + idx] = uid[idx];
             }
 
             /* Set display name for current item */
             folderDataNative.mDisplayNames[itemIndex] =
-                    getAttrValue(AvrcpConstants.ATTRID_TITLE, item, mediaController);
+                    getAttrValue(bdaddr, AvrcpConstants_ext.ATTRID_TITLE, item, mediaController);
 
             int maxAttributesRequested = 0;
             boolean isAllAttribRequested = false;
             /* check if remote requested for attributes */
-            if (folderItemsReqObj.mNumAttr != AvrcpConstants.NUM_ATTR_NONE) {
+            if (folderItemsReqObj.mNumAttr != AvrcpConstants_ext.NUM_ATTR_NONE) {
                 int attrCnt = 0;
 
                 /* add requested attr ids to a temp array */
-                if (folderItemsReqObj.mNumAttr == AvrcpConstants.NUM_ATTR_ALL) {
+                if (folderItemsReqObj.mNumAttr == AvrcpConstants_ext.NUM_ATTR_ALL) {
                     isAllAttribRequested = true;
-                    maxAttributesRequested = AvrcpConstants.MAX_NUM_ATTR;
+                    maxAttributesRequested = AvrcpConstants_ext.MAX_NUM_ATTR;
                 } else {
                     /* get only the requested attribute ids from the request */
                     maxAttributesRequested = folderItemsReqObj.mNumAttr;
@@ -394,7 +394,7 @@ public class AddressedMediaPlayer_ext {
 
                     int attribId =
                             isAllAttribRequested ? (idx + 1) : folderItemsReqObj.mAttrIDs[idx];
-                    value = getAttrValue(attribId, item, mediaController);
+                    value = getAttrValue(bdaddr, attribId, item, mediaController);
                     if (value != null) {
                         attrArray.add(value);
                         attrId.add(attribId);
@@ -407,7 +407,7 @@ public class AddressedMediaPlayer_ext {
         }
 
         /* copy filtered attr ids and attr values to response parameters */
-        if (folderItemsReqObj.mNumAttr != AvrcpConstants.NUM_ATTR_NONE) {
+        if (folderItemsReqObj.mNumAttr != AvrcpConstants_ext.NUM_ATTR_NONE) {
             folderDataNative.mAttrIds = new int[attrId.size()];
             for (int attrIndex = 0; attrIndex < attrId.size(); attrIndex++) {
                 folderDataNative.mAttrIds[attrIndex] = attrId.get(attrIndex);
@@ -422,17 +422,17 @@ public class AddressedMediaPlayer_ext {
         }
 
         /* create rsp object and send response to remote device */
-        FolderItemsRsp rspObj =
-                new FolderItemsRsp(AvrcpConstants.RSP_NO_ERROR, Avrcp.sUIDCounter, scope,
+        FolderItemsRsp_ext rspObj =
+                new FolderItemsRsp_ext(AvrcpConstants_ext.RSP_NO_ERROR, Avrcp_ext.sUIDCounter, scope,
                         folderDataNative.mNumItems, folderDataNative.mFolderTypes,
                         folderDataNative.mPlayable, folderDataNative.mItemTypes,
                         folderDataNative.mItemUid, folderDataNative.mDisplayNames,
                         folderDataNative.mAttributesNum, folderDataNative.mAttrIds,
                         folderDataNative.mAttrValues);
-        mMediaInterface.folderItemsRsp(bdaddr, AvrcpConstants.RSP_NO_ERROR, rspObj);
+        mMediaInterface.folderItemsRsp(bdaddr, AvrcpConstants_ext.RSP_NO_ERROR, rspObj);
     }
 
-    private String getAttrValue(int attr, MediaSession.QueueItem item,
+    private String getAttrValue(byte []bdaddr, int attr, MediaSession.QueueItem item,
             @Nullable MediaController mediaController) {
         String attrValue = null;
         if (item == null) {
@@ -468,43 +468,50 @@ public class AddressedMediaPlayer_ext {
                 Log.d(TAG, "getAttrValue: item " + item + " : " + desc);
             }
             switch (attr) {
-                case AvrcpConstants.ATTRID_TITLE:
+                case AvrcpConstants_ext.ATTRID_TITLE:
                     /* Title is mandatory attribute */
                     if (isCurrentTrack) {
                         attrValue = extras.getString(MediaMetadata.METADATA_KEY_TITLE);
                     } else {
                         attrValue = desc.getTitle().toString();
                     }
+                    if (attrValue == null)
+                        attrValue = "<Unknown Title>";
                     break;
 
-                case AvrcpConstants.ATTRID_ARTIST:
+                case AvrcpConstants_ext.ATTRID_ARTIST:
                     attrValue = extras.getString(MediaMetadata.METADATA_KEY_ARTIST);
                     break;
 
-                case AvrcpConstants.ATTRID_ALBUM:
+                case AvrcpConstants_ext.ATTRID_ALBUM:
                     attrValue = extras.getString(MediaMetadata.METADATA_KEY_ALBUM);
                     break;
 
-                case AvrcpConstants.ATTRID_TRACK_NUM:
+                case AvrcpConstants_ext.ATTRID_TRACK_NUM:
                     attrValue =
                             Long.toString(extras.getLong(MediaMetadata.METADATA_KEY_TRACK_NUMBER));
                     break;
 
-                case AvrcpConstants.ATTRID_NUM_TRACKS:
+                case AvrcpConstants_ext.ATTRID_NUM_TRACKS:
                     attrValue =
                             Long.toString(extras.getLong(MediaMetadata.METADATA_KEY_NUM_TRACKS));
                     break;
 
-                case AvrcpConstants.ATTRID_GENRE:
+                case AvrcpConstants_ext.ATTRID_GENRE:
                     attrValue = extras.getString(MediaMetadata.METADATA_KEY_GENRE);
                     break;
 
-                case AvrcpConstants.ATTRID_PLAY_TIME:
+                case AvrcpConstants_ext.ATTRID_PLAY_TIME:
                     attrValue = Long.toString(extras.getLong(MediaMetadata.METADATA_KEY_DURATION));
                     break;
 
-                case AvrcpConstants.ATTRID_COVER_ART:
-                    attrValue = Avrcp_ext.getImgHandleFromTitle(desc.getTitle().toString());
+                case AvrcpConstants_ext.ATTRID_COVER_ART:
+                    if (mAvrcp != null) {
+                        attrValue = mAvrcp.getImgHandleFromTitle(bdaddr,
+                                desc.getTitle().toString());
+                    } else {
+                        if (DEBUG) Log.d(TAG, " mAvrcp null ");
+                    }
                     break;
 
                 default:
@@ -514,7 +521,7 @@ public class AddressedMediaPlayer_ext {
         } catch (NullPointerException ex) {
             Log.w(TAG, "getAttrValue: attr id not found in result");
             /* checking if attribute is title, then it is mandatory and cannot send null */
-            if (attr == AvrcpConstants.ATTRID_TITLE) {
+            if (attr == AvrcpConstants_ext.ATTRID_TITLE) {
                 attrValue = "<Unknown Title>";
             } else {
                 return null;
@@ -526,7 +533,7 @@ public class AddressedMediaPlayer_ext {
         return attrValue;
     }
 
-    private void getItemAttrFilterAttr(byte[] bdaddr, AvrcpCmd.ItemAttrCmd mItemAttrReqObj,
+    private void getItemAttrFilterAttr(byte[] bdaddr, AvrcpCmd_ext.ItemAttrCmd mItemAttrReqObj,
             MediaSession.QueueItem mediaItem, @Nullable MediaController mediaController) {
         /* Response parameters */
         int[] attrIds = null; /* array of attr ids */
@@ -538,9 +545,9 @@ public class AddressedMediaPlayer_ext {
         ArrayList<Integer> attrTempId = new ArrayList<Integer>();
 
         /* check if remote device has requested for attributes */
-        if (mItemAttrReqObj.mNumAttr != AvrcpConstants.NUM_ATTR_NONE) {
-            if (mItemAttrReqObj.mNumAttr == AvrcpConstants.NUM_ATTR_ALL) {
-                for (int idx = 1; idx < AvrcpConstants.MAX_NUM_ATTR; idx++) {
+        if (mItemAttrReqObj.mNumAttr != AvrcpConstants_ext.NUM_ATTR_NONE) {
+            if (mItemAttrReqObj.mNumAttr == AvrcpConstants_ext.NUM_ATTR_ALL) {
+                for (int idx = 1; idx < AvrcpConstants_ext.MAX_NUM_ATTR; idx++) {
                     attrTempId.add(idx); /* attr id 0x00 is unused */
                 }
             } else {
@@ -561,7 +568,7 @@ public class AddressedMediaPlayer_ext {
         /* lookup and copy values of attributes for ids requested above */
         for (int idx = 0; idx < attrTempId.size(); idx++) {
             /* check if media player provided requested attributes */
-            String value = getAttrValue(attrTempId.get(idx), mediaItem, mediaController);
+            String value = getAttrValue(bdaddr, attrTempId.get(idx), mediaItem, mediaController);
             if (value != null) {
                 attrArray.add(value);
                 attrId.add(attrTempId.get(idx));
@@ -569,7 +576,7 @@ public class AddressedMediaPlayer_ext {
         }
 
         /* copy filtered attr ids and attr values to response parameters */
-        if (mItemAttrReqObj.mNumAttr != AvrcpConstants.NUM_ATTR_NONE) {
+        if (mItemAttrReqObj.mNumAttr != AvrcpConstants_ext.NUM_ATTR_NONE) {
             attrIds = new int[attrId.size()];
 
             for (int attrIndex = 0; attrIndex < attrId.size(); attrIndex++) {
@@ -579,8 +586,8 @@ public class AddressedMediaPlayer_ext {
             attrValues = attrArray.toArray(new String[attrId.size()]);
 
             /* create rsp object and send response */
-            ItemAttrRsp rspObj = new ItemAttrRsp(AvrcpConstants.RSP_NO_ERROR, attrIds, attrValues);
-            mMediaInterface.getItemAttrRsp(bdaddr, AvrcpConstants.RSP_NO_ERROR, rspObj);
+            ItemAttrRsp_ext rspObj = new ItemAttrRsp_ext(AvrcpConstants_ext.RSP_NO_ERROR, attrIds, attrValues);
+            mMediaInterface.getItemAttrRsp(bdaddr, AvrcpConstants_ext.RSP_NO_ERROR, rspObj);
             return;
         }
     }
@@ -609,19 +616,19 @@ public class AddressedMediaPlayer_ext {
         sb.append("#");
         sb.append(item.getQueueId());
         sb.append(": ");
-        sb.append(Utils.ellipsize(getAttrValue(AvrcpConstants.ATTRID_TITLE, item, null)));
+        sb.append(Utils.ellipsize(getAttrValue(null, AvrcpConstants_ext.ATTRID_TITLE, item, null)));
         sb.append(" - ");
-        sb.append(Utils.ellipsize(getAttrValue(AvrcpConstants.ATTRID_ALBUM, item, null)));
+        sb.append(Utils.ellipsize(getAttrValue(null, AvrcpConstants_ext.ATTRID_ALBUM, item, null)));
         sb.append(" by ");
-        sb.append(Utils.ellipsize(getAttrValue(AvrcpConstants.ATTRID_ARTIST, item, null)));
+        sb.append(Utils.ellipsize(getAttrValue(null, AvrcpConstants_ext.ATTRID_ARTIST, item, null)));
         sb.append(" (");
-        sb.append(getAttrValue(AvrcpConstants.ATTRID_PLAY_TIME, item, null));
+        sb.append(getAttrValue(null, AvrcpConstants_ext.ATTRID_PLAY_TIME, item, null));
         sb.append(" ");
-        sb.append(getAttrValue(AvrcpConstants.ATTRID_TRACK_NUM, item, null));
+        sb.append(getAttrValue(null, AvrcpConstants_ext.ATTRID_TRACK_NUM, item, null));
         sb.append("/");
-        sb.append(getAttrValue(AvrcpConstants.ATTRID_NUM_TRACKS, item, null));
+        sb.append(getAttrValue(null, AvrcpConstants_ext.ATTRID_NUM_TRACKS, item, null));
         sb.append(") ");
-        sb.append(getAttrValue(AvrcpConstants.ATTRID_GENRE, item, null));
+        sb.append(getAttrValue(null, AvrcpConstants_ext.ATTRID_GENRE, item, null));
         return sb.toString();
     }
 

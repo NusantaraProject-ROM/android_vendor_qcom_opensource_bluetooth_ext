@@ -28,13 +28,13 @@ public interface AvrcpMediaRspInterface_ext {
     void setBrowsedPlayerRsp(byte[] address, int rspStatus, byte depth, int numItems,
             String[] textArray);
 
-    void mediaPlayerListRsp(byte[] address, int rspStatus, MediaPlayerListRsp rspObj);
+    void mediaPlayerListRsp(byte[] address, int rspStatus, MediaPlayerListRsp_ext rspObj);
 
-    void folderItemsRsp(byte[] address, int rspStatus, FolderItemsRsp rspObj);
+    void folderItemsRsp(byte[] address, int rspStatus, FolderItemsRsp_ext rspObj);
 
     void changePathRsp(byte[] address, int rspStatus, int numItems);
 
-    void getItemAttrRsp(byte[] address, int rspStatus, ItemAttrRsp rspObj);
+    void getItemAttrRsp(byte[] address, int rspStatus, ItemAttrRsp_ext rspObj);
 
     void playItemRsp(byte[] address, int rspStatus);
 
