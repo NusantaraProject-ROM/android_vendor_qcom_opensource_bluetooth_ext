@@ -111,7 +111,7 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
     private static final long EVENT_FILTER_CONVERSATION_CHANGED         = 1L<<10;
     private static final long EVENT_FILTER_PARTICIPANT_PRESENCE_CHANGED = 1L<<11;
     private static final long EVENT_FILTER_PARTICIPANT_CHATSTATE_CHANGED= 1L<<12;
-    private static final long EVENT_FILTER_MESSAGE_REMOVED              = 1L<<13;
+    private static final long EVENT_FILTER_MESSAGE_REMOVED              = 1L<<14;
 
     // TODO: If we are requesting a large message from the network, on a slow connection
     //       20 seconds might not be enough... But then again 20 seconds is long for other
@@ -140,14 +140,6 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
     private Uri mContactUri = null;
 
     private boolean mTransmitEvents = true;
-
-    /* To make the filter update atomic, we declare it volatile.
-     * To avoid a penalty when using it, copy the value to a local
-     * non-volatile variable when used more than once.
-     * Actually we only ever use the lower 4 bytes of this variable,
-     * hence we could manage without the volatile keyword, but as
-     * we tend to copy ways of doing things, we better do it right:-) */
-    private volatile long mEventFilter = 0xFFFFFFFFL;
 
     public static final int DELETED_THREAD_ID = -1;
 
@@ -254,8 +246,8 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
     }
 
     public int getObserverRemoteFeatureMask() {
-        if (V) Log.v(TAG, "getObserverRemoteFeatureMask Email: " + mMapEventReportVersion
-            + " mMapSupportedFeatures Email: " + mMapSupportedFeatures);
+        if (V) Log.v(TAG, "getObserverRemoteFeatureMask " + mMapEventReportVersion
+            + " mMapSupportedFeatures :" + mMapSupportedFeatures);
         return mMapSupportedFeatures;
     }
 
@@ -398,7 +390,7 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
 
         /* Enable use of the cache for checking the filter */
         long eventFilter = mEventFilter;
-
+        if (V) Log.v(TAG," eventFilter " + eventFilter);
         /* This should have been a switch on the string, but it is not allowed in Java 1.6 */
         /* WARNING: Here we do pointer compare for the string to speed up things, that is.
          * HENCE: always use the EVENT_TYPE_"defines" */
@@ -550,7 +542,7 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
                             msgList.put(id, msg);
                             Event evt;
                             /* Incoming message from the network */
-                            if (mMapEventReportVersion == BluetoothMapUtils.MAP_EVENT_REPORT_V11) {
+                            if (mMapEventReportVersion >= BluetoothMapUtils.MAP_EVENT_REPORT_V11) {
                                 String date = BluetoothMapUtils.getDateTimeString(c.getLong(c
                                     .getColumnIndex(BluetoothMapEmailContract
                                     .ExtEmailMessageColumns.TIMESTAMP)));
@@ -691,7 +683,12 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
                 if (!msg.transparent ) {
                     if(msg.localInitiatedShift == false ) {
                         // "old_folder" used only for MessageShift event
-                        Event evt = new Event(EVENT_TYPE_DELETE, msg.id, oldFolder,
+                        String eventType = EVENT_TYPE_DELETE;
+                        if (mMapEventReportVersion >= BluetoothMapUtils.MAP_EVENT_REPORT_V12) {
+                            eventType = EVENT_TYPE_REMOVED;
+                            if (V) Log.v(TAG," send EVENT_TYPE_REMOVED");
+                        }
+                        Event evt = new Event(eventType, msg.id, oldFolder,
                             null, mAccount.getType());
                         sendEvent(evt);
                     } else {
