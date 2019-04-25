@@ -48,6 +48,17 @@
  ******************************************************************************/
 
 typedef enum {
+    BA_CTRL_ACK_SUCCESS,
+    BA_CTRL_ACK_FAILURE,
+    BA_CTRL_ACK_INCALL_FAILURE, /* Failure when in Call*/
+    BA_CTRL_ACK_UNSUPPORTED,
+    BA_CTRL_ACK_PENDING,
+    BA_CTRL_ACK_DISCONNECT_IN_PROGRESS,
+    BA_CTRL_SKT_DISCONNECTED,
+    BA_CTRL_ACK_UNKNOWN,
+} tBA_CTRL_ACK;
+
+typedef enum {
     BTIF_BA_STATE_IDLE_AUDIO_PENDING = 0,
     BTIF_BA_STATE_IDLE_AUDIO_STREAMING,
     BTIF_BA_STATE_IDLE_AUDIO_NS,
@@ -123,6 +134,14 @@ void btif_ba_bta_callback(uint16_t event, uint8_t result);
 void ba_send_message(uint8_t event, uint8_t size, char* ptr, bool is_btif_thread);
 uint16_t btif_get_ba_latency();
 bool btif_ba_is_active();
+uint8_t btif_ba_get_sample_rate();
+uint8_t btif_ba_get_channel_mode();
+uint8_t btif_ba_get_frame_size();
+uint8_t btif_ba_get_complexity();
+uint8_t btif_ba_get_prediction_mode();
+uint8_t btif_ba_get_vbr_flag();
+uint32_t btif_ba_get_bitrate();
+
 /*
 uint8_t get_curr_vol_level();
 uint8_t get_max_vol_level();

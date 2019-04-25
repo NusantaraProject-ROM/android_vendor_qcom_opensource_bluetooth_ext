@@ -32,7 +32,7 @@
 #include <string.h>
 
 #define LOG_TAG "bt_btif_vendor"
-
+#include "btif_a2dp.h"
 #include <cutils/properties.h>
 #include "bt_utils.h"
 #include "btif_common.h"
@@ -51,17 +51,6 @@
 #include "bta_bat.h"
 #include "btif_av.h"
 #include "btif_config.h"
-
-typedef enum {
-    BA_CTRL_ACK_SUCCESS,
-    BA_CTRL_ACK_FAILURE,
-    BA_CTRL_ACK_INCALL_FAILURE, /* Failure when in Call*/
-    BA_CTRL_ACK_UNSUPPORTED,
-    BA_CTRL_ACK_PENDING,
-    BA_CTRL_ACK_DISCONNECT_IN_PROGRESS,
-    BA_CTRL_SKT_DISCONNECTED,
-    BA_CTRL_ACK_UNKNOWN,
-} tBA_CTRL_ACK;
 
 extern void btif_av_trigger_suspend();
 
@@ -264,11 +253,13 @@ const ba_transmitter_interface_t *btif_bat_get_interface()
 
 bool btif_ba_is_active()
 {
-    LOG_INFO(LOG_TAG,"%s:",__func__);
+    bool ret = false;
     if (btif_ba_get_state() > BTIF_BA_STATE_IDLE_AUDIO_NS)
-        return true;
+        ret = true;
     else
-        return false;
+        ret = false;
+    LOG_INFO(LOG_TAG,"%s: %d",__func__, ret);
+    return ret;
 }
 
 btif_ba_state_t btif_ba_get_state()
@@ -323,11 +314,11 @@ void ba_acknowledge_audio_cmd(uint8_t pending_cmd, uint8_t result)
     {
         if ( btif_ba_cb.audio_cmd_pending == BTIF_BA_AUDIO_PAUSE_REQ_EVT)
         {
-            btif_a2dp_audio_on_suspended(result);
+            btif_ba_audio_on_suspended(result);
         }
         else if ( btif_ba_cb.audio_cmd_pending == BTIF_BA_AUDIO_STOP_REQ_EVT)
         {
-            btif_a2dp_audio_on_stopped(result);
+            btif_ba_audio_on_stopped(result);
         }
         else
         {
@@ -338,7 +329,7 @@ void ba_acknowledge_audio_cmd(uint8_t pending_cmd, uint8_t result)
     {
         if ( btif_ba_cb.audio_cmd_pending == BTIF_BA_AUDIO_START_REQ_EVT)
         {
-            btif_a2dp_audio_on_started(result);
+            btif_ba_audio_on_started(result);
         }
         else
         {
@@ -370,6 +361,41 @@ void getBACodecConfig(uint8_t* p_codec_config)
     *p_codec_config = bit_rate >> 16;p_codec_config ++;
     *p_codec_config = bit_rate >> 8;p_codec_config ++;
     *p_codec_config = bit_rate;p_codec_config ++;
+}
+
+uint8_t btif_ba_get_sample_rate()
+{
+  return btif_ba_cb.sampl_freq;
+}
+
+uint8_t btif_ba_get_channel_mode()
+{
+  return btif_ba_cb.ch_mode;
+}
+
+uint8_t btif_ba_get_frame_size()
+{
+  return btif_ba_cb.frame_size;
+}
+
+uint8_t btif_ba_get_complexity()
+{
+  return btif_ba_cb.complexity;
+}
+
+uint8_t btif_ba_get_prediction_mode()
+{
+  return btif_ba_cb.prediction_mode;
+}
+
+uint8_t btif_ba_get_vbr_flag()
+{
+  return btif_ba_cb.vbr_mode;
+}
+
+uint32_t btif_ba_get_bitrate()
+{
+  return btif_ba_cb.bit_rate;
 }
 
 static void memorize_msg(uint8_t event, btif_ba_state_t state)
