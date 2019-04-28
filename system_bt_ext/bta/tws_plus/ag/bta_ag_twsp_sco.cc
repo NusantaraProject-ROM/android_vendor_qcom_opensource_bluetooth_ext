@@ -258,6 +258,8 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
             case BTA_AG_SCO_CLOSE_E:
                 /* sco open is not started yet. just go back to listening */
                 p_sco->state = BTA_AG_SCO_LISTEN_ST;
+                APPL_TRACE_WARNING("%s: perform post sco close action to send indicator", __func__);
+                bta_ag_post_sco_close(p_scb, NULL);
                 /*call app callback so that btif and app state
                 / go back to audio disconnected state*/
                 APPL_TRACE_WARNING("%s: SCO close during codec negotiation", __func__);
