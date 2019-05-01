@@ -401,7 +401,7 @@ static bool btConfigStoreLoadProperties(uint32_t vPropType,
         break;
 
       default:
-        LOG_INFO(LOG_TAG, "%s:: prop type not handled %d", __func__, vProp.type);
+        LOG_INFO(LOG_TAG, "%s:: prop type not handled %d", __func__, vPropType);
         config_free(config);
         return status;
     }
