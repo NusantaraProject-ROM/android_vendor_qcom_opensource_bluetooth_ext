@@ -31,9 +31,9 @@ import java.util.Collection;
  *     2) Stores information of Addressed and Browsed Media Players.
  ************************************************************************************************/
 
-class AvrcpCmd {
+class AvrcpCmd_ext {
 
-    AvrcpCmd() {}
+    AvrcpCmd_ext() {}
 
     /* Helper classes to pass parameters from callbacks to Avrcp handler */
     class FolderItemsCmd {
@@ -115,7 +115,7 @@ class AvrcpCmd {
 }
 
 /* Helper classes to pass parameters to native response */
-class MediaPlayerListRsp {
+class MediaPlayerListRsp_ext {
     byte mStatus;
     short mUIDCounter;
     byte mItemType;
@@ -127,7 +127,7 @@ class MediaPlayerListRsp {
     String[] mPlayerNameList;
     int mNumItems;
 
-    MediaPlayerListRsp(byte status, short uidCounter, int numItems, byte itemType, int[] playerIds,
+    MediaPlayerListRsp_ext(byte status, short uidCounter, int numItems, byte itemType, int[] playerIds,
             byte[] playerTypes, int[] playerSubTypes, byte[] playStatusValues,
             short[] featureBitMaskValues, String[] playerNameList) {
         this.mStatus = status;
@@ -140,7 +140,7 @@ class MediaPlayerListRsp {
         this.mPlayerSubTypes = playerSubTypes;
         this.mPlayStatusValues = new byte[numItems];
         this.mPlayStatusValues = playStatusValues;
-        int bitMaskSize = AvrcpConstants.AVRC_FEATURE_MASK_SIZE;
+        int bitMaskSize = AvrcpConstants_ext.AVRC_FEATURE_MASK_SIZE;
         this.mFeatureBitMaskValues = new short[numItems * bitMaskSize];
         for (int bitMaskIndex = 0; bitMaskIndex < (numItems * bitMaskSize); bitMaskIndex++) {
             this.mFeatureBitMaskValues[bitMaskIndex] = featureBitMaskValues[bitMaskIndex];
@@ -149,7 +149,7 @@ class MediaPlayerListRsp {
     }
 }
 
-class FolderItemsRsp {
+class FolderItemsRsp_ext {
     byte mStatus;
     short mUIDCounter;
     byte mScope;
@@ -163,7 +163,7 @@ class FolderItemsRsp {
     int[] mAttrIds;
     String[] mAttrValues;
 
-    FolderItemsRsp(byte status, short uidCounter, byte scope, int numItems, byte[] folderTypes,
+    FolderItemsRsp_ext(byte status, short uidCounter, byte scope, int numItems, byte[] folderTypes,
             byte[] playable, byte[] itemTypes, byte[] itemsUid, String[] displayNameArray,
             int[] attributesNum, int[] attrIds, String[] attrValues) {
         this.mStatus = status;
@@ -181,13 +181,13 @@ class FolderItemsRsp {
     }
 }
 
-class ItemAttrRsp {
+class ItemAttrRsp_ext {
     byte mStatus;
     byte mNumAttr;
     int[] mAttributesIds;
     String[] mAttributesArray;
 
-    ItemAttrRsp(byte status, int[] attributesIds, String[] attributesArray) {
+    ItemAttrRsp_ext(byte status, int[] attributesIds, String[] attributesArray) {
         mStatus = status;
         mNumAttr = (byte) attributesIds.length;
         mAttributesIds = attributesIds;
@@ -196,7 +196,7 @@ class ItemAttrRsp {
 }
 
 /* stores information of Media Players in the system */
-class MediaPlayerInfo {
+class MediaPlayerInfo_ext {
 
     private byte mMajorType;
     private int mSubType;
@@ -206,7 +206,7 @@ class MediaPlayerInfo {
     @NonNull private String mDisplayableName;
     @Nullable private MediaController mMediaController;
 
-    MediaPlayerInfo(@Nullable MediaController controller, byte majorType, int subType,
+    MediaPlayerInfo_ext(@Nullable MediaController controller, byte majorType, int subType,
             byte playStatus, short[] featureBitMask, @NonNull String packageName,
             @Nullable String displayableName) {
         this.setMajorType(majorType);
@@ -301,7 +301,7 @@ class MediaPlayerInfo {
                 return false;
             }
             for (short bit : this.mFeatureBitMask) {
-                if (bit == AvrcpConstants.AVRC_PF_BROWSE_BIT_NO) {
+                if (bit == AvrcpConstants_ext.AVRC_PF_BROWSE_BIT_NO) {
                     return true;
                 }
             }
@@ -311,7 +311,7 @@ class MediaPlayerInfo {
 
     /** Tests if the view of this player presented to the controller is different enough to
      *  justify sending an Available Players Changed update */
-    public boolean equalView(MediaPlayerInfo other) {
+    public boolean equalView(MediaPlayerInfo_ext other) {
         return (this.mMajorType == other.getMajorType()) && (this.mSubType == other.getSubType())
                 && Arrays.equals(this.mFeatureBitMask, other.getFeatureBitMask())
                 && this.mDisplayableName.equals(other.getDisplayableName());
@@ -341,12 +341,12 @@ class MediaPlayerInfo {
 }
 
 /* stores information for browsable Media Players available in the system */
-class BrowsePlayerInfo {
+class BrowsePlayerInfo_ext {
     public String packageName;
     public String displayableName;
     public String serviceClass;
 
-    BrowsePlayerInfo(String packageName, String displayableName, String serviceClass) {
+    BrowsePlayerInfo_ext(String packageName, String displayableName, String serviceClass) {
         this.packageName = packageName;
         this.displayableName = displayableName;
         this.serviceClass = serviceClass;
@@ -355,7 +355,7 @@ class BrowsePlayerInfo {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("BrowsePlayerInfo ");
+        sb.append("BrowsePlayerInfo_ext ");
         sb.append(packageName);
         sb.append(" ( as '" + displayableName + "')");
         sb.append(" service " + serviceClass);
@@ -363,7 +363,7 @@ class BrowsePlayerInfo {
     }
 }
 
-class FolderItemsData {
+class FolderItemsData_ext {
     /* initialize sizes for rsp parameters */ int mNumItems;
     int[] mAttributesNum;
     byte[] mFolderTypes;
@@ -375,18 +375,18 @@ class FolderItemsData {
     String[] mAttrValues;
     int mAttrCounter;
 
-    FolderItemsData(int size) {
+    FolderItemsData_ext(int size) {
         mNumItems = size;
         mAttributesNum = new int[size];
 
         mFolderTypes = new byte[size]; /* folderTypes */
         mItemTypes = new byte[size]; /* folder or media item */
         mPlayable = new byte[size];
-        Arrays.fill(mFolderTypes, AvrcpConstants.FOLDER_TYPE_MIXED);
-        Arrays.fill(mItemTypes, AvrcpConstants.BTRC_ITEM_MEDIA);
-        Arrays.fill(mPlayable, AvrcpConstants.ITEM_PLAYABLE);
+        Arrays.fill(mFolderTypes, AvrcpConstants_ext.FOLDER_TYPE_MIXED);
+        Arrays.fill(mItemTypes, AvrcpConstants_ext.BTRC_ITEM_MEDIA);
+        Arrays.fill(mPlayable, AvrcpConstants_ext.ITEM_PLAYABLE);
 
-        mItemUid = new byte[size * AvrcpConstants.UID_SIZE];
+        mItemUid = new byte[size * AvrcpConstants_ext.UID_SIZE];
         mDisplayNames = new String[size];
 
         mAttrIds = null; /* array of attr ids */
@@ -399,20 +399,20 @@ class FolderItemsData {
  * This is useful for keeping a FIFO queue of items where the items drop off the front, i.e. a log
  * with a maximum size.
  */
-class EvictingQueue<E> extends ArrayDeque<E> {
+class EvictingQueue_ext<E> extends ArrayDeque<E> {
     private int mMaxSize;
 
-    EvictingQueue(int maxSize) {
+    EvictingQueue_ext(int maxSize) {
         super();
         mMaxSize = maxSize;
     }
 
-    EvictingQueue(int maxSize, int initialElements) {
+    EvictingQueue_ext(int maxSize, int initialElements) {
         super(initialElements);
         mMaxSize = maxSize;
     }
 
-    EvictingQueue(int maxSize, Collection<? extends E> c) {
+    EvictingQueue_ext(int maxSize, Collection<? extends E> c) {
         super(c);
         mMaxSize = maxSize;
     }
