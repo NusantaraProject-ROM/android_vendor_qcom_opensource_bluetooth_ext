@@ -1383,7 +1383,7 @@ public final class Avrcp_ext {
 
                         if(mHandler.hasMessages(MESSAGE_START_SHO)) {
                             mHandler.removeMessages(MESSAGE_START_SHO);
-                            triggerSHO(SHOQueue.device, SHOQueue.PlayReq);
+                            triggerSHO(SHOQueue.device, SHOQueue.PlayReq, false);
                         }
                     }
                     if(shoComplete == true) {
@@ -1564,12 +1564,23 @@ public final class Avrcp_ext {
                         break;
                     }
                     isShoActive = true;
-                    Log.d(TAG, "2: SHO started. PlayReq = " + msg.arg1);
+                    Log.d(TAG, "2: SHO started. PlayReq = " + msg.arg1 + "SHO Retry = " + msg.arg2);
                 }
 
                 BluetoothDevice dev = (BluetoothDevice)msg.obj;
                 boolean PlayReq = (msg.arg1 == 1);
-                mA2dpService.startSHO(dev);
+                boolean isRetry = (msg.arg2 == 1);
+                boolean ret;
+                ret = mA2dpService.startSHO(dev);
+                if(!ret) {
+                    isShoActive = false;
+                    if(isRetry) {
+                        Log.e(TAG, "SHO failed");
+                    } else {
+                        triggerSHO(dev, PlayReq, true);
+                    }
+                    break;
+                }
 
                 if(!PlayReq) {
                     synchronized (Avrcp_ext.this) {
@@ -1577,7 +1588,7 @@ public final class Avrcp_ext {
                         Log.d(TAG, "3: SHO complete");
                         if (mHandler.hasMessages(MESSAGE_START_SHO)) {
                             mHandler.removeMessages(MESSAGE_START_SHO);
-                            triggerSHO(SHOQueue.device, SHOQueue.PlayReq);
+                            triggerSHO(SHOQueue.device, SHOQueue.PlayReq, false);
                         }
                     }
                     CompleteSHO();
@@ -4899,6 +4910,11 @@ public final class Avrcp_ext {
             }
         }
         boolean ret = mA2dpService.startSHO(device);
+        if(!ret) {
+            isShoActive = false;
+            mHandler.removeMessages(MESSAGE_START_SHO);
+            triggerSHO(device, PlayReq, true);
+        }
         synchronized (Avrcp_ext.this) {
             if (!PlayReq) {
                 isShoActive = false;
@@ -4906,7 +4922,7 @@ public final class Avrcp_ext {
 
                 if (mHandler.hasMessages(MESSAGE_START_SHO)) {
                     mHandler.removeMessages(MESSAGE_START_SHO);
-                    triggerSHO(SHOQueue.device, SHOQueue.PlayReq);
+                    triggerSHO(SHOQueue.device, SHOQueue.PlayReq, false);
                 }
             }
         }
@@ -4914,9 +4930,14 @@ public final class Avrcp_ext {
         return ret;
     }
 
-    private void triggerSHO(BluetoothDevice device, boolean PlayReq) {
-        Message msg = mHandler.obtainMessage(MESSAGE_START_SHO, PlayReq?1:0, 0, device);
-        mHandler.sendMessage(msg);
+    private void triggerSHO(BluetoothDevice device, boolean PlayReq, boolean isRetry) {
+        Message msg = mHandler.obtainMessage(MESSAGE_START_SHO, PlayReq?1:0, isRetry?1:0, device);
+        if(isRetry) {
+            mHandler.sendMessageDelayed(msg, 2000);
+            Log.e(TAG, "Retry SHO after delay");
+        } else {
+            mHandler.sendMessage(msg);
+        }
     }
 
     public void CompleteSHO() {
