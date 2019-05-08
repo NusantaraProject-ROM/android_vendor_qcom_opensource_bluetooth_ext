@@ -719,7 +719,7 @@ public final class Avrcp_ext {
         }
         @Override
         public synchronized void onPlaybackStateChanged(PlaybackState state) {
-            if (DEBUG) Log.v(TAG, "onPlaybackStateChanged: state " + state.toString());
+            if (DEBUG) Log.v(TAG, "onPlaybackStateChanged: state " + ((state != null)? state.toString() : "NULL"));
             updateCurrentMediaState(null);
             Log.v(TAG, " Exit onPlaybackStateChanged");
         }
@@ -1820,7 +1820,7 @@ public final class Avrcp_ext {
                 for (int i = 0; i < maxAvrcpConnections; i++) {
                      if (i != deviceIndex && !deviceFeatures[i].isActiveDevice &&
                           deviceFeatures[i].mLastRspPlayStatus == PLAYSTATUS_PLAYING &&
-                          (state.getState() == PlaybackState.STATE_PLAYING)) {
+                          (state != null && state.getState() == PlaybackState.STATE_PLAYING)) {
                          PlaybackState.Builder playState = new PlaybackState.Builder();
                          playState.setState(PlaybackState.STATE_PAUSED,
                                           PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
