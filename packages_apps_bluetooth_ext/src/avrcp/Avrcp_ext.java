@@ -812,11 +812,15 @@ public final class Avrcp_ext {
                         notifyVolumeChanged(vol, false);
                 }
                 if (vol >= 0) {
-                    vol = convertToAvrcpVolume(vol);
-                    Log.d(TAG,"vol = " + vol + "rem vol = " + deviceFeatures[deviceIndex].mRemoteVolume);
-                    if(vol != deviceFeatures[deviceIndex].mRemoteVolume &&
+                    int volume = convertToAvrcpVolume(vol);
+                    int remVol = deviceFeatures[deviceIndex].mRemoteVolume;
+                    if (remVol != -1) {
+                        remVol = convertToAudioStreamVolume(remVol);
+                    }
+                    Log.d(TAG,"vol = " + vol + "remVol = " + remVol);
+                    if(remVol != -1 && vol != remVol &&
                        deviceFeatures[deviceIndex].mCurrentDevice != null) {
-                       setVolumeNative(vol , getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
+                       setVolumeNative(volume , getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
                        if (deviceFeatures[deviceIndex].mCurrentDevice.isTwsPlusDevice()) {
                            AdapterService adapterService = AdapterService.getAdapterService();
                            BluetoothDevice peer_device =
@@ -825,7 +829,7 @@ public final class Avrcp_ext {
                                getIndexForDevice(peer_device) != INVALID_DEVICE_INDEX) {
                                // Change volume to peer earbud as well
                                Log.d(TAG,"setting volume to TWS+ peer also");
-                               setVolumeNative(vol, getByteAddress(peer_device));
+                               setVolumeNative(volume, getByteAddress(peer_device));
                            }
                        }
                     }
