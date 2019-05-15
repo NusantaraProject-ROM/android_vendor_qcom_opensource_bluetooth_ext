@@ -28,7 +28,4 @@ cc_library_static {
         "libosi_qti",
         "libbluetooth-types",
     ],
-    sanitize: {
-        never: true,
-    },
 }

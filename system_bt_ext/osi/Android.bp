@@ -24,7 +24,4 @@ cc_library_static {
         "libbt-utils",
     ],
     cflags: ["-DBUILDCFG"],
-    sanitize: {
-        never: true,
-    },
 }

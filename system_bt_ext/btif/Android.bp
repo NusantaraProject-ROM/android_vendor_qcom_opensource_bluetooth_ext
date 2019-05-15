@@ -52,7 +52,5 @@ cc_library_static {
         "-DBUILDCFG",
         "-DHAS_NO_BDROID_BUILDCFG",
     ],
-    sanitize: {
-        never: true,
-    },
+
 }
