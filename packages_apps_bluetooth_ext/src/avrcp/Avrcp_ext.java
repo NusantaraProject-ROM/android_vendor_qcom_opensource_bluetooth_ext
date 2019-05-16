@@ -5412,11 +5412,13 @@ public final class Avrcp_ext {
             new MediaSessionManager.Callback() {
                 @Override
                 public void onMediaKeyEventDispatched(KeyEvent event, MediaSession.Token token) {
-                    // Get the package name
-                    android.media.session.MediaController controller =
-                            new android.media.session.MediaController(mContext, token);
-                    String targetPackage = controller.getPackageName();
-                    recordKeyDispatched(event, targetPackage);
+                    if (token != null) {
+                        // Get the package name
+                        android.media.session.MediaController controller =
+                                new android.media.session.MediaController(mContext, token);
+                        String targetPackage = controller.getPackageName();
+                        recordKeyDispatched(event, targetPackage);
+                    }
                 }
 
                 @Override
