@@ -2744,7 +2744,7 @@ public final class Avrcp_ext {
                     if (deviceFeatures[i].mCurrentDevice != null) {
                         Log.d(TAG, "SendPassThruPlay command sent for = "
                                 + deviceFeatures[i].mCurrentDevice);
-                        if (volume > mLocalVolume) {
+                        /*if (volume > mLocalVolume) {
                             Log.d(TAG, "Vol Passthrough Up");
                             avrcpCtrlService.sendPassThroughCmd(
                                 deviceFeatures[i].mCurrentDevice, AVRC_ID_VOL_UP,
@@ -2760,7 +2760,7 @@ public final class Avrcp_ext {
                            avrcpCtrlService.sendPassThroughCmd(
                                 deviceFeatures[i].mCurrentDevice, AVRC_ID_VOL_DOWN,
                                 AvrcpConstants_ext.KEY_STATE_RELEASE);
-                        }
+                         }*/
                         mLocalVolume = volume;
                     }
                 }

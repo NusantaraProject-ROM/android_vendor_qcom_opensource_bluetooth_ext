@@ -64,14 +64,14 @@ public class CoverArtUtils {
     }
 
     private void broadcastInValidHandle(Context ctx, MediaMetadata metadata) {
-        Intent intent = new Intent(AvrcpControllerService.ACTION_TRACK_EVENT);
+        /*Intent intent = new Intent(AvrcpControllerService.ACTION_TRACK_EVENT);
         intent.putExtra(AvrcpControllerService.EXTRA_METADATA, metadata);
         intent.putExtra(EXTRA_METADATA_IS_INVALID_HANDLE, true);
         if (DBG) {
             Log.d(TAG, " broadcastInValidHandle = " + metadata.getDescription());
         }
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-        ctx.sendBroadcast(intent, ProfileService.BLUETOOTH_PERM);
+        ctx.sendBroadcast(intent, ProfileService.BLUETOOTH_PERM); */
     }
 
     public void onElementAttributeUpdate(byte[] address, byte numAttributes, int[] attributes,
@@ -90,13 +90,13 @@ public class CoverArtUtils {
            attrList.add(attr);
         }
         List<String> attrValList = Arrays.asList(attribVals);
-        TrackInfo trackInfo = new TrackInfo(attrList, attrValList);
-        if (DBG) {
-            Log.d(TAG, "onElementAttributeUpdate " + trackInfo);
-        }
-        Message msg = avrcpCtSm.obtainMessage(
-                AvrcpControllerStateMachine.MESSAGE_PROCESS_TRACK_CHANGED, trackInfo);
-        avrcpCtSm.sendMessage(msg);
+        //TrackInfo trackInfo = new TrackInfo(attrList, attrValList);
+        //if (DBG) {
+        //    Log.d(TAG, "onElementAttributeUpdate " + trackInfo);
+        //}
+        //Message msg = avrcpCtSm.obtainMessage(
+        //        AvrcpControllerStateMachine.MESSAGE_PROCESS_TRACK_CHANGED, trackInfo);
+        //avrcpCtSm.sendMessage(msg);
     }
 
     public void msgDisconnectBip(AvrcpControllerBipStateMachine bipStateMachine,
@@ -119,7 +119,7 @@ public class CoverArtUtils {
 
     public boolean msgTrackChanged(Context ctx, AvrcpControllerBipStateMachine bipStateMachine,
             AvrcpPlayer addressedPlayer, RemoteDevice remoteDevice) {
-        boolean isValidHandle = !addressedPlayer.getCurrentTrack().getCoverArtHandle().isEmpty();
+        /*boolean isValidHandle = !addressedPlayer.getCurrentTrack().getCoverArtHandle().isEmpty();
         if (bipStateMachine != null && isValidHandle) {
             int imageOrThumbnail;
             if (AvrcpControllerBipStateMachine.mImageType.equalsIgnoreCase("thumbnail")) {
@@ -127,16 +127,16 @@ public class CoverArtUtils {
             } else {
                 imageOrThumbnail = AvrcpControllerBipStateMachine.MESSAGE_FETCH_IMAGE;
             }
-            bipStateMachine.sendMessage(imageOrThumbnail,
-                    addressedPlayer.getCurrentTrack().getCoverArtHandle());
+            //bipStateMachine.sendMessage(imageOrThumbnail,
+            //        addressedPlayer.getCurrentTrack().getCoverArtHandle());
         }
         if (!isValidHandle && remoteDevice != null && remoteDevice.isCoverArtSupported()) {
             if (DBG) {
                 Log.d(TAG, " Cover Art Handle not valid ");
             }
-            broadcastInValidHandle(ctx, addressedPlayer.getCurrentTrack().getMediaMetaData());
+            //broadcastInValidHandle(ctx, addressedPlayer.getCurrentTrack().getMediaMetaData());
             return false;
-        }
+        }*/
         return true;
     }
 
@@ -147,50 +147,50 @@ public class CoverArtUtils {
         }
         switch (bipAction) {
             case MESSAGE_BIP_CONNECTED:
-                if (addressedPlayer.getCurrentTrack().getCoverArtHandle().isEmpty()
-                    && remoteDevice != null) {
+               //if (addressedPlayer.getCurrentTrack().getCoverArtHandle().isEmpty()
+               //     && remoteDevice != null) {
                 /*
                  * track changed happened before BIP connection. should fetch cover art handle.
                  * NumAttributes = 0 and attributes list as null will fetch all attributes
                  */
                     AvrcpControllerService.getElementAttributesNative(
                             remoteDevice.getBluetoothAddress(), (byte) 0, null);
-                }
+                //}
             break;
             case MESSAGE_BIP_DISCONNECTED:
                 // clear cover art related info for current track.
-                addressedPlayer.getCurrentTrack().clearCoverArtData();
+                //addressedPlayer.getCurrentTrack().clearCoverArtData();
             break;
             case MESSAGE_BIP_IMAGE_FETCHED:
-                boolean imageUpdated = addressedPlayer.getCurrentTrack().updateImageLocation(
+                /*boolean imageUpdated = addressedPlayer.getCurrentTrack().updateImageLocation(
                 msg.getData().getString(AvrcpControllerBipStateMachine.COVER_ART_HANDLE),
                 msg.getData()
                     .getString(AvrcpControllerBipStateMachine.COVER_ART_IMAGE_LOCATION));
                 if (imageUpdated) {
                     broadcastMetaDataChanged(ctx,
                         addressedPlayer.getCurrentTrack().getMediaMetaData());
-                }
+                } */
             break;
             case MESSAGE_BIP_THUMB_NAIL_FETCHED:
-                boolean thumbNailUpdated = addressedPlayer.getCurrentTrack().updateThumbNailLocation
+                /*boolean thumbNailUpdated = addressedPlayer.getCurrentTrack().updateThumbNailLocation
                     (msg.getData().getString(AvrcpControllerBipStateMachine.COVER_ART_HANDLE),
                      msg.getData()
                      .getString(AvrcpControllerBipStateMachine.COVER_ART_IMAGE_LOCATION));
             if (thumbNailUpdated) {
                 broadcastMetaDataChanged(ctx,
                     addressedPlayer.getCurrentTrack().getMediaMetaData());
-            }
+            }*/
             break;
         }
     }
 
     private void broadcastMetaDataChanged(Context ctx, MediaMetadata metadata) {
-        Intent intent = new Intent(AvrcpControllerService.ACTION_TRACK_EVENT);
+        /*Intent intent = new Intent(AvrcpControllerService.ACTION_TRACK_EVENT);
         intent.putExtra(AvrcpControllerService.EXTRA_METADATA, metadata);
         if (DBG) {
             Log.d(TAG, " broadcastMetaDataChanged = " + metadata.getDescription());
         }
-        ctx.sendBroadcast(intent, ProfileService.BLUETOOTH_PERM);
+        ctx.sendBroadcast(intent, ProfileService.BLUETOOTH_PERM); */
     }
 
     public String dumpMessageString(int message) {
