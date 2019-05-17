@@ -64,6 +64,7 @@ typedef enum {
   AVRCP_ID = 1,
   PBAP_ID,
   MAP_ID,
+  MAX_POW_ID,
   END_OF_PROFILE_LIST
 } profile_t;
 
@@ -76,6 +77,9 @@ typedef enum {
  MAP_EMAIL_SUPPORT,
  PBAP_0102_SUPPORT,
  MAP_0104_SUPPORT,
+ BR_MAX_POW_SUPPORT,
+ EDR_MAX_POW_SUPPORT,
+ BLE_MAX_POW_SUPPORT,
  END_OF_FEATURE_LIST
  } profile_info_t;
 
@@ -187,6 +191,9 @@ typedef struct {
 
     /** set wifi state */
     void (*set_wifi_state)(bool);
+
+    /** set Power_back_off state */
+    void (*set_Power_back_off_state)(bool);
 
     /** get profile info */
     bool (*get_profile_info)(profile_t, profile_info_t);

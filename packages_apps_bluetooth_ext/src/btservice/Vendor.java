@@ -68,6 +68,7 @@ final class Vendor {
     private String a2dpOffloadCap;
     // Split A2dp will be enabled by default
     private boolean splitA2dpEnabled = true;
+    private static boolean PowerbackoffStatus = false;
 
     static {
         classInitNative();
@@ -100,6 +101,20 @@ final class Vendor {
     public void setWifiState(boolean status) {
         Log.d(TAG,"setWifiState to: " + status);
         setWifiStateNative(status);
+    }
+
+   public void setPowerBackoff(boolean status) {
+
+        if (getPowerBackoff() == status)
+            return;
+        Log.d(TAG,"setPowerBackoff to: " + status);
+        PowerbackoffStatus = status;
+        setPowerBackoffNative(status);
+    }
+
+   public boolean getPowerBackoff() {
+        Log.d(TAG,"getPowerBackoff " );
+        return PowerbackoffStatus;
     }
 
     public void HCIClose() {
@@ -246,6 +261,7 @@ final class Vendor {
     private native static void classInitNative();
     private native void cleanupNative();
     private native void setWifiStateNative(boolean status);
+    private native void setPowerBackoffNative(boolean status);
     private native boolean getProfileInfoNative(int profile_id , int profile_info);
     private native boolean getQtiStackStatusNative();
     private native boolean voipNetworkWifiInfoNative(boolean isVoipStarted, boolean isNetworkWifi);

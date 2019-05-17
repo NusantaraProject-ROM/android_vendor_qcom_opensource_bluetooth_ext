@@ -96,6 +96,7 @@ typedef struct {
     avrcp_feature_t avrcp_feature_entry;
     pbap_feature_t pbap_feature_entry;
     map_feature_t map_feature_entry;
+    max_pow_feature_t max_pow_feature_entry;
   } profile_feature_type;
 
 } profile_db_entry_t;
@@ -111,7 +112,7 @@ static void load_config();
 
 // Interface functions
 bool profile_feature_fetch(const profile_t profile, profile_info_t feature_name);
-
+max_pow_feature_t max_radiated_power_fetch(const profile_t profile);
 
 static const char* profile_name_string_(const profile_t profile_name)
 {
@@ -119,6 +120,7 @@ static const char* profile_name_string_(const profile_t profile_name)
     CASE_RETURN_STR(AVRCP_ID)
     CASE_RETURN_STR(PBAP_ID)
     CASE_RETURN_STR(MAP_ID)
+    CASE_RETURN_STR(MAX_POW_ID)
     CASE_RETURN_STR(END_OF_PROFILE_LIST)
   }
   return "UNKNOWN";
@@ -134,6 +136,9 @@ static const char* profile_feature_string_(const profile_info_t feature)
     CASE_RETURN_STR(MAP_EMAIL_SUPPORT)
     CASE_RETURN_STR(MAP_0104_SUPPORT)
     CASE_RETURN_STR(PBAP_0102_SUPPORT)
+    CASE_RETURN_STR(BR_MAX_POW_SUPPORT)
+    CASE_RETURN_STR(EDR_MAX_POW_SUPPORT)
+    CASE_RETURN_STR(BLE_MAX_POW_SUPPORT)
     CASE_RETURN_STR(END_OF_FEATURE_LIST)
   }
   return "UNKNOWN";
@@ -274,6 +279,58 @@ static void profile_database_add_(profile_db_entry_t *db_entry)
     LOG_DEBUG(LOG_TAG, "Entry is already present in the list");
     return;
   }
+}
+
+max_pow_feature_t  max_radiated_power_fetch(const profile_t profile, profile_info_t feature_name)
+{
+  static max_pow_feature_t Tech_max_power = {0xFF, 0xFF, 0xFF, false, false, false};
+  assert(profile);
+  LOG_WARN(LOG_TAG, "max_radiated_power_fetch:profile %d", profile);
+
+  profile_db_entry_t *db_entry = profile_entry_fetch(profile);
+  if (db_entry == NULL) {
+    return Tech_max_power;
+  }
+
+  if (profile == MAX_POW_ID) {
+    switch (feature_name) {
+      case BR_MAX_POW_SUPPORT:
+      {
+        if (db_entry->profile_feature_type.max_pow_feature_entry.BR_max_pow_feature == true) {
+          Tech_max_power.BR_max_pow_feature = true;
+          Tech_max_power.BR_max_pow_support =
+             db_entry->profile_feature_type.max_pow_feature_entry.BR_max_pow_support;
+        }
+      }
+      break;
+      case EDR_MAX_POW_SUPPORT:
+      {
+        if (db_entry->profile_feature_type.max_pow_feature_entry.EDR_max_pow_feature == true) {
+          Tech_max_power.EDR_max_pow_feature = true;
+          Tech_max_power.EDR_max_pow_support =
+             db_entry->profile_feature_type.max_pow_feature_entry.EDR_max_pow_support;
+        }
+      }
+      break;
+      case BLE_MAX_POW_SUPPORT:
+      {
+        if (db_entry->profile_feature_type.max_pow_feature_entry.BLE_max_pow_feature == true) {
+          Tech_max_power.BLE_max_pow_feature = true;
+          Tech_max_power.BLE_max_pow_support =
+             db_entry->profile_feature_type.max_pow_feature_entry.BLE_max_pow_support;
+        }
+      }
+      break;
+      default:
+      {
+        LOG_WARN(LOG_TAG, "profile_feature_fetch:profile = %d , feature %d not found" , profile, feature_name);
+      }
+      break;
+    }
+  } else
+    LOG_WARN(LOG_TAG, "max_radiated_power_fetch:profile = %d" , profile);
+
+  return Tech_max_power;
 }
 
 bool profile_feature_fetch(const profile_t profile, profile_info_t feature_name)
@@ -467,6 +524,77 @@ static bool load_to_database(int profile_id, char *key, char *value)
               '\0', VALUE_MAX_LENGTH);
           memcpy(&entry->profile_feature_type.map_feature_entry.map_0104_support,
               value, strlen(value));
+        }
+        break;
+        default:
+        {
+          LOG_WARN(LOG_TAG,"%s is invalid key %s", __func__, key);
+        }
+        break;
+      }
+      profile_database_add_(entry);
+    }
+    break;
+    case MAX_POW_ID:
+    {
+      LOG_WARN(LOG_TAG, " MAX_POW_ID: key :: %s, value :: %s",
+                    key, value);
+      entry = profile_entry_fetch(MAX_POW_ID);
+      if (entry == NULL) {
+        entry = (profile_db_entry_t *)osi_calloc(sizeof(profile_db_entry_t));
+        entry->profile_id = (profile_t)profile_id;
+      }
+      switch (get_feature(key)) {
+        case BR_MAX_POW_SUPPORT:
+        {
+          uint8_t BR_pow;
+          char *e;
+
+          if ( strlen(key) != 18 ) {
+            LOG_WARN(LOG_TAG,
+            " ignoring %s due to invalid key in config file", key);
+            return false;
+          }
+
+          BR_pow = (uint8_t)strtoul(value, &e, 16);
+          LOG_WARN(LOG_TAG, " MAX_POW_ID: BR_pow :: %x",BR_pow);
+          entry->profile_feature_type.max_pow_feature_entry.BR_max_pow_feature = true;
+          entry->profile_feature_type.max_pow_feature_entry.BR_max_pow_support = BR_pow;
+        }
+        break;
+        case EDR_MAX_POW_SUPPORT:
+        {
+          uint8_t EDR_pow;
+          char *e;
+
+          if ( strlen(key) != 19 ) {
+            LOG_WARN(LOG_TAG,
+            " ignoring %s due to invalid key in config file", key);
+            return false;
+          }
+
+          EDR_pow = (uint8_t)strtoul(value, &e, 16);
+          LOG_WARN(LOG_TAG, " MAX_POW_ID: EDR_pow :: %x",EDR_pow);
+          entry->profile_feature_type.max_pow_feature_entry.EDR_max_pow_feature = true;
+          entry->profile_feature_type.max_pow_feature_entry.EDR_max_pow_support = EDR_pow;
+        }
+        break;
+        case BLE_MAX_POW_SUPPORT:
+        {
+          uint8_t BLE_pow;
+          char *e;
+
+          if ( strlen(key) != 19 ) {
+            LOG_WARN(LOG_TAG,
+            " ignoring %s due to invalid key in config file", key);
+            return false;
+          }
+
+          BLE_pow = (uint8_t)strtoul(value, &e, 16);
+          LOG_WARN(LOG_TAG, " MAX_POW_ID: BLE_pow :: %x",BLE_pow);
+          entry->profile_feature_type.max_pow_feature_entry.BLE_max_pow_feature = true;
+          entry->profile_feature_type.max_pow_feature_entry.BLE_max_pow_support = BLE_pow;
+
         }
         break;
         default:

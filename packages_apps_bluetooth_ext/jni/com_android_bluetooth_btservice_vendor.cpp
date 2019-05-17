@@ -406,6 +406,17 @@ static bool setWifiStateNative(JNIEnv *env, jobject obj, jboolean status) {
     return JNI_TRUE;
 }
 
+static bool setPowerBackoffNative(JNIEnv *env, jobject obj, jboolean status) {
+
+    ALOGI("%s", __FUNCTION__);
+
+    jboolean result = JNI_FALSE;
+    if (!sBluetoothVendorInterface) return result;
+
+    sBluetoothVendorInterface->set_Power_back_off_state(status);
+    return JNI_TRUE;
+}
+
 static bool getProfileInfoNative(JNIEnv *env, jobject obj, jint profile_id , jint profile_info) {
 
     ALOGI("%s", __FUNCTION__);
@@ -465,6 +476,7 @@ static JNINativeMethod sMethods[] = {
     {"bredrcleanupNative", "()V", (void*) bredrcleanupNative},
     {"bredrstartupNative", "()V", (void*) bredrstartupNative},
     {"setWifiStateNative", "(Z)V", (void*) setWifiStateNative},
+    {"setPowerBackoffNative", "(Z)V", (void*) setPowerBackoffNative},
     {"getProfileInfoNative", "(II)Z", (void*) getProfileInfoNative},
     {"getQtiStackStatusNative", "()Z", (void*) getQtiStackStatusNative},
     {"voipNetworkWifiInfoNative", "(ZZ)Z", (void *)voipNetworkWifiInfoNative},
