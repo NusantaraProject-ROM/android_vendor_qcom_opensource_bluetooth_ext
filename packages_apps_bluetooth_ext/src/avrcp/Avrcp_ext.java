@@ -816,9 +816,10 @@ public final class Avrcp_ext {
                         remVol = convertToAudioStreamVolume(remVol);
                     }
                     Log.d(TAG,"vol = " + vol + "remVol = " + remVol);
-                    if(remVol != -1 && vol != remVol &&
+                    if (vol != remVol &&
                        deviceFeatures[deviceIndex].mCurrentDevice != null) {
                        setVolumeNative(volume , getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
+                       deviceFeatures[deviceIndex].mRemoteVolume = volume;
                        if (deviceFeatures[deviceIndex].mCurrentDevice.isTwsPlusDevice()) {
                            AdapterService adapterService = AdapterService.getAdapterService();
                            BluetoothDevice peer_device =
@@ -1187,6 +1188,7 @@ public final class Avrcp_ext {
                         complete and making synchronization to send only one setAbsolute volume
                         during connection*/
                         if(getVolume(deviceFeatures[deviceIndex].mCurrentDevice) != -1) {
+                            deviceFeatures[deviceIndex].mRemoteVolume = absVol;
                             setAbsVolumeFlag(deviceFeatures[deviceIndex].mCurrentDevice);
                             break;
                         }
