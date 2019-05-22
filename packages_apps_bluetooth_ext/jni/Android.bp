@@ -26,7 +26,4 @@ cc_library_static {
         "com_android_bluetooth_avrcp_ext.cpp",
         "com_android_bluetooth_ba.cpp",
     ],
-    sanitize: {
-        never: true,
-    },
 }
