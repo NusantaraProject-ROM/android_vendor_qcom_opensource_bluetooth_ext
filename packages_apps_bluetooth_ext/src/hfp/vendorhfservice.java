@@ -68,9 +68,9 @@ final class vendorhfservice {
     }
 
     private void onSWB(int codec, byte[] address) {
-        /*HeadsetStackEvent event =
+        HeadsetStackEvent event =
                 new HeadsetStackEvent(HeadsetStackEvent.EVENT_TYPE_SWB, codec, getDevice(address));
-        sendMessageToService(event);*/
+        sendMessageToService(event);
     }
 
     private void sendMessageToService(HeadsetStackEvent event) {
