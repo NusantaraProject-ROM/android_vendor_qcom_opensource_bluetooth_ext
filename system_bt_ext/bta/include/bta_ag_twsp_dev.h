@@ -64,10 +64,11 @@
 #define TWSPLUS_QDSP_ECHO_CANCELLATION 1
 
 enum {
-  TWSPLUS_EB_STATE_OFF,
+  TWSPLUS_EB_STATE_UNKNOWN,
   TWSPLUS_EB_STATE_INCASE,
   TWSPLUS_EB_STATE_OUT_OF_EAR,
   TWSPLUS_EB_STATE_INEAR,
+  TWSPLUS_EB_STATE_OFF
 };
 
 enum {
@@ -100,6 +101,7 @@ bool twsp_ring_needed(tBTA_AG_SCB *p_scb);
 bool twsp_get_right_eb_addr(RawAddress& eb_addr);
 bool twsp_get_left_eb_addr(RawAddress& eb_addr);
 uint8_t get_twsp_role(tBTA_AG_SCB *p_scb);
+uint8_t get_twsp_state(tBTA_AG_SCB *p_scb);
 tBTA_AG_SCB* twsp_get_best_mic_scb ();
 int twsp_get_idx_by_scb(tBTA_AG_SCB* p_scb);
 

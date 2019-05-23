@@ -25,5 +25,9 @@ cc_library_static {
         "com_android_bluetooth_btservice_vendor_socket.cpp",
         "com_android_bluetooth_avrcp_ext.cpp",
         "com_android_bluetooth_ba.cpp",
+        "com_android_bluetooth_hf_vendor.cpp",
     ],
+    sanitize: {
+        never: true,
+    },
 }

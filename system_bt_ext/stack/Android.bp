@@ -39,4 +39,7 @@ cc_library_static {
         "libcutils",
         "liblog",
     ],
+    sanitize: {
+        never: true,
+    },
 }

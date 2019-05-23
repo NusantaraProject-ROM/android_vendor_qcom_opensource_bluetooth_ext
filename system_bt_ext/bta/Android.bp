@@ -28,6 +28,7 @@ cc_library_static {
         "ba/bta_ba.cc",
         "tws_plus/ag/bta_ag_twsp_dev.cc",
         "tws_plus/ag/bta_ag_twsp_sco.cc",
+        "swb/bta_ag_swb.cc"
     ],
     shared_libs: [
         "libcutils",
@@ -39,4 +40,7 @@ cc_library_static {
         "libbt-utils",
     ],
     cflags: ["-DBUILDCFG"],
+    sanitize: {
+        never: true,
+    },
 }

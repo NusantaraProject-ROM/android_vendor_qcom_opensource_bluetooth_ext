@@ -88,7 +88,7 @@ public class BATService extends ProfileService {
     public static final int MESSAGE_BAT_STREAMING_ID_EVT = 104;
 
     private static final String BLUETOOTH_PERM = android.Manifest.permission.BLUETOOTH;
-    public static final String mBAAddress = "FA:CE:FA:CE:FA:CE";
+    public static final String mBAAddress = "CE:FA:CE:FA:CE:FA";
     public static BluetoothDevice mBADevice;
     // we will listen for vol change intent from audio manager.
     // this intent is called in all following 3 cases
@@ -452,13 +452,8 @@ public class BATService extends ProfileService {
         // check for transition from PENDING to PAUSED
         if((mPrevStackBATState == BA_STACK_STATE_PENDING) &&
                 (mCurrStackBATState == BA_STACK_STATE_PAUSED)) {
-            if (a2dpActiveDevice != null) {
-                Log.d(TAG," updating AudioManager: Disconnect for A2dp ");
-                mAudioManager.setBluetoothA2dpDeviceConnectionStateSuppressNoisyIntent(
-                    a2dpActiveDevice, BluetoothProfile.STATE_DISCONNECTED, BluetoothProfile.A2DP,
-                    true, -1);
-            }
-            mAudioManager.setBluetoothA2dpDeviceConnectionStateSuppressNoisyIntent(
+            Log.d(TAG," updating AudioManager: Connected for BA ");
+            mAudioManager.handleBluetoothA2dpActiveDeviceChange(
                 mBADevice, BluetoothProfile.STATE_CONNECTED,BluetoothProfile.A2DP, true, -1);
             //BA audio works on the principal of absVol
             //Currently mm-audio tracks value of last updated absVol support,
@@ -475,18 +470,14 @@ public class BATService extends ProfileService {
                 // inform BA device as disconnected, don't send noisy intent
                 // as a2dp has to be updated as well. Switching should happen to
                 // A2DP in this case.
-                Log.d(TAG," updating AudioManager: DisConnected for BA ");
-                mAudioManager.setBluetoothA2dpDeviceConnectionStateSuppressNoisyIntent(
-                        mBADevice, BluetoothProfile.STATE_DISCONNECTED,BluetoothProfile.A2DP,
-                        true, -1);
                 Log.d(TAG," updating AudioManager: Connected for A2DP ");
-                mAudioManager.setBluetoothA2dpDeviceConnectionStateSuppressNoisyIntent(
+                mAudioManager.handleBluetoothA2dpActiveDeviceChange(
                     a2dpActiveDevice, BluetoothProfile.STATE_CONNECTED,BluetoothProfile.A2DP,
                     true, -1);
             } else {// a2dp active device is null.
                 // inform BA device as disconnected. we have to send noisy intent
                 // because BA seems to be last device.
-                mAudioManager.setBluetoothA2dpDeviceConnectionStateSuppressNoisyIntent(
+                mAudioManager.handleBluetoothA2dpActiveDeviceChange(
                         mBADevice, BluetoothProfile.STATE_DISCONNECTED,BluetoothProfile.A2DP,
                         false, -1);
             }

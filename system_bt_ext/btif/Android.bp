@@ -34,6 +34,7 @@ cc_library_static {
         "src/btif_ba.cc",
         "src/btif_twsp_hf.cc",
         "src/btif_iot_config.cc",
+        "src/btif_vendor_hf.cc",
     ],
     shared_libs: [
         "libcutils",
@@ -51,5 +52,7 @@ cc_library_static {
         "-DBUILDCFG",
         "-DHAS_NO_BDROID_BUILDCFG",
     ],
-
+    sanitize: {
+        never: true,
+    },
 }

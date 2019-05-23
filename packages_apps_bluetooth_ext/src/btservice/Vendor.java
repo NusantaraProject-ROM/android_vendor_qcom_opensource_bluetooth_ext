@@ -234,7 +234,7 @@ final class Vendor {
     }
 
     public String getA2apOffloadCapability() {
-        return socName;
+        return a2dpOffloadCap;
     }
 
     public boolean isSplitA2dpEnabled() {

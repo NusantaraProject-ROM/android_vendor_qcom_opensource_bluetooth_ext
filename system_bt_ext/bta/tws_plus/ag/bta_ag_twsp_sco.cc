@@ -315,7 +315,8 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                 bta_ag_create_sco(p_scb, false);
                 p_sco->state = BTA_AG_SCO_LISTEN_ST;
                 other_scb = get_other_twsp_scb((p_scb->peer_addr));
-                if (other_scb && twsp_sco_active(other_scb) == false) {
+                if (other_scb && twsp_sco_active(other_scb) == false &&
+                     get_twsp_state(other_scb) == TWSPLUS_EB_STATE_INEAR) {
                     //Atleast try bringing up the other EB eSCO
                     APPL_TRACE_WARNING("Calling SCO open for other EB");
                     dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_OPEN_E);
@@ -702,7 +703,8 @@ void send_twsp_esco_setup (const RawAddress& left_eb_addr, const RawAddress& rgh
    uint8_t *p_param = param;
    std::string leb, reb;
 
-   APPL_TRACE_DEBUG("%s: left_addr: %x, right_addr: %x, selected_mic: %d", __func__, left_eb_addr, rght_eb_addr, selected_mic);
+   APPL_TRACE_DEBUG("%s: left_addr: %s, right_addr: %s, selected_mic: %d", __func__,
+           left_eb_addr.ToString().c_str(), rght_eb_addr.ToString().c_str(), selected_mic);
 
    *p_param++ = VS_QHCI_TWS_ESCO_SETUP_SUBOPCODE;
 

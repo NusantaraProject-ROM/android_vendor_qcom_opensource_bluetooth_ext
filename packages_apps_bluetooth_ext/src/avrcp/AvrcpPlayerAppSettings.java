@@ -31,7 +31,7 @@ import android.media.session.MediaSessionManager;
 import android.content.Context;
 import android.bluetooth.BluetoothDevice;
 import com.android.bluetooth.avrcp.AvrcpPlayerAppSettingsRspInterface;
-import com.android.bluetooth.avrcp.AvrcpConstants;
+import com.android.bluetooth.avrcp.AvrcpConstants_ext;
 import android.content.BroadcastReceiver;
 import com.android.bluetooth.Utils;
 import java.util.ArrayList;
@@ -164,7 +164,7 @@ public class AvrcpPlayerAppSettings {
             String action = intent.getAction();
             if (action.equals(PLAYERSETTINGS_RESPONSE)) {
             int getResponse = intent.getIntExtra(EXTRA_GET_RESPONSE,
-                                                      AvrcpConstants.GET_INVALID);
+                                                      AvrcpConstants_ext.GET_INVALID);
                 byte [] data;
                 String [] text;
                 boolean isSetAttrValRsp = false;
@@ -173,7 +173,7 @@ public class AvrcpPlayerAppSettings {
                 synchronized (mPendingCmds) {
                     Integer val = new Integer(getResponse);
                     if (mPendingCmds.contains(val)) {
-                        if (getResponse == AvrcpConstants.SET_ATTRIBUTE_VALUES) {
+                        if (getResponse == AvrcpConstants_ext.SET_ATTRIBUTE_VALUES) {
                             isSetAttrValRsp = true;
                             if (DEBUG) Log.v(TAG,"Response received for SET_ATTRIBUTE_VALUES");
                         }
@@ -187,7 +187,7 @@ public class AvrcpPlayerAppSettings {
                 if (DEBUG)
                     Log.v(TAG,"getResponse" + getResponse);
                 switch (getResponse) {
-                    case AvrcpConstants.GET_ATTRIBUTE_IDS:
+                    case AvrcpConstants_ext.GET_ATTRIBUTE_IDS:
                         if (device == null) {
                             Log.e(TAG,"ERROR!!! device is null");
                             return;
@@ -200,7 +200,7 @@ public class AvrcpPlayerAppSettings {
                                 data ,getByteAddress(device));
 
                     break;
-                    case AvrcpConstants.GET_VALUE_IDS:
+                    case AvrcpConstants_ext.GET_VALUE_IDS:
                         if (device == null) {
                             Log.e(TAG,"ERROR!!! device is null");
                             return;
@@ -220,7 +220,7 @@ public class AvrcpPlayerAppSettings {
                         mAvrcpPlayerAppSettingsRspInterface.getPlayerAppValueRsp(numAttr, data,
                                 getByteAddress(device));
                     break;
-                    case AvrcpConstants.GET_ATTRIBUTE_VALUES:
+                    case AvrcpConstants_ext.GET_ATTRIBUTE_VALUES:
                         if (device == null) {
                             Log.e(TAG,"ERROR!!! device is null");
                             return;
@@ -233,7 +233,7 @@ public class AvrcpPlayerAppSettings {
                         mAvrcpPlayerAppSettingsRspInterface.SendCurrentPlayerValueRsp(numAttr ,
                                 data, getByteAddress(device));
                     break;
-                    case AvrcpConstants.SET_ATTRIBUTE_VALUES:
+                    case AvrcpConstants_ext.SET_ATTRIBUTE_VALUES:
                         boolean send_change_rsp_only = true;
                         data = intent.getByteArrayExtra(EXTRA_ATTRIB_VALUE_PAIRS);
                         updateLocalPlayerSettings(data);
@@ -243,19 +243,19 @@ public class AvrcpPlayerAppSettings {
                             Log.v(TAG,"Respond to SET_ATTRIBUTE_VALUES request");
                             if (checkPlayerAttributeResponse(data)) {
                                 mAvrcpPlayerAppSettingsRspInterface.SendSetPlayerAppRsp(
-                                        AvrcpConstants.RSP_NO_ERROR, getByteAddress(device));
+                                        AvrcpConstants_ext.RSP_NO_ERROR, getByteAddress(device));
                                 } else {
                                 mAvrcpPlayerAppSettingsRspInterface.SendSetPlayerAppRsp(
-                                        AvrcpConstants.RSP_INTERNAL_ERR, getByteAddress(device));
+                                        AvrcpConstants_ext.RSP_INTERNAL_ERR, getByteAddress(device));
                             }
                             mPendingSetAttributes.clear();
                         }
                         if (send_change_rsp_only) {
                             mAvrcpPlayerAppSettingsRspInterface.SendSetPlayerAppRsp(
-                                    AvrcpConstants.RSP_NO_ERROR, null);
+                                    AvrcpConstants_ext.RSP_NO_ERROR, null);
                         }
                     break;
-                    case AvrcpConstants.GET_ATTRIBUTE_TEXT:
+                    case AvrcpConstants_ext.GET_ATTRIBUTE_TEXT:
                         text = intent.getStringArrayExtra(EXTRA_ATTRIBUTE_STRING_ARRAY);
                         if (device == null) {
                             Log.e(TAG," ERROR!!! device is null");
@@ -268,7 +268,7 @@ public class AvrcpPlayerAppSettings {
                             Log.v(TAG,"mPlayerSettings.attrIds"
                                     + mPlayerSettings.attrIds.length);
                     break;
-                    case AvrcpConstants.GET_VALUE_TEXT:
+                    case AvrcpConstants_ext.GET_VALUE_TEXT:
                         text = intent.getStringArrayExtra(EXTRA_VALUE_STRING_ARRAY);
                         if (device == null) {
                             Log.e(TAG,"ERROR!!! device is null");
@@ -293,12 +293,12 @@ public class AvrcpPlayerAppSettings {
             mPendingCmds.remove(val);
         }
         switch (cmd) {
-            case AvrcpConstants.GET_ATTRIBUTE_IDS:
+            case AvrcpConstants_ext.GET_ATTRIBUTE_IDS:
                 mAvrcpPlayerAppSettingsRspInterface.getListPlayerappAttrRsp(
                         (byte)def_attrib.length ,
                         def_attrib, getByteAddress(device));
                 break;
-            case AvrcpConstants.GET_VALUE_IDS:
+            case AvrcpConstants_ext.GET_VALUE_IDS:
                 byte attrib = 0;
                 if (!mPlayerSettingCmds.isEmpty()) {
                     attrib = mPlayerSettingCmds.get(0);
@@ -326,7 +326,7 @@ public class AvrcpPlayerAppSettings {
                     break;
                 }
                 break;
-            case AvrcpConstants.GET_ATTRIBUTE_VALUES:
+            case AvrcpConstants_ext.GET_ATTRIBUTE_VALUES:
                 int j = 0;
                 byte [] retVal = new byte [mPlayerSettings.attrIds.length*2];
                 for (int i = 0; i < mPlayerSettings.attrIds.length; i++) {
@@ -342,11 +342,11 @@ public class AvrcpPlayerAppSettings {
                  mAvrcpPlayerAppSettingsRspInterface.SendCurrentPlayerValueRsp((byte)retVal.length,
                         retVal, getByteAddress(device));
                 break;
-            case AvrcpConstants.SET_ATTRIBUTE_VALUES :
+            case AvrcpConstants_ext.SET_ATTRIBUTE_VALUES :
                  mAvrcpPlayerAppSettingsRspInterface.SendSetPlayerAppRsp(
-                        AvrcpConstants.RSP_INTERNAL_ERR, getByteAddress(device));
+                        AvrcpConstants_ext.RSP_INTERNAL_ERR, getByteAddress(device));
                 break;
-            case AvrcpConstants.GET_ATTRIBUTE_TEXT:
+            case AvrcpConstants_ext.GET_ATTRIBUTE_TEXT:
                 String [] attribText = new String [mPlayerSettings.attrIds.length];
                 for (int i = 0; i < mPlayerSettings.attrIds.length; i++) {
                     attribText[i] = "";
@@ -355,7 +355,7 @@ public class AvrcpPlayerAppSettings {
                         mPlayerSettings.attrIds.length, mPlayerSettings.attrIds,
                         attribText.length, attribText, getByteAddress(device));
                 break;
-            case AvrcpConstants.GET_VALUE_TEXT:
+            case AvrcpConstants_ext.GET_VALUE_TEXT:
                 String [] valueText = new String [mPlayerSettings.attrIds.length];
                 for (int i = 0; i < mPlayerSettings.attrIds.length; i++) {
                     valueText[i] = "";
@@ -374,19 +374,19 @@ public class AvrcpPlayerAppSettings {
     public void onListPlayerAttributeRequest(byte[] address) {
         Intent intent = new Intent(PLAYERSETTINGS_REQUEST);
         intent.putExtra(COMMAND, CMDGET);
-        intent.putExtra(EXTRA_GET_COMMAND, AvrcpConstants.GET_ATTRIBUTE_IDS);
+        intent.putExtra(EXTRA_GET_COMMAND, AvrcpConstants_ext.GET_ATTRIBUTE_IDS);
         mContext.sendBroadcast(intent, BLUETOOTH_PERM);
-        mPendingCmds.add(new Integer(AvrcpConstants.GET_ATTRIBUTE_IDS));
+        mPendingCmds.add(new Integer(AvrcpConstants_ext.GET_ATTRIBUTE_IDS));
     }
 
     public void onListPlayerAttributeValues (byte attr, byte[] address) {
         Intent intent = new Intent(PLAYERSETTINGS_REQUEST);
         intent.putExtra(COMMAND, CMDGET);
-        intent.putExtra(EXTRA_GET_COMMAND, AvrcpConstants.GET_VALUE_IDS);
+        intent.putExtra(EXTRA_GET_COMMAND, AvrcpConstants_ext.GET_VALUE_IDS);
         intent.putExtra(EXTRA_ATTRIBUTE_ID, attr);
         mContext.sendBroadcast(intent, BLUETOOTH_PERM);
         mPlayerSettingCmds.add(attr);
-        mPendingCmds.add(new Integer(AvrcpConstants.GET_VALUE_IDS));
+        mPendingCmds.add(new Integer(AvrcpConstants_ext.GET_VALUE_IDS));
     }
 
     public void onGetPlayerAttributeValues (byte attr ,int[] arr ,
@@ -400,10 +400,10 @@ public class AvrcpPlayerAppSettings {
             mPlayerSettings.attrIds[i] = barray[i];
         Intent intent = new Intent(PLAYERSETTINGS_REQUEST);
         intent.putExtra(COMMAND, CMDGET);
-        intent.putExtra(EXTRA_GET_COMMAND, AvrcpConstants.GET_ATTRIBUTE_VALUES);
+        intent.putExtra(EXTRA_GET_COMMAND, AvrcpConstants_ext.GET_ATTRIBUTE_VALUES);
         intent.putExtra(EXTRA_ATTIBUTE_ID_ARRAY, barray);
         mContext.sendBroadcast(intent, BLUETOOTH_PERM);
-        mPendingCmds.add(new Integer(AvrcpConstants.GET_ATTRIBUTE_VALUES));
+        mPendingCmds.add(new Integer(AvrcpConstants_ext.GET_ATTRIBUTE_VALUES));
     }
 
     public void setPlayerAppSetting( byte num, byte [] attr_id, byte [] attr_val,
@@ -419,34 +419,34 @@ public class AvrcpPlayerAppSettings {
         intent.putExtra(COMMAND, CMDSET);
         intent.putExtra(EXTRA_ATTRIB_VALUE_PAIRS, array);
         mContext.sendBroadcast(intent, BLUETOOTH_PERM);
-        mPendingCmds.add(new Integer(AvrcpConstants.SET_ATTRIBUTE_VALUES));
+        mPendingCmds.add(new Integer(AvrcpConstants_ext.SET_ATTRIBUTE_VALUES));
     }
 
     public void getplayerattribute_text(byte attr , byte [] attrIds,
             byte[] address) {
         Intent intent = new Intent(PLAYERSETTINGS_REQUEST);
         intent.putExtra(COMMAND, CMDGET);
-        intent.putExtra(EXTRA_GET_COMMAND, AvrcpConstants.GET_ATTRIBUTE_TEXT);
+        intent.putExtra(EXTRA_GET_COMMAND, AvrcpConstants_ext.GET_ATTRIBUTE_TEXT);
         intent.putExtra(EXTRA_ATTIBUTE_ID_ARRAY, attrIds);
         mPlayerSettings.attrIds = new byte [attr];
         for (int i = 0; i < attr; i++)
             mPlayerSettings.attrIds[i] = attrIds[i];
         mContext.sendBroadcast(intent, BLUETOOTH_PERM);
-        mPendingCmds.add(new Integer(AvrcpConstants.GET_ATTRIBUTE_TEXT));
+        mPendingCmds.add(new Integer(AvrcpConstants_ext.GET_ATTRIBUTE_TEXT));
    }
 
     public void getplayervalue_text(byte attr_id , byte num_value , byte [] value,
             byte[] address) {
         Intent intent = new Intent(PLAYERSETTINGS_REQUEST);
         intent.putExtra(COMMAND, CMDGET);
-        intent.putExtra(EXTRA_GET_COMMAND, AvrcpConstants.GET_VALUE_TEXT);
+        intent.putExtra(EXTRA_GET_COMMAND, AvrcpConstants_ext.GET_VALUE_TEXT);
         intent.putExtra(EXTRA_ATTRIBUTE_ID, attr_id);
         intent.putExtra(EXTRA_VALUE_ID_ARRAY, value);
         mPlayerSettings.attrIds = new byte [num_value];
         for (int i = 0; i < num_value; i++)
             mPlayerSettings.attrIds[i] = value[i];
         mContext.sendBroadcast(intent, BLUETOOTH_PERM);
-        mPendingCmds.add(new Integer(AvrcpConstants.GET_VALUE_TEXT));
+        mPendingCmds.add(new Integer(AvrcpConstants_ext.GET_VALUE_TEXT));
     }
 
     public void sendPlayerAppChangedRsp(int rsptype, BluetoothDevice device) {
