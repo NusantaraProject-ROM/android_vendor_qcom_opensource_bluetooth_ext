@@ -98,8 +98,6 @@ public final class Avrcp_ext {
     private static final String TAG = "Avrcp_ext";
     private static final String ABSOLUTE_VOLUME_BLACKLIST = "absolute_volume_blacklist";
     private static final String AVRCP_VERSION_PROPERTY = "persist.bluetooth.avrcpversion";
-    private static final String AVRCP_1_4_STRING = "avrcp14";
-    private static final String AVRCP_1_5_STRING = "avrcp15";
     private static final String AVRCP_1_6_STRING = "avrcp16";
     private static final String AVRCP_NOTIFICATION_ID = "avrcp_notification";
 
@@ -563,8 +561,8 @@ public final class Avrcp_ext {
             }
         }
 
-        String avrcpVersion = SystemProperties.get(AVRCP_VERSION_PROPERTY, AVRCP_1_4_STRING);
-        if (DEBUG) Log.d(TAG, "avrcpVersion: " + avrcpVersion);
+        String avrcpVersion = SystemProperties.get(AVRCP_VERSION_PROPERTY, AVRCP_1_6_STRING);
+        if (DEBUG) Log.d(TAG, "avrcpVersion " + avrcpVersion);
         /* Enable Cover Art support is version is 1.6 and flag is set in config */
         if (isCoverArtSupported && avrcpVersion != null &&
             avrcpVersion.equals(AVRCP_1_6_STRING))
