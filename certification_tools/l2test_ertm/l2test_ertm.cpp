@@ -662,7 +662,7 @@ static bt_os_callouts_t callouts = {
 void bdt_init(void)
 {
     printf("INIT BT \n");
-    status = (bt_status_t)sBtInterface->init(&bt_callbacks);
+    status = (bt_status_t)sBtInterface->init(&bt_callbacks, false, false);
     if (status == BT_STATUS_SUCCESS) {
         // Get Vendor Interface
         btvendorInterface = (btvendor_interface_t *)sBtInterface->get_profile_interface(BT_PROFILE_VENDOR_ID);
@@ -683,7 +683,7 @@ void bdt_enable(void)
         printf("Bluetooth is already enabled\n");
         return;
     }
-    status = (bt_status_t)sBtInterface->enable(strict_mode);
+    status = (bt_status_t)sBtInterface->enable();
     return;
 }
 
