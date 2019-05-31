@@ -53,6 +53,7 @@
 #define ANDROID_INCLUDE_BT_VENDOR_H
 
 #include <hardware/bluetooth.h>
+#include <vector>
 
 __BEGIN_DECLS
 
@@ -120,6 +121,9 @@ typedef void (*  btvendor_iot_device_broadcast_callback)(RawAddress* remote_bd_a
                         uint16_t error_info, uint32_t event_mask, uint8_t lmp_ver, uint16_t lmp_subver,
                         uint16_t manufacturer_id, uint8_t power_level, int8_t rssi, uint8_t link_quality,
                         uint16_t glitch_count );
+typedef void (* btvendor_bqr_delivery_callback)(RawAddress* remote_bd_addr,
+                        uint8_t lmp_ver, uint16_t lmp_subver, uint16_t manufacturer_id,
+                        std::vector<uint8_t> bqr_raw_data);
 typedef void (* btvendor_bredr_cleanup_callback)(bool status);
 
 /** Callback to notify the remote device vendor properties.
@@ -147,6 +151,7 @@ typedef struct {
     size_t      size;
     btvendor_bredr_cleanup_callback  bredr_cleanup_cb;
     btvendor_iot_device_broadcast_callback iot_device_broadcast_cb;
+    btvendor_bqr_delivery_callback bqr_delivery_cb;
     remote_dev_prop_callback         rmt_dev_prop_cb;
     hci_event_recv_callback  hci_event_recv_cb;
     adapter_vendor_prop_callback     adapter_vendor_prop_cb;

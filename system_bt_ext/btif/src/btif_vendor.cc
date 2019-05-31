@@ -62,10 +62,14 @@
 #include <hardware/vendor.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 #define LOG_TAG "bt_btif_vendor"
 
 #include <cutils/properties.h>
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/location.h>
 #include "bt_utils.h"
 #include "btif_common.h"
 #include "btif_util.h"
@@ -297,6 +301,43 @@ void btif_vendor_iot_device_broadcast_event(RawAddress* bd_addr,
             manufacturer_id, power_level, rssi, link_quality,
             glitch_count);
 }
+
+void btif_vendor_bqr_delivery_event(const RawAddress* bd_addr, const uint8_t* bqr_raw_data,
+        uint32_t bqr_raw_data_len)
+{
+    if (bd_addr == NULL) {
+        LOG_ERROR(LOG_TAG, "%s: addr is null", __func__);
+        return;
+    }
+
+    if (bqr_raw_data == NULL) {
+        LOG_ERROR(LOG_TAG, "%s: bqr data is null", __func__);
+        return;
+    }
+
+    std::vector<uint8_t> raw_data;
+    raw_data.insert(raw_data.begin(), bqr_raw_data, bqr_raw_data + bqr_raw_data_len);
+
+    uint8_t lmp_ver = 0;
+    uint16_t lmp_subver = 0;
+    uint16_t manufacturer_id = 0;
+    btif_vendor_get_remote_version(bd_addr, &lmp_ver, &manufacturer_id, &lmp_subver);
+
+    LOG_INFO(LOG_TAG, "%s: len: %d, addr: %s, lmp_ver: %d, manufacturer_id: %d, lmp_subver: %d",
+            __func__, bqr_raw_data_len, bd_addr->ToString().c_str(), lmp_ver,
+            manufacturer_id, lmp_subver);
+
+    do_in_jni_thread(
+        FROM_HERE,
+        base::Bind(
+            [](RawAddress addr, uint8_t lmp_ver, uint16_t lmp_subver, uint16_t manufacturer_id,
+                std::vector<uint8_t> raw_data) {
+                HAL_CBACK(bt_vendor_callbacks, bqr_delivery_cb, &addr,
+                    lmp_ver, lmp_subver, manufacturer_id, std::move(raw_data));
+            },
+            *bd_addr, lmp_ver, lmp_subver, manufacturer_id, std::move(raw_data)));
+}
+
 static void bredrstartup(void)
 {
     LOG_INFO(LOG_TAG,"bredrstartup");

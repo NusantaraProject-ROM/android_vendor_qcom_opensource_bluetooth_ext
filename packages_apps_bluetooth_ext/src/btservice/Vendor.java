@@ -56,6 +56,7 @@ import android.util.Log;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothClass;
+import android.bluetooth.BluetoothQualityReport;
 import com.android.bluetooth.Utils;
 
 import android.content.Intent;
@@ -181,6 +182,31 @@ final class Vendor {
         intent.putExtra(BluetoothDevice.EXTRA_RSSI, rssi);
         intent.putExtra(BluetoothDevice.EXTRA_LINK_QUALITY, linkQuality);
         intent.putExtra(BluetoothDevice.EXTRA_GLITCH_COUNT, glitchCount);
+        mService.sendBroadcast(intent, AdapterService.BLUETOOTH_PERM);
+    }
+
+    private void bqrDeliver(byte[] remoteAddr,
+            int lmpVer, int lmpSubVer, int manufacturerId, byte[] bqrRawData) {
+        String remoteName = "";
+        int remoteCoD = 0;
+        String addr = Utils.getAddressStringFromByte(remoteAddr);
+        if (addr != null) {
+            BluetoothDevice device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(addr);
+            remoteName = mService.getRemoteName(device);
+            remoteCoD = mService.getRemoteClass(device);
+        }
+
+        BluetoothQualityReport bqr;
+        try {
+            bqr = new BluetoothQualityReport(addr, lmpVer, lmpSubVer,
+                    manufacturerId, remoteName, remoteCoD, bqrRawData);
+        } catch (Exception e) {
+            Log.e(TAG, "bqrDeliver: failed to create bqr", e);
+            return;
+        }
+        Log.d(TAG, "" + bqr);
+        Intent intent = new Intent(BluetoothDevice.ACTION_REMOTE_ISSUE_OCCURRED);
+        intent.putExtra(BluetoothDevice.EXTRA_BQR, bqr);
         mService.sendBroadcast(intent, AdapterService.BLUETOOTH_PERM);
     }
 
