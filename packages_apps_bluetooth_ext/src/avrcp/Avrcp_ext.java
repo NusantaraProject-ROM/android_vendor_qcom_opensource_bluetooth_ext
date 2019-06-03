@@ -1563,9 +1563,6 @@ public final class Avrcp_ext {
                 break;
 
             case MESSAGE_START_SHO:
-                if (mA2dpService != null)
-                    break;
-
                 synchronized (Avrcp_ext.this) {
                     if(mHandler.hasMessages(MESSAGE_START_SHO)) {
                         Log.e(TAG, "Queue already has another SHO pending");
@@ -4945,8 +4942,12 @@ public final class Avrcp_ext {
     }
 
     public boolean startSHO(BluetoothDevice device, boolean PlayReq) {
+        HeadsetService headsetService = HeadsetService.getHeadsetService();
+        boolean isInCall = headsetService != null && headsetService.isScoOrCallActive();
+        boolean isFMActive = mAudioManager.getParameters("fm_status").contains("1");
+        Log.d(TAG, "0: SHO Init: isInCall = " + isInCall + " isFMActive = " + isFMActive);
         synchronized (Avrcp_ext.this) {
-            if(isShoActive) {
+            if (isShoActive) {
                 mHandler.removeMessages (MESSAGE_START_SHO);
                 Message msg = mHandler.obtainMessage(MESSAGE_START_SHO, PlayReq?1:0, 0, device);
                 SHOQueue.device = device;
@@ -4966,7 +4967,7 @@ public final class Avrcp_ext {
             triggerSHO(device, PlayReq, true);
         }
         synchronized (Avrcp_ext.this) {
-            if (!PlayReq) {
+            if (!PlayReq || isInCall || isFMActive) {
                 isShoActive = false;
                 Log.d(TAG, "6: SHO complete");
 
