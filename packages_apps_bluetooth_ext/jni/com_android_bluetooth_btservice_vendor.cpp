@@ -77,6 +77,8 @@ static char a2dp_offload_Cap[PROPERTY_VALUE_MAX] = {'\0'};
 static bt_configstore_interface_t* bt_configstore_intf = NULL;
 static void *bt_configstore_lib_handle = NULL;
 static jboolean spilt_a2dp_supported;
+static jboolean swb_supported;
+static jboolean swb_pm_supported;
 
 static int get_properties(int num_properties, bt_vendor_property_t* properties,
                           jintArray* types, jobjectArray* props) {
@@ -292,6 +294,18 @@ static void initNative(JNIEnv *env, jobject object) {
             } else {
               spilt_a2dp_supported = false;
             }
+          } else if(vendorProp.type == BT_PROP_SWB_ENABLE) {
+            if (!strncasecmp(vendorProp.value, "true", sizeof("true"))) {
+              swb_supported = true;
+            } else {
+              swb_supported = false;
+            }
+          } else if(vendorProp.type == BT_PROP_SWBPM_ENABLE) {
+            if (!strncasecmp(vendorProp.value, "true", sizeof("true"))) {
+              swb_pm_supported = true;
+            } else {
+              swb_pm_supported = false;
+            }
           } else if(vendorProp.type == BT_PROP_A2DP_OFFLOAD_CAP) {
             strlcpy(a2dp_offload_Cap, vendorProp.value, sizeof(a2dp_offload_Cap));
             ALOGI("%s:: a2dp_offload_Cap = %s", __func__, a2dp_offload_Cap);
@@ -469,6 +483,18 @@ static jboolean isSplitA2dpEnabledNative(JNIEnv* env) {
     return spilt_a2dp_supported;
 }
 
+static jboolean isSwbEnabledNative(JNIEnv* env) {
+
+    ALOGI("%s", __FUNCTION__);
+    return swb_supported;
+}
+
+static jboolean isSwbPmEnabledNative(JNIEnv* env) {
+
+    ALOGI("%s", __FUNCTION__);
+    return swb_pm_supported;
+}
+
 static JNINativeMethod sMethods[] = {
     {"classInitNative", "()V", (void *) classInitNative},
     {"initNative", "()V", (void *) initNative},
@@ -485,6 +511,8 @@ static JNINativeMethod sMethods[] = {
     {"getA2apOffloadCapabilityNative", "()Ljava/lang/String;",
             (void*) getA2apOffloadCapabilityNative},
     {"isSplitA2dpEnabledNative", "()Z", (void*) isSplitA2dpEnabledNative},
+    {"isSwbEnabledNative", "()Z", (void*) isSwbEnabledNative},
+    {"isSwbPmEnabledNative", "()Z", (void*) isSwbPmEnabledNative},
 };
 
 int load_bt_configstore_lib() {

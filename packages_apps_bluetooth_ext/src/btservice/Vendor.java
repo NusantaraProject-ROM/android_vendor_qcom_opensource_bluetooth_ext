@@ -69,6 +69,10 @@ final class Vendor {
     // Split A2dp will be enabled by default
     private boolean splitA2dpEnabled = true;
     private static boolean PowerbackoffStatus = false;
+    // SWB will be enabled by default
+    private boolean isSwbEnabled = true;
+    // SWB-PM will be enabled by default
+    private boolean isSwbPmEnabled = true;
 
     static {
         classInitNative();
@@ -88,6 +92,10 @@ final class Vendor {
         Log.d(TAG,"a2dpOffloadCap: " + a2dpOffloadCap);
         splitA2dpEnabled = isSplitA2dpEnabledNative();
         Log.d(TAG,"splitA2dpEnabled: " + splitA2dpEnabled);
+        isSwbEnabled = isSwbEnabledNative();
+        Log.d(TAG,"isSwbEnabled: " + isSwbEnabled);
+        isSwbPmEnabled = isSwbPmEnabledNative();
+        Log.d(TAG,"isSwbPmEnabled: " + isSwbPmEnabled);
     }
 
     public void bredrCleanup() {
@@ -255,6 +263,12 @@ final class Vendor {
     public boolean isSplitA2dpEnabled() {
         return splitA2dpEnabled;
     }
+    public boolean isSwbEnabled() {
+        return isSwbEnabled;
+    }
+    public boolean isSwbPmEnabled() {
+        return isSwbPmEnabled;
+    }
     private native void bredrcleanupNative();
     private native void bredrstartupNative();
     private native void initNative();
@@ -269,4 +283,6 @@ final class Vendor {
     private native String getSocNameNative();
     private native String getA2apOffloadCapabilityNative();
     private native boolean isSplitA2dpEnabledNative();
+    private native boolean isSwbEnabledNative();
+    private native boolean isSwbPmEnabledNative();
 }
