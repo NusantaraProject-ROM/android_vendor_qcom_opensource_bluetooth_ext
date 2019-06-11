@@ -198,7 +198,8 @@ public final class Avrcp_ext {
     public static final int BTRC_FEAT_METADATA = 0x01;
     public static final int BTRC_FEAT_ABSOLUTE_VOLUME = 0x02;
     public static final int BTRC_FEAT_BROWSE = 0x04;
-    public static final int BTRC_FEAT_AVRC_UI_UPDATE = 0x08;
+    public static final int BTRC_FEAT_COVER_ART = 0x08;
+    public static final int BTRC_FEAT_AVRC_UI_UPDATE = 0x10;
 
     /* AVRC response codes, from avrc_defs */
     private static final int AVRC_RSP_NOT_IMPL = 8;
@@ -692,6 +693,30 @@ public final class Avrcp_ext {
         if (DEBUG) Log.d(TAG, "cleanup");
         cleanupNative();
         Log.d(TAG, "Exit cleanup()");
+    }
+
+    public boolean isCoverArtFeatureSupported(byte[] bdaddr) {
+        Log.w(TAG, "isCoverArtFeatureSupported");
+        String address = Utils.getAddressStringFromByte((byte[]) bdaddr);
+        BluetoothDevice device = mAdapter.getRemoteDevice(address);
+        if (device == null)
+            return false;
+        MediaPlayerInfo_ext player = mMediaPlayerInfoList.getOrDefault(mCurrAddrPlayerID, null);
+        int index = getIndexForDevice(device);
+        if ((index == INVALID_DEVICE_INDEX) || (player == null))
+            return false;
+
+        short[] featureBits = player.getFeatureBitMask();
+        boolean playerSupportsCA = false;
+        for (int i = 0; i < featureBits.length; i++) {
+            if (featureBits[i] == AvrcpConstants_ext.AVRC_PF_COVER_ART_BIT_NO) {
+                playerSupportsCA = true;
+                break;
+            }
+        }
+        boolean peerSupprtsCA = ((deviceFeatures[index].mFeatures & BTRC_FEAT_COVER_ART) != 0);
+        Log.w(TAG, "playersupportCA " + playerSupportsCA + " peersupportCA " + peerSupprtsCA);
+        return (peerSupprtsCA && playerSupportsCA);
     }
 
     private class AudioManagerPlaybackListener extends AudioManager.AudioPlaybackCallback {
@@ -4690,7 +4715,7 @@ public final class Avrcp_ext {
             if (connList.containsKey(bdaddrStr)) {
                 mediaPlayer = connList.get(bdaddrStr);
             } else {
-                mediaPlayer = new BrowsedMediaPlayer_ext(bdaddr, mContext, mMediaInterface);
+                mediaPlayer = new BrowsedMediaPlayer_ext(bdaddr, mContext, mMediaInterface, mAvrcp);
                 connList.put(bdaddrStr, mediaPlayer);
             }
             return mediaPlayer;

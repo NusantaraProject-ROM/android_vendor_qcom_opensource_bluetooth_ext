@@ -59,6 +59,7 @@ class BrowsedMediaPlayer_ext {
     private Context mContext;
     private AvrcpMediaRspInterface_ext mMediaInterface;
     private byte[] mBDAddr;
+    private Avrcp_ext mAvrcp = null;
 
     private String mCurrentBrowsePackage;
     private String mCurrentBrowseClass;
@@ -281,10 +282,11 @@ class BrowsedMediaPlayer_ext {
 
     /* Constructor */
     BrowsedMediaPlayer_ext(byte[] address, Context context,
-            AvrcpMediaRspInterface_ext mAvrcpMediaRspInterface) {
+            AvrcpMediaRspInterface_ext mAvrcpMediaRspInterface, Avrcp_ext mAvrcp_ext) {
         mContext = context;
         mMediaInterface = mAvrcpMediaRspInterface;
         mBDAddr = address;
+        mAvrcp = mAvrcp_ext;
     }
 
     /* initialize mediacontroller in order to communicate with media player. */
@@ -852,7 +854,7 @@ class BrowsedMediaPlayer_ext {
         mMediaInterface.folderItemsRsp(bdaddr, AvrcpConstants_ext.RSP_NO_ERROR, rspObj);
     }
 
-    public String getAttrValue(byte []bdaddr, int attr, MediaBrowser.MediaItem item) {
+    public String getAttrValue(byte[] bdaddr, int attr, MediaBrowser.MediaItem item) {
         String attrValue = null;
         try {
             MediaDescription desc = item.getDescription();
@@ -888,8 +890,12 @@ class BrowsedMediaPlayer_ext {
                     break;
 
                 case AvrcpConstants_ext.ATTRID_COVER_ART:
-                    attrValue = Avrcp_ext.getImgHandleFromTitle(bdaddr,
-                            desc.getTitle().toString());
+                    if (mAvrcp != null && mAvrcp.isCoverArtFeatureSupported(bdaddr)) {
+                        attrValue = Avrcp_ext.getImgHandleFromTitle(bdaddr,
+                                desc.getTitle().toString());
+                    } else {
+                        attrValue = null;
+                    }
                     break;
 
                 default:
