@@ -51,7 +51,11 @@ public class BroadcastAudioAppReceiver extends BroadcastReceiver {
                     BluetoothAdapter.ERROR);
             if (state == BluetoothAdapter.STATE_ON) {
                 Log.d(TAG, "state == BluetoothAdapter.STATE_ON");
-                context.startService(new Intent(context, GattBroadcastService.class));
+                try {
+                    context.startService(new Intent(context, GattBroadcastService.class));
+                } catch (IllegalStateException e) {
+                    Log.e(TAG, " GattBroadcastService start failed " + e.toString());
+                }
             }
         }
     }
