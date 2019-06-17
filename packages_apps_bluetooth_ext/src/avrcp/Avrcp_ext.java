@@ -178,6 +178,8 @@ public final class Avrcp_ext {
     private boolean isShoActive = false;
 
     private boolean twsShoEnabled = false;
+    byte[] dummyaddr = {(byte)0xFA, (byte)0xCE, (byte)0xFA,
+                        (byte)0xCE, (byte)0xFA, (byte)0xCE};
     private static final String playerStateUpdateBlackListedAddr[] = {
          "BC:30:7E", //bc-30-7e-5e-f6-27, Name: Porsche BT 0310; bc-30-7e-8c-22-cb, Name: Audi MMI 1193
          "00:1E:43", //00-1e-43-14-f0-68, Name: Audi MMI 4365
@@ -3497,7 +3499,11 @@ public final class Avrcp_ext {
         if ((mCurrentBrowsingDevice != null) &&
             (mCurrentBrowsingDevice.equals(device))) {
             Log.v(TAG,"BT device is matched with browsing device:");
-            mAvrcpBrowseManager.cleanup();
+            BrowsedMediaPlayer_ext player =
+                    mAvrcpBrowseManager.getBrowsedMediaPlayer(getByteAddress(device));
+            if (player != null)
+               player.disconnect();
+            mAvrcpBrowseManager.clearBrowsedMediaPlayer(getByteAddress(device));
             mCurrentBrowsingDevice = null;
             changePathDepth = 0;
             changePathFolderType = 0;
@@ -3885,6 +3891,11 @@ public final class Avrcp_ext {
         synchronized (this) {
             synchronized (mBrowsePlayerInfoList) {
                 mBrowsePlayerInfoList.clear();
+                BrowsedMediaPlayer_ext player =
+                        mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
+                if (player != null)
+                    player.start();
+                Log.d(TAG, "buildBrowsablePlayerList " + player);
                 Intent intent = new Intent(android.service.media.MediaBrowserService.SERVICE_INTERFACE);
                 List<ResolveInfo> playerList =
                         mPackageManager.queryIntentServices(intent, PackageManager.MATCH_ALL);
@@ -3895,8 +3906,10 @@ public final class Avrcp_ext {
                             (displayName != null) ? displayName.toString():new String();
                     String serviceName = info.serviceInfo.name;
                     String packageName = info.serviceInfo.packageName;
-
-                    if (DEBUG) Log.d(TAG, "Adding " + serviceName + " to list of browsable players");
+                    Log.d(TAG, "svc " + serviceName + " and pkg = " + packageName);
+                    if ((player != null) && (serviceName != null)) {
+                        player.CheckMBSConnection(packageName, serviceName);
+                    }
                     BrowsePlayerInfo_ext currentPlayer =
                             new BrowsePlayerInfo_ext(packageName, displayableName, serviceName);
                     mBrowsePlayerInfoList.add(currentPlayer);
@@ -4269,13 +4282,25 @@ public final class Avrcp_ext {
                     playStatusValues[idx] = info.getPlayStatus();
 
                     short[] featureBits = info.getFeatureBitMask();
-                    for (int numBit = 0; numBit < featureBits.length; numBit++) {
-                        /* gives which octet this belongs to */
-                        byte octet = (byte) (featureBits[numBit] / 8);
-                        /* gives the bit position within the octet */
-                        byte bit = (byte) (featureBits[numBit] % 8);
-                        featureBitMaskValues[(idx * AvrcpConstants_ext.AVRC_FEATURE_MASK_SIZE) + octet] |=
-                                (1 << bit);
+                    short[] featureBitsArray = {0x00, 0x00, 0x00, 0x00, 0x00, 0xb7, 0x01, 0x04,
+                                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+                    String browsedPackage = getPackageName(mCurrAddrPlayerID);
+                    BrowsedMediaPlayer_ext player =
+                            mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
+                    if ((player != null) && (!browsedPackage.isEmpty()) &&
+                            player.isPackageInMBSList(browsedPackage)) {
+                        for (int numBit = 0; numBit < featureBits.length; numBit++) {
+                            /* gives which octet this belongs to */
+                            byte octet = (byte) (featureBits[numBit] / 8);
+                            /* gives the bit position within the octet */
+                            byte bit = (byte) (featureBits[numBit] % 8);
+                            featureBitMaskValues[(idx * AvrcpConstants_ext.AVRC_FEATURE_MASK_SIZE) + octet] |=
+                                    (1 << bit);
+                        }
+                    } else {
+                         featureBitMaskValues =
+                                 Arrays.copyOf(featureBitsArray, featureBitsArray.length);
+                         Log.w(TAG, "sending bit mask for non Browsable Player");
                     }
 
                     /* printLogs */
