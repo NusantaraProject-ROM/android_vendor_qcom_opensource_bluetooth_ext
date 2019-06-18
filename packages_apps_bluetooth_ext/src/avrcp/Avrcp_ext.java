@@ -363,7 +363,7 @@ public final class Avrcp_ext {
         private int mBlackListVolume;
         private int mLastPassthroughcmd;
         private int mReportedPlayerID;
-
+        private boolean mTwsPairDisconnected;
         public DeviceDependentFeature(Context context) {
             mContext = context;
             mCurrentDevice = null;
@@ -406,6 +406,7 @@ public final class Avrcp_ext {
             mLastRspPlayStatus = -1;
             mLastPassthroughcmd = KeyEvent.KEYCODE_UNKNOWN;
             mReportedPlayerID = NO_PLAYER_ID;
+            mTwsPairDisconnected = false;
         }
     };
     DeviceDependentFeature[] deviceFeatures;
@@ -1156,11 +1157,19 @@ public final class Avrcp_ext {
                         if (i != deviceIndex && deviceFeatures[i].mCurrentDevice != null &&
                             deviceFeatures[i].mInitialRemoteVolume != -1 &&
                             isTwsPlusPair(conn_dev, device)) {
-                            Log.v(TAG,"volume already set for tws pair");
-                            deviceFeatures[deviceIndex].mInitialRemoteVolume = absVol;
-                            deviceFeatures[deviceIndex].mRemoteVolume = absVol;
-                            deviceFeatures[deviceIndex].mLocalVolume = convertToAudioStreamVolume(absVol);
-                            break;
+                            Log.v(TAG,"TWS+ pair found at index " + i +
+                               "mTwsPairDisconnected = " + deviceFeatures[i].mTwsPairDisconnected);
+                            if (deviceFeatures[i].mTwsPairDisconnected) {
+                                Log.v(TAG,"TWS+ pair was disconnected earlier");
+                                Log.v(TAG,"TWS+ store this volume");
+                                deviceFeatures[i].mTwsPairDisconnected = false;
+                            } else {
+                                Log.v(TAG,"volume already set for tws pair");
+                                deviceFeatures[deviceIndex].mInitialRemoteVolume = absVol;
+                                deviceFeatures[deviceIndex].mRemoteVolume = absVol;
+                                deviceFeatures[deviceIndex].mLocalVolume = convertToAudioStreamVolume(absVol);
+                                break;
+                            }
                         }
                     }
                 }
@@ -3307,6 +3316,8 @@ public final class Avrcp_ext {
                     isTwsPlusPair(device,deviceFeatures[i].mCurrentDevice )) {
                     Log.i(TAG,"TWS+ pair got disconnected,update absVolume");
                     updateAbsVolume = true;
+                    Log.i(TAG,"TWS+ pair disconnected, set mTwsPairDisconnected for index " + i);
+                    deviceFeatures[i].mTwsPairDisconnected = true;
                 }
             }
         }
@@ -5005,11 +5016,21 @@ public final class Avrcp_ext {
     }
 
     public void setActiveDevice(BluetoothDevice device) {
+        boolean tws_switch = false;
         if (device == null) {
           for (int i = 0; i < maxAvrcpConnections; i++) {
               deviceFeatures[i].isActiveDevice = false;
           }
           return;
+        }
+        if (device != null && device.isTwsPlusDevice()) {
+            for (int i = 0; i < maxAvrcpConnections; i++) {
+                if (deviceFeatures[i].mCurrentDevice != null &&
+                    deviceFeatures[i].isActiveDevice &&
+                    deviceFeatures[i].mCurrentDevice.isTwsPlusDevice()) {
+                    tws_switch = true;
+                }
+            }
         }
         int deviceIndex = getIndexForDevice(device);
         if (deviceIndex == INVALID_DEVICE_INDEX) {
@@ -5037,6 +5058,10 @@ public final class Avrcp_ext {
                 Log.d(TAG,"Other TWS+ earbud not connected, reset updateAbsVolume flag");
                 updateAbsVolume = false;
             }
+        }
+        if (device.isTwsPlusDevice() && !tws_switch) {
+            Log.d(TAG,"Restting mTwsPairDisconnected at index " + deviceIndex);
+            deviceFeatures[deviceIndex].mTwsPairDisconnected = false;
         }
         if (maxAvrcpConnections > 1) {
             for (int i = 0; i < maxAvrcpConnections; i++) {
