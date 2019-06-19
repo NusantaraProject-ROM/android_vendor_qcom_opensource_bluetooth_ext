@@ -2745,23 +2745,23 @@ public final class Avrcp_ext {
                     if (deviceFeatures[i].mCurrentDevice != null) {
                         Log.d(TAG, "SendPassThruPlay command sent for = "
                                 + deviceFeatures[i].mCurrentDevice);
-                        /*if (volume > mLocalVolume) {
+                        if (volume > mLocalVolume) {
                             Log.d(TAG, "Vol Passthrough Up");
-                            avrcpCtrlService.sendPassThroughCmd(
-                                deviceFeatures[i].mCurrentDevice, AVRC_ID_VOL_UP,
-                                AvrcpConstants_ext.KEY_STATE_PRESS);
-                            avrcpCtrlService.sendPassThroughCmd(
-                                deviceFeatures[i].mCurrentDevice, AVRC_ID_VOL_UP,
-                                AvrcpConstants_ext.KEY_STATE_RELEASE);
+                            avrcpCtrlService.sendPassThroughCommandNative(
+                                Utils.getByteAddress(deviceFeatures[i].mCurrentDevice),
+                                AVRC_ID_VOL_UP, AvrcpConstants_ext.KEY_STATE_PRESS);
+                            avrcpCtrlService.sendPassThroughCommandNative(
+                                Utils.getByteAddress(deviceFeatures[i].mCurrentDevice),
+                                AVRC_ID_VOL_UP, AvrcpConstants_ext.KEY_STATE_RELEASE);
                         } else if (volume < mLocalVolume) {
                            Log.d(TAG, "Vol Passthrough Down");
-                           avrcpCtrlService.sendPassThroughCmd(
-                                deviceFeatures[i].mCurrentDevice, AVRC_ID_VOL_DOWN,
-                                AvrcpConstants_ext.KEY_STATE_PRESS);
-                           avrcpCtrlService.sendPassThroughCmd(
-                                deviceFeatures[i].mCurrentDevice, AVRC_ID_VOL_DOWN,
-                                AvrcpConstants_ext.KEY_STATE_RELEASE);
-                         }*/
+                           avrcpCtrlService.sendPassThroughCommandNative(
+                                Utils.getByteAddress(deviceFeatures[i].mCurrentDevice),
+                                AVRC_ID_VOL_DOWN, AvrcpConstants_ext.KEY_STATE_PRESS);
+                            avrcpCtrlService.sendPassThroughCommandNative(
+                                Utils.getByteAddress(deviceFeatures[i].mCurrentDevice),
+                                AVRC_ID_VOL_DOWN, AvrcpConstants_ext.KEY_STATE_RELEASE);
+                        }
                         mLocalVolume = volume;
                     }
                 }
