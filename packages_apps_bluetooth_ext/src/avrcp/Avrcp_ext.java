@@ -168,6 +168,7 @@ public final class Avrcp_ext {
     private boolean avrcp_playstatus_blacklist = false;
     private static final String [] BlacklistDeviceAddrToMediaAttr = {"00:17:53"/*Toyota Etios*/};
     private boolean ignore_play;
+    private BluetoothDevice disconnectedActiveDevice;
     private byte changePathFolderType;
     private FolderItemsRsp_ext saveRspObj;
     private int changePathDepth;
@@ -603,6 +604,7 @@ public final class Avrcp_ext {
         changePathDepth = 0;
         changePathFolderType = 0;
         changePathDirection = 0;
+        disconnectedActiveDevice = null;
         Avrcp_extVolumeManager();
         Log.v(TAG, "Exit start");
     }
@@ -670,6 +672,7 @@ public final class Avrcp_ext {
         changePathDepth = 0;
         changePathFolderType = 0;
         changePathDirection = 0;
+        disconnectedActiveDevice = null;
         Log.d(TAG, "Exit doQuit");
     }
 
@@ -808,11 +811,11 @@ public final class Avrcp_ext {
                 mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
                                                           isAbsoluteVolumeSupported(deviceIndex));
                 if (mAbsVolThreshold > 0 && mAbsVolThreshold < mAudioStreamMax &&
-                        vol > mAbsVolThreshold) {
-                        if (DEBUG) Log.v(TAG, "remote inital volume too high " + vol + ">" +
-                            mAbsVolThreshold);
-                        vol = mAbsVolThreshold;
-                        notifyVolumeChanged(vol, false);
+                    vol > mAbsVolThreshold) {
+                    if (DEBUG) Log.v(TAG, "remote inital volume too high " + vol + ">" +
+                       mAbsVolThreshold);
+                    vol = mAbsVolThreshold;
+                    notifyVolumeChanged(vol, false);
                 }
                 if (vol >= 0) {
                     int volume = convertToAvrcpVolume(vol);
@@ -3287,6 +3290,11 @@ public final class Avrcp_ext {
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
             if (deviceFeatures[i].mCurrentDevice !=null &&
                     deviceFeatures[i].mCurrentDevice.equals(device)) {
+                if (deviceFeatures[i].isActiveDevice &&
+                      deviceFeatures[i].isAbsoluteVolumeSupportingDevice) {
+                    storeVolumeForDevice(device);
+                    disconnectedActiveDevice = device;
+                 }
                 // initiate cleanup for all variables;
                 Message msg = mHandler.obtainMessage(MESSAGE_DEVICE_RC_CLEANUP, STACK_CLEANUP,
                        0, device);
@@ -4932,6 +4940,19 @@ public final class Avrcp_ext {
         int storeVolume =  mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         Log.i(TAG, "storeVolume: Storing stream volume level for device " + device
                 + " : " + storeVolume);
+        if (index != INVALID_DEVICE_INDEX && deviceFeatures[index].isAbsoluteVolumeSupportingDevice &&
+           (mAbsVolThreshold > 0 && mAbsVolThreshold < mAudioStreamMax &&
+           storeVolume > mAbsVolThreshold)) {
+            if (DEBUG) Log.v(TAG, "remote store volume too high" + storeVolume + ">" +
+               mAbsVolThreshold);
+                storeVolume = mAbsVolThreshold;
+        }
+        if (index == INVALID_DEVICE_INDEX && disconnectedActiveDevice != null &&
+            disconnectedActiveDevice.equals(device)) {
+            Log.v(TAG, "No need to store volume again during avrcp disconnect volume is stored");
+            disconnectedActiveDevice = null;
+            return;
+        }
         mVolumeMap.put(device, storeVolume);
         pref.putInt(device.getAddress(), storeVolume);
         if (device != null && device.isTwsPlusDevice()) {
