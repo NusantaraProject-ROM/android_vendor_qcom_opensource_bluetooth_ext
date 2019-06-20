@@ -58,7 +58,6 @@
 __BEGIN_DECLS
 
 #define BT_PROFILE_VENDOR_ID "vendor"
-#define BT_PROFILE_WIPOWER_VENDOR_ID "wipower"
 
 // Profile related Enums & function
 typedef enum {
