@@ -29,109 +29,118 @@
 
 package org.codeaurora.bluetooth.batestapp;
 
-import android.Manifest;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanRecord;
-
+import android.bluetooth.le.ScanResult;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.content.ServiceConnection;
-
 import android.os.Bundle;
-import android.os.Message;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.os.Binder;
-import android.os.IBinder;
-import android.os.RemoteException;
-
+import android.os.Message;
 import android.util.Log;
-import android.support.annotation.NonNull;
-import android.app.Activity;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
+import android.widget.ListView;
 
-import org.codeaurora.bluetooth.batestapp.IGattBroadcastService;
-import org.codeaurora.bluetooth.batestapp.IGattBroadcastServiceCallback;
-import org.codeaurora.bluetooth.batestapp.BroadcastAudioDevice;
+public class BroadcastAudioDeviceListActivity extends Activity
+    implements View.OnClickListener, OnItemClickListener {
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.Collections;
-
-public class BroadcastAudioDeviceListActivity extends Activity implements View.OnClickListener,
-        RecyclerViewListener {
-
-    private static final String TAG = Utils.TAG + "BroadcastAudioDeviceListActivity";
+    private static final String TAG = BAAudio.TAG + " BAListActivity";
     GattBroadcastServiceClientHandler mGattBroadcastServiceClientHandler;
-    boolean mIsCountdownLatchEnabled = false;
     boolean mIsAssociationInProgress = false;
     boolean mIsBRAEnabled = false;
-    private RecyclerView mRvDevices;
-    private AdapterDevice mAdapterDevice;
     BroadcastAudioDevice mDevice;
+
+    private ListView mLvDevices;
+    private AdapterDevice mAdapterDevice;
     private List<BroadcastAudioDevice> mList;
-    private BluetoothAdapter mBtAdapter;
-    private Context mCtx;
     private Button mBtnBack;
-    private CountDownLatch mDeinitSignal = new CountDownLatch(1);
     private boolean mIsCleanupCompleted = false;
+
+    public static final int BRA_ENABLED_SUCCESS = 0;
+    public static final int BRA_ENABLED_FAILED = 1;
+    public static final int BRA_DISABLED_SUCCESS = 2;
+    public static final int BRA_DISABLED_FAILED = 3;
+    public static final int ASSOCIATE_BCA_RECEIVER_SUCCESS = 4;
+    public static final int ASSOCIATE_BCA_RECEIVER_FAILED = 5;
+    private static final int CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION = 2;
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
 
             final String action = intent.getAction();
-            Log.d(TAG, " Action " + action);
+            Log.d(TAG, " action " + action);
+
+            if(action == null)
+                return;
             if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
                 int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter
                         .ERROR);
-                int prevState = intent.getIntExtra(BluetoothAdapter.EXTRA_PREVIOUS_STATE,
-                        BluetoothAdapter.ERROR);
                 if (state == BluetoothAdapter.STATE_TURNING_OFF) {
                     cleanup();
                     finish();
                 }
+            } else if (action.equals(
+                    BroadcastAudioAppActivity.ACTION_BAT_ONFOUND_ONLOST_BCA_RECEIVER)) {
+                ScanResult result = (ScanResult) intent.getParcelableExtra(
+                        BroadcastAudioAppActivity.EXTRA_SCAN_RESULT);
+                boolean isFound = intent.getBooleanExtra(BroadcastAudioAppActivity.EXTRA_ONFOUND,
+                        false);
+                onFoundOnLostBCAReceiver(result, isFound);
+            } else if (action.equals(
+                    BroadcastAudioAppActivity.ACTION_BAT_ON_ASSOCIATED_BCA_RECEIVER)) {
+                int status = intent.getIntExtra(BroadcastAudioAppActivity.EXTRA_STATUS, -1);
+                BluetoothDevice dev = (BluetoothDevice) intent.getParcelableExtra(
+                        BluetoothDevice.EXTRA_DEVICE);
+                onAssociatedBCAReceiver(dev, status);
+            } else if (action.equals(BroadcastAudioAppActivity.ACTION_BAT_BRA_STATE_CHANGED)) {
+                int status = intent.getIntExtra(BroadcastAudioAppActivity.EXTRA_STATUS, -1);
+                onConfiguredBroadcastReceiverAssociation(status);
             }
         }
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d(TAG, " oncreate:");
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.layout_devices);
-        mRvDevices = (RecyclerView) findViewById(R.id.id_lv_deviceslist);
-        mRvDevices.setLayoutManager(new LinearLayoutManager(this));
+
+        mLvDevices = (ListView) findViewById(R.id.id_lv_deviceslist);
         mList = Collections.synchronizedList(new ArrayList<BroadcastAudioDevice>());
-        mAdapterDevice = new AdapterDevice(mList, getLayoutInflater(), this);
-        mRvDevices.setAdapter(mAdapterDevice);
+        mAdapterDevice = new AdapterDevice(mList, getLayoutInflater());
+        mLvDevices.setAdapter(mAdapterDevice);
+        mLvDevices.setOnItemClickListener(this);
         mBtnBack = (Button) findViewById(R.id.id_btn_back);
         mBtnBack.setOnClickListener(this);
         mBtnBack.setEnabled(true);
-        mCtx = getApplicationContext();
-        mBtAdapter = BluetoothAdapter.getDefaultAdapter();
+
         IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+        filter.addAction(BroadcastAudioAppActivity.ACTION_BAT_BRA_STATE_CHANGED);
+        filter.addAction(BroadcastAudioAppActivity.ACTION_BAT_ONFOUND_ONLOST_BCA_RECEIVER);
+        filter.addAction(BroadcastAudioAppActivity.ACTION_BAT_ON_ASSOCIATED_BCA_RECEIVER);
         registerReceiver(mReceiver, filter);
 
         HandlerThread thread = new HandlerThread("GattBroadcastServiceClientHandler");
         thread.start();
         Looper looper = thread.getLooper();
 
-        mGattBroadcastServiceClientHandler = new GattBroadcastServiceClientHandler(this, looper);
-
-
+        mGattBroadcastServiceClientHandler = new GattBroadcastServiceClientHandler(looper);
+        mGattBroadcastServiceClientHandler.sendMessage(
+                mGattBroadcastServiceClientHandler.obtainMessage(
+                        CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION, true));
     }
 
     @Override
@@ -155,21 +164,9 @@ public class BroadcastAudioDeviceListActivity extends Activity implements View.O
                 mBtnBack.setEnabled(false);
                 mGattBroadcastServiceClientHandler.sendMessage(
                         mGattBroadcastServiceClientHandler.obtainMessage(
-                                GattBroadcastServiceClientHandler
-                                        .CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION,
+                                CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION,
                                 false));
             }
-            mGattBroadcastServiceClientHandler.sendMessage(
-                    mGattBroadcastServiceClientHandler.obtainMessage(
-                            GattBroadcastServiceClientHandler.UNREGISTER_CALLBACK));
-            mIsCountdownLatchEnabled = true;
-            Log.i(TAG, "Waiting for deinit to complete");
-            try {
-                mDeinitSignal.await();
-            } catch (InterruptedException e) {
-                Log.e(TAG, "Interrupt received while waitinf for de-init to complete", e);
-            }
-
             mGattBroadcastServiceClientHandler.close();
             mGattBroadcastServiceClientHandler.removeCallbacksAndMessages(null);
             Looper looper = mGattBroadcastServiceClientHandler.getLooper();
@@ -191,19 +188,14 @@ public class BroadcastAudioDeviceListActivity extends Activity implements View.O
     }
 
     @Override
-    public void onRecylerViewItemClicked(int clickedPos) {
-        Log.v(TAG, "onRecylerViewItemClicked position : " + clickedPos);
-        BroadcastAudioDevice device = mList.get(clickedPos);
+    public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
+        BroadcastAudioDevice device = mList.get(arg2);
         String msg = getString(R.string.msg_association_initiated, device.getName());
-        Log.v(TAG, "onRecylerViewItemClicked device name  : " + msg);
-
         if (mIsAssociationInProgress) {
             Log.d(TAG, "Association is in progress ignore click");
             return;
         }
-
         if (mGattBroadcastServiceClientHandler != null) {
-            Utils.toast(mCtx, msg);
             Log.d(TAG, " sendMessage ASSOCIATE_BCA_RECEIVER" );
             mGattBroadcastServiceClientHandler.sendMessage(
                     mGattBroadcastServiceClientHandler.obtainMessage(
@@ -214,12 +206,10 @@ public class BroadcastAudioDeviceListActivity extends Activity implements View.O
         } else {
             Log.e(TAG, "mGattBroadcastServiceClientHandler is null");
         }
-        Log.v(TAG, "onRecylerViewItemClicked position end ");
     }
 
-    private synchronized void  addOrRemoveBCAReceiverDevice(BroadcastAudioDevice device,
+    private synchronized void addOrRemoveBCAReceiverDevice(BroadcastAudioDevice device,
             boolean isAdd) {
-
         boolean isFound = false;
         BluetoothDevice bDevice = device.getBluetoothDevice();
         Log.d(TAG, " addOrRemoveBCAReceiverDevice: isAdd: " + isAdd);
@@ -234,7 +224,6 @@ public class BroadcastAudioDeviceListActivity extends Activity implements View.O
                 break;
             }
         }
-
         if (isAdd && !isFound) {
             Log.d(TAG, " New Device Added :" + device.getName());
             mList.add(device);
@@ -249,101 +238,62 @@ public class BroadcastAudioDeviceListActivity extends Activity implements View.O
                 mAdapterDevice.refreshDevices(mList);
             }
         });
-
     }
 
-    public class GattBroadcastServiceClientHandler extends Handler {
-        public static final int REGISTER_CALLBACK = 0;
-        public static final int UNREGISTER_CALLBACK = 1;
-        public static final int CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION = 2;
+    public void onFoundOnLostBCAReceiver(ScanResult result, boolean isFound) {
+        ScanRecord record = result.getScanRecord();
+        String mac = result.getDevice().getAddress();
+        Log.d(TAG, "onFoundOnLostBCAReceiver: " + isFound + " mac :" + mac + "record :" + record);
+        BroadcastAudioDevice device = new BroadcastAudioDevice(result.getDevice(),
+                result.getScanRecord());
+        addOrRemoveBCAReceiverDevice(device, isFound);
+        refreshDevices();
+    }
+
+    public void onConfiguredBroadcastReceiverAssociation(int status) {
+        Log.d(TAG, "onConfiguredBroadcastReceiverAssociation status: " + status);
+        if (status == BRA_ENABLED_SUCCESS) {
+            mIsBRAEnabled = true;
+        } else if (status == BRA_DISABLED_SUCCESS) {
+            mIsBRAEnabled = false;
+        } else if (status == BRA_ENABLED_FAILED) {
+            finish();
+        } else if (status == BRA_DISABLED_FAILED) {
+            mIsBRAEnabled = false;
+        }
+    }
+
+    public void onAssociatedBCAReceiver(BluetoothDevice device, int status) {
+        Log.d(TAG, "onAssociatedBCAReceiver: status " + status);
+        if (mDevice == null){
+            Log.d(TAG, "onAssociatedBCAReceiver: Nothing to show on UI, mDevice is null");
+            return;
+        }
+
+        if (status == ASSOCIATE_BCA_RECEIVER_SUCCESS) {
+            String msg = getString(R.string.msg_association_success, mDevice.getName());
+            List<BroadcastAudioDevice> tempList =
+                    new ArrayList<BroadcastAudioDevice>(mList);
+            for (BroadcastAudioDevice BADev : tempList) {
+                if (device.equals(BADev.getBluetoothDevice())) {
+                    addOrRemoveBCAReceiverDevice(BADev, false);
+                }
+            }
+            refreshDevices();
+        } else if (status == ASSOCIATE_BCA_RECEIVER_FAILED) {
+            String msg = getString(R.string.msg_association_failed, mDevice.getName());
+        }
+        mIsAssociationInProgress = false;
+    }
+
+    private class GattBroadcastServiceClientHandler extends Handler {
         public static final int ASSOCIATE_BCA_RECEIVER = 3;
-        private Context mContext;
-        private IGattBroadcastService mService = null;
-
-        private final ServiceConnection mConnection = new ServiceConnection() {
-            public void onServiceConnected(ComponentName className, IBinder service) {
-                Log.d(TAG, "gatt Broadcast Proxy object connected");
-                mService = IGattBroadcastService.Stub.asInterface(Binder.allowBlocking(service));
-                mGattBroadcastServiceClientHandler.sendMessage(
-                        mGattBroadcastServiceClientHandler.obtainMessage(
-                                REGISTER_CALLBACK));
-                mGattBroadcastServiceClientHandler.sendMessage(
-                        mGattBroadcastServiceClientHandler.obtainMessage(
-                                CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION, true));
-            }
-
-            public void onServiceDisconnected(ComponentName className) {
-                Log.d(TAG, "gatt Broadcast  Proxy object disconnected");
-                mIsBRAEnabled = false;
-                mIsAssociationInProgress = false;
-                mService = null;
-            }
-        };
-
-        private IGattBroadcastServiceCallback.Stub mServiceCallbacks =
-                new IGattBroadcastServiceCallback.Stub() {
-            public void onFoundOnLostBCAReceiver(ScanResult result, boolean isFound) {
-                ScanRecord record = result.getScanRecord();
-                String mac = result.getDevice().getAddress();
-
-                Log.d(TAG, "onFoundOnLostBCAReceiver: " + isFound);
-                Log.d(TAG, "onFoundOnLostBCAReceiver device address: " + mac);
-                Log.d(TAG, "onFoundOnLostBCAReceiver: scanRecord: " + record);
-
-                BroadcastAudioDevice device = new BroadcastAudioDevice(result.getDevice(),
-                        result.getScanRecord());
-
-                addOrRemoveBCAReceiverDevice(device, isFound);
-                refreshDevices();
-            }
-
-            public void onConfiguredBroadcastReceiverAssociation(int status) {
-                Log.d(TAG, "onConfiguredBroadcastReceiverAssociation status: " + status);
-                if (status == GattBroadcastService.BRA_ENABLED_SUCESSS) {
-                    mIsBRAEnabled = true;
-                } else if (status == GattBroadcastService.BRA_DISABLED_SUCESSS) {
-                    mIsBRAEnabled = false;
-                } else if (status == GattBroadcastService.BRA_ENABLED_FAILED) {
-                    finish();
-                } else if (status == GattBroadcastService.BRA_DISABLED_FAILED) {
-                    mIsBRAEnabled = false;
-                }
-            }
-
-            public void onAssociatedBCAReceiver(BluetoothDevice device, int status) {
-                Log.d(TAG, "onAssociatedBCAReceiver: status " + status);
-                if (mDevice == null){
-                    Log.d(TAG, "onAssociatedBCAReceiver: Nothing to show on UI, mDevice is null");
-                    return;
-                }
-
-                if (status == GattBroadcastService.ASSOCIATE_BCA_RECEIVER_SUCCESS) {
-                    String msg = getString(R.string.msg_association_success, mDevice.getName());
-                    Utils.toast(mCtx, msg);
-                    List<BroadcastAudioDevice> tempList =
-                            new ArrayList<BroadcastAudioDevice>(mList);
-                    for (BroadcastAudioDevice BADev : tempList) {
-                        if (device.equals(BADev.getBluetoothDevice())) {
-                            addOrRemoveBCAReceiverDevice(BADev, false);
-                        }
-                    }
-                    refreshDevices();
-                } else if (status == GattBroadcastService.ASSOCIATE_BCA_RECEIVER_FAILED) {
-                    String msg = getString(R.string.msg_association_failed, mDevice.getName());
-                    Utils.toast(mCtx, msg);
-                }
-                mIsAssociationInProgress = false;
-            }
-        };
-
         /**
          * Create a GattBroadcastService proxy object for interacting with the local
          * Bluetooth Service which handles the GattBroadcastService Profile
          */
-        private GattBroadcastServiceClientHandler(Context context, Looper looper) {
+        private GattBroadcastServiceClientHandler(Looper looper) {
             super(looper);
-            mContext = context;
-            doBind();
         }
 
         @Override
@@ -351,106 +301,33 @@ public class BroadcastAudioDeviceListActivity extends Activity implements View.O
             Log.d(TAG, "Handler(): got msg=" + msg.what);
 
             switch (msg.what) {
-                case REGISTER_CALLBACK:
-                    registerCallbacks();
-                    break;
-                case UNREGISTER_CALLBACK:
-                    deRegisterCallbacks();
-                    if (mIsCountdownLatchEnabled) {
-                        mDeinitSignal.countDown();
-                        mIsCountdownLatchEnabled = false;
-                    }
-                    break;
                 case CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION:
-                    boolean enable = (boolean) msg.obj;
-                    configureBroadcastReceiverAssociation(enable);
+                    Boolean enable = (Boolean) msg.obj;
+                    if(enable) {
+                        Intent intent_to_configure_BRA = new Intent(
+                                BroadcastAudioAppActivity.ACTION_BAT_BRA_ENABLE);
+                        sendBroadcast(intent_to_configure_BRA);
+                    } else {
+                        Intent intent_to_configure_BRA = new Intent(
+                                BroadcastAudioAppActivity.ACTION_BAT_BRA_DISABLE);
+                        sendBroadcast(intent_to_configure_BRA);
+                    }
                     break;
                 case ASSOCIATE_BCA_RECEIVER:
                     BluetoothDevice device = (BluetoothDevice) msg.obj;
-                    associateBCAReceiver(device);
+                    Intent intent_to_associate_BCA_Receiver = new Intent(
+                            BroadcastAudioAppActivity.ACTION_BAT_ASSOCIATE_BCA_RECEIVER);
+                    intent_to_associate_BCA_Receiver.putExtra(
+                            BluetoothDevice.EXTRA_DEVICE, device);
+                    sendBroadcast(intent_to_associate_BCA_Receiver);
                     break;
                 default:
                     break;
             }
         }
 
-        boolean doBind() {
-            Log.v(TAG, " doBind ");
-            Intent intent = new Intent().setClass(mContext, GattBroadcastService.class);
-            if (!mContext.bindServiceAsUser(intent, mConnection, 0,
-                    android.os.Process.myUserHandle())) {
-                Log.e(TAG, "Could not bind to Bluetooth gatt Service with intent" + intent);
-                return false;
-            }
-            return true;
-        }
-
         void close() {
             Log.v(TAG, " close ");
-            synchronized (mConnection) {
-                if (mService != null) {
-                    try {
-                        mContext.unbindService(mConnection);
-                        mService = null;
-                    } catch (Exception re) {
-                        Log.e(TAG, "", re);
-                    }
-                }
-            }
-        }
-
-        private boolean associateBCAReceiver(BluetoothDevice device) {
-            Log.v(TAG, " associateBCAReceiver ");
-            try {
-                if (mService != null) {
-                    mService.associateBCAReceiver(device);
-                    return true;
-                }
-            } catch (RemoteException e) {
-                Log.e(TAG, "Failed to associate BCA Receiver " + e);
-            }
-            return false;
-        }
-
-        private boolean registerCallbacks() {
-            Log.v(TAG, " registerCallbacks ");
-            try {
-                if (mService != null) {
-                    mService.registerCallbacks(mServiceCallbacks);
-                    return true;
-                }
-            } catch (RemoteException e) {
-                Log.e(TAG, "Failed to register Callbacks" + e);
-            }
-            return false;
-        }
-
-        private boolean deRegisterCallbacks() {
-            Log.v(TAG, " deRegisterCallbacks ");
-            try {
-                if (mService != null) {
-                    mService.deRegisterCallbacks(mServiceCallbacks);
-                    return true;
-                }
-            } catch (RemoteException e) {
-                Log.e(TAG, "Failed to deRegister Callbacks" + e);
-                return false;
-            }
-            return false;
-        }
-
-        private boolean configureBroadcastReceiverAssociation(boolean enable) {
-            Log.v(TAG, " configureBroadcastReceiverAssociation ");
-
-            try {
-                if (mService != null) {
-                    mService.configureBroadcastReceiverAssociation(enable);
-                    return true;
-                }
-            } catch (RemoteException e) {
-                Log.e(TAG, "Failed to configure Broadcast Receiver Association" + e);
-            }
-            return false;
         }
     }
 }
