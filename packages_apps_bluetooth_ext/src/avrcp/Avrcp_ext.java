@@ -1167,6 +1167,12 @@ public final class Avrcp_ext {
                 if (msg.arg2 == AVRC_RSP_ACCEPT || msg.arg2 == AVRC_RSP_REJ) {
                     if ((deviceFeatures[deviceIndex].mVolCmdAdjustInProgress == false) &&
                         (deviceFeatures[deviceIndex].mVolCmdSetInProgress == false)) {
+                        if (deviceFeatures[deviceIndex].mCurrentDevice.isTwsPlusDevice()) {
+                            Log.e(TAG,"Store volume for TWS+ pair for volume relays");
+                            deviceFeatures[deviceIndex].mRemoteVolume = absVol;
+                            deviceFeatures[deviceIndex].mLocalVolume = convertToAudioStreamVolume(absVol);
+                            break;
+                        }
                         Log.e(TAG, "Unsolicited response, ignored");
                         break;
                     }
