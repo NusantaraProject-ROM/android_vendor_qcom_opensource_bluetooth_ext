@@ -343,6 +343,12 @@ static void set_wifi_state(bool status)
     BTA_DmSetWifiState(status);
 }
 
+static void set_Power_back_off_state(bool status)
+{
+    LOG_INFO(LOG_TAG,"setPowerBackOffState :%d ", status);
+    BTA_DmPowerBackOff(status);
+}
+
 static bool get_profile_info(profile_t profile, profile_info_t feature_name)
 {
     LOG_INFO(LOG_TAG,"get_profile_info :%d", profile);
@@ -456,6 +462,7 @@ static const btvendor_interface_t btvendorInterface = {
     bredrcleanup,
     bredrstartup,
     set_wifi_state,
+    set_Power_back_off_state,
     get_profile_info,
     set_property_callouts,
     cleanup,

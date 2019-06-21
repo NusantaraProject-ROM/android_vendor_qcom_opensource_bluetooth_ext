@@ -2218,7 +2218,7 @@ static tL2CAP_APPL_INFO l2test_l2c_appl = {
 void bdt_init(void)
 {
     bdt_log("INIT BT ");
-    status = sBtInterface->init(&bt_callbacks);
+    status = sBtInterface->init(&bt_callbacks, false, false);
     if (status == BT_STATUS_SUCCESS) {
         // Get Vendor Interface
         btvendorInterface = (btvendor_interface_t *)sBtInterface->get_profile_interface(BT_PROFILE_VENDOR_ID);
@@ -2239,7 +2239,7 @@ void bdt_enable(void)
         bdt_log("Bluetooth is already enabled");
         return;
     }
-    status = sBtInterface->enable(false);
+    status = sBtInterface->enable();
 
     check_return_status(status);
 }

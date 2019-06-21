@@ -2,7 +2,7 @@
 // ========================================================
 cc_library_static {
     name: "libbt-stack_ext",
-    defaults: ["fluoride_defaults"],
+    defaults: ["fluoride_defaults_qti"],
     local_include_dirs: [
         "btm",
         "include",
@@ -39,7 +39,4 @@ cc_library_static {
         "libcutils",
         "liblog",
     ],
-    sanitize: {
-        never: true,
-    },
 }

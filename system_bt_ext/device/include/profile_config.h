@@ -35,4 +35,14 @@
 
 static const char PROFILE_CONFIG_MODULE[] = "profile_config_module";
 
+typedef struct {
+   uint8_t BR_max_pow_support;
+   uint8_t EDR_max_pow_support;
+   uint8_t BLE_max_pow_support;
+   bool BR_max_pow_feature = false;
+   bool EDR_max_pow_feature = false;
+   bool BLE_max_pow_feature = false;
+} max_pow_feature_t;
+
 extern bool profile_feature_fetch(const profile_t profile, profile_info_t feature_name);
+extern max_pow_feature_t max_radiated_power_fetch(const profile_t profile, profile_info_t feature_name);

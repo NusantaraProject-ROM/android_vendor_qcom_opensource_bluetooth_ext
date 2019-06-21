@@ -68,6 +68,11 @@ final class Vendor {
     private String a2dpOffloadCap;
     // Split A2dp will be enabled by default
     private boolean splitA2dpEnabled = true;
+    private static boolean PowerbackoffStatus = false;
+    // SWB will be enabled by default
+    private boolean isSwbEnabled = true;
+    // SWB-PM will be enabled by default
+    private boolean isSwbPmEnabled = true;
 
     static {
         classInitNative();
@@ -87,6 +92,10 @@ final class Vendor {
         Log.d(TAG,"a2dpOffloadCap: " + a2dpOffloadCap);
         splitA2dpEnabled = isSplitA2dpEnabledNative();
         Log.d(TAG,"splitA2dpEnabled: " + splitA2dpEnabled);
+        isSwbEnabled = isSwbEnabledNative();
+        Log.d(TAG,"isSwbEnabled: " + isSwbEnabled);
+        isSwbPmEnabled = isSwbPmEnabledNative();
+        Log.d(TAG,"isSwbPmEnabled: " + isSwbPmEnabled);
     }
 
     public void bredrCleanup() {
@@ -100,6 +109,20 @@ final class Vendor {
     public void setWifiState(boolean status) {
         Log.d(TAG,"setWifiState to: " + status);
         setWifiStateNative(status);
+    }
+
+   public void setPowerBackoff(boolean status) {
+
+        if (getPowerBackoff() == status)
+            return;
+        Log.d(TAG,"setPowerBackoff to: " + status);
+        PowerbackoffStatus = status;
+        setPowerBackoffNative(status);
+    }
+
+   public boolean getPowerBackoff() {
+        Log.d(TAG,"getPowerBackoff " );
+        return PowerbackoffStatus;
     }
 
     public void HCIClose() {
@@ -240,12 +263,19 @@ final class Vendor {
     public boolean isSplitA2dpEnabled() {
         return splitA2dpEnabled;
     }
+    public boolean isSwbEnabled() {
+        return isSwbEnabled;
+    }
+    public boolean isSwbPmEnabled() {
+        return isSwbPmEnabled;
+    }
     private native void bredrcleanupNative();
     private native void bredrstartupNative();
     private native void initNative();
     private native static void classInitNative();
     private native void cleanupNative();
     private native void setWifiStateNative(boolean status);
+    private native void setPowerBackoffNative(boolean status);
     private native boolean getProfileInfoNative(int profile_id , int profile_info);
     private native boolean getQtiStackStatusNative();
     private native boolean voipNetworkWifiInfoNative(boolean isVoipStarted, boolean isNetworkWifi);
@@ -253,4 +283,6 @@ final class Vendor {
     private native String getSocNameNative();
     private native String getA2apOffloadCapabilityNative();
     private native boolean isSplitA2dpEnabledNative();
+    private native boolean isSwbEnabledNative();
+    private native boolean isSwbPmEnabledNative();
 }

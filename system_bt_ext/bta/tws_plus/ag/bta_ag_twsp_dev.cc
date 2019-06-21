@@ -37,6 +37,7 @@
 #include "bta_ag_twsp.h"
 #include "internal_include/bt_trace.h"
 #include "bta_ag_int.h"
+#include "utl.h"
 
 
 #if (TWS_AG_ENABLED == TRUE)
@@ -94,15 +95,16 @@ void reset_twsp_device(int  eb_idx) {
         }
      }
 
-    twsp_devices[eb_idx].p_scb = NULL;
-    twsp_devices[eb_idx].battery_charge = TWSPLUS_MIN_BATTERY_CHARGE;
-    twsp_devices[eb_idx].state = TWSPLUS_EB_STATE_UNKNOWN;
-    twsp_devices[eb_idx].role =  TWSPLUS_EB_ROLE_INVALID;
-    twsp_devices[eb_idx].mic_path_delay = TWSPLUS_INVALID_MICPATH_DELAY;
-    twsp_devices[eb_idx].mic_quality = TWSPLUS_MIN_MIC_QUALITY;
-    twsp_devices[eb_idx].qdsp_nr = TWSPLUS_INVALID_QDSP_VALUE;
-    twsp_devices[eb_idx].qdsp_ec = TWSPLUS_INVALID_QDSP_VALUE;
-    twsp_devices[eb_idx].ring_sent = false;
+     twsp_devices[eb_idx].p_scb = NULL;
+     twsp_devices[eb_idx].battery_state = TWSPLUS_MIN_BATTERY_CHARGE_STATE_DISCHARGING;
+     twsp_devices[eb_idx].battery_level = TWSPLUS_MIN_BATTERY_LEVEL;
+     twsp_devices[eb_idx].state = TWSPLUS_EB_STATE_OFF;
+     twsp_devices[eb_idx].role =  TWSPLUS_EB_ROLE_INVALID;
+     twsp_devices[eb_idx].mic_path_delay = TWSPLUS_INVALID_MICPATH_DELAY;
+     twsp_devices[eb_idx].mic_quality = TWSPLUS_MIN_MIC_QUALITY;
+     twsp_devices[eb_idx].qdsp_nr = TWSPLUS_INVALID_QDSP_VALUE;
+     twsp_devices[eb_idx].qdsp_ec = TWSPLUS_INVALID_QDSP_VALUE;
+     twsp_devices[eb_idx].ring_sent = false;
 }
 
 void update_twsp_device(tBTA_AG_SCB* p_scb) {
@@ -110,8 +112,10 @@ void update_twsp_device(tBTA_AG_SCB* p_scb) {
         if (twsp_devices[i].p_scb == NULL) {
             APPL_TRACE_WARNING("%s: idx: %d, p_scb: %x", __func__, i, p_scb);
             twsp_devices[i].p_scb = p_scb;
-            twsp_devices[i].battery_charge = TWSPLUS_MIN_BATTERY_CHARGE;
-            twsp_devices[i].state = TWSPLUS_EB_STATE_UNKNOWN;
+            twsp_devices[i].battery_state =
+                              TWSPLUS_MIN_BATTERY_CHARGE_STATE_DISCHARGING;
+            twsp_devices[i].battery_level = TWSPLUS_MIN_BATTERY_LEVEL;
+            twsp_devices[i].state = TWSPLUS_EB_STATE_OFF;
 
             int other_idx = (i == PRIMARY_EB_IDX) ? SECONDARY_EB_IDX : PRIMARY_EB_IDX;
             if (twsp_devices[other_idx].p_scb != NULL) {
@@ -156,8 +160,10 @@ void print_twsp_device_status(int eb_idx) {
     APPL_TRACE_DEBUG("%s: p_scb : %x", __func__, twsp_devices[eb_idx].p_scb);
     APPL_TRACE_DEBUG("%s: mic_quality : %d", __func__,
                                twsp_devices[eb_idx].mic_quality);
-    APPL_TRACE_DEBUG("%s: battery_charge : %d", __func__,
-                               twsp_devices[eb_idx].battery_charge);
+    APPL_TRACE_DEBUG("%s: battery_state : %d", __func__,
+                               twsp_devices[eb_idx].battery_state);
+    APPL_TRACE_DEBUG("%s: battery_level : %d", __func__,
+                               twsp_devices[eb_idx].battery_level);
     APPL_TRACE_DEBUG("%s: mic_path_delay : %d", __func__,
                                twsp_devices[eb_idx].mic_path_delay);
     APPL_TRACE_DEBUG("%s: state : %d", __func__, twsp_devices[eb_idx].state);
@@ -350,20 +356,26 @@ uint8_t get_twsp_qdsp_ec(int eb_idx) {
     return twsp_devices[eb_idx].qdsp_ec;
 }
 
-bool set_twsp_battery_charge(int eb_idx, uint8_t battery_charge) {
-    APPL_TRACE_DEBUG("%s: battery_charge : %d\n", __func__, battery_charge);
+bool set_twsp_battery_charge(int eb_idx, int16_t state, int16_t level) {
+    APPL_TRACE_DEBUG("%s: state : %d, level : %d\n", __func__, state, level);
 
     if (eb_idx < PRIMARY_EB_IDX || eb_idx > SECONDARY_EB_IDX) {
         APPL_TRACE_WARNING("%s: Invalid eb_idx: %d\n", __func__, eb_idx);
         return false;
     }
 
-    if (battery_charge < TWSPLUS_MIN_BATTERY_CHARGE || battery_charge > TWSPLUS_MAX_BATTERY_CHARGE) {
-        APPL_TRACE_WARNING("%s: Invalid battery_charge: %d\n", __func__, battery_charge);
+    if (state < TWSPLUS_MIN_BATTERY_CHARGE_STATE_CHARGING ||
+       state > TWSPLUS_MIN_BATTERY_CHARGE_STATE_POWERFAULT) {
+        APPL_TRACE_WARNING("%s: Invalid state: %d\n", __func__, state);
         return false;
     }
 
-    twsp_devices[eb_idx].battery_charge = battery_charge;
+    if (level < TWSPLUS_MIN_BATTERY_LEVEL ||
+       state > TWSPLUS_MAX_BATTERY_LEVEL) {
+        APPL_TRACE_WARNING("%s: Invalid level: %d\n", __func__, level);
+        return false;
+    }
+
     return true;
 }
 
@@ -578,10 +590,50 @@ void twsp_clr_all_ring_sent () {
     }
 }
 
-void twsp_handle_vs_at_events(tBTA_AG_SCB* p_scb, uint16_t cmd, int16_t int_arg)
+bool bta_ag_twsp_parse_qbc(tBTA_AG_SCB* p_scb, char* p_s,
+                           int16_t *state, int16_t *level) {
+    int16_t n[2] = {-1, -1};
+    int i;
+    char* p;
+
+    for (i = 0; i < 2; i++) {
+        /* skip to comma delimiter */
+        for (p = p_s; *p != ',' && *p != 0; p++)
+        ;
+
+        /* get integer value */
+        *p = 0;
+        n[i] = utl_str2int(p_s);
+        p_s = p + 1;
+        if (p_s == 0) {
+            break;
+        }
+    }
+
+    /* process values */
+    if (n[0] < TWSPLUS_MIN_BATTERY_CHARGE_STATE_CHARGING ||
+      n[0] > TWSPLUS_MAX_BATTERY_CHARGE) {
+        APPL_TRACE_ERROR("%s: Invalid QBC state: %d", __func__, n[0]);
+        return false;
+    }
+
+    if (n[1] < TWSPLUS_MIN_BATTERY_CHARGE_STATE_CHARGING ||
+      n[1] > TWSPLUS_MAX_BATTERY_CHARGE) {
+        APPL_TRACE_ERROR("%s: Invalid QBC level: %d", __func__, n[1]);
+        return false;
+    }
+
+    *state = n[0];
+    *level = n[1];
+    return true;
+}
+
+void twsp_handle_vs_at_events(tBTA_AG_SCB* p_scb, uint16_t cmd,
+                                    tBTA_AG_VAL* val, int16_t int_arg)
 {
     APPL_TRACE_DEBUG("%s: p_scb : %x cmd : %d", __func__, p_scb, cmd);
-
+    int16_t state, level;
+    char str_to_parse[BTA_AG_AT_MAX_LEN];
     int idx = twsp_get_idx_by_scb(p_scb);
     if (idx < 0) {
         APPL_TRACE_ERROR("%s: Invalid SCB handle: %x", __func__, p_scb);
@@ -591,24 +643,38 @@ void twsp_handle_vs_at_events(tBTA_AG_SCB* p_scb, uint16_t cmd, int16_t int_arg)
 
     //bta_ag_send_ok(p_scb);
     switch(cmd) {
-       case BTA_AG_TWSP_AT_QMQ_EVT: {
-            set_twsp_mic_quality(idx, int_arg);
-       } break;
-       case BTA_AG_TWSP_AT_QES_EVT: {
-            set_twsp_state(idx, int_arg);
-       } break;
-       case BTA_AG_TWSP_AT_QER_EVT: {
+        case BTA_AG_TWSP_AT_QMQ_EVT: {
+           set_twsp_mic_quality(idx, int_arg);
+        } break;
+        case BTA_AG_TWSP_AT_QES_EVT: {
+           set_twsp_state(idx, int_arg);
+        } break;
+        case BTA_AG_TWSP_AT_QER_EVT: {
             set_twsp_role(idx, int_arg);
-       } break;
-       case BTA_AG_TWSP_AT_QBC_EVT: {
-            set_twsp_battery_charge(idx, int_arg);
-       } break;
-       case BTA_AG_TWSP_AT_QMD_EVT: {
+        } break;
+        case BTA_AG_TWSP_AT_QBC_EVT: {
+            strlcpy(str_to_parse, val->str, sizeof(str_to_parse));
+            int ret = bta_ag_twsp_parse_qbc(p_scb,
+                                   str_to_parse, &state, &level);
+            if (ret) {
+                APPL_TRACE_DEBUG("%s: QBC=%d, %d", __func__, state, level);
+                if(set_twsp_battery_charge(idx, state, level)) {
+                    //Generate cb to BTIF/JNI
+                    APPL_TRACE_DEBUG("%s: at_str : %s", __func__, val->str);
+                    (*bta_ag_cb.p_cback)
+                           ((tBTA_AG_EVT)BTA_AG_TWSP_BATTERY_UPDATE,
+                           (tBTA_AG *)val);
+                }
+            } else {
+                APPL_TRACE_ERROR("%s: Fail to parse QBC", __func__)
+            }
+        } break;
+        case BTA_AG_TWSP_AT_QMD_EVT: {
             set_twsp_mic_path_delay(idx, int_arg);
-       } break;
-       case BTA_AG_TWSP_AT_QDSP_EVT: {
+        } break;
+        case BTA_AG_TWSP_AT_QDSP_EVT: {
             set_twsp_qdsp_features(idx, int_arg);
-       } break;
+        } break;
     }
 }
 

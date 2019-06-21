@@ -2,7 +2,7 @@
 // ========================================================
 cc_library_static {
     name: "libosi_ext",
-    defaults: ["fluoride_defaults"],
+    defaults: ["fluoride_defaults_qti"],
     include_dirs: [
         "vendor/qcom/opensource/commonsys/system/bt",
         "vendor/qcom/opensource/commonsys/system/bt/internal_include",
@@ -24,7 +24,4 @@ cc_library_static {
         "libbt-utils",
     ],
     cflags: ["-DBUILDCFG"],
-    sanitize: {
-        never: true,
-    },
 }

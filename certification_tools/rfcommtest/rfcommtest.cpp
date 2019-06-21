@@ -715,7 +715,7 @@ void bdt_rfcomm_disc_from_server(void)
 void bdt_init(void)
 {
     bdt_log("INIT BT ");
-    status = (bt_status_t)sBtInterface->init(&bt_callbacks);
+    status = (bt_status_t)sBtInterface->init(&bt_callbacks, false, false);
     if (status == BT_STATUS_SUCCESS) {
         // Get Vendor Interface
         btvendorInterface = (btvendor_interface_t *)sBtInterface->get_profile_interface(BT_PROFILE_VENDOR_ID);
@@ -735,7 +735,7 @@ void bdt_enable(void)
         bdt_log("Bluetooth is already enabled");
         return;
     }
-    status = (bt_status_t)sBtInterface->enable(strict_mode);
+    status = (bt_status_t)sBtInterface->enable();
 
     check_return_status(status);
 }

@@ -2,7 +2,7 @@
 // ========================================================
 cc_library_static {
     name: "libbt-bta-ext",
-    defaults: ["fluoride_defaults"],
+    defaults: ["fluoride_defaults_qti"],
     include_dirs: [
         "vendor/qcom/opensource/commonsys/system/bt",
         "vendor/qcom/opensource/commonsys/system/bt/btcore/include",
@@ -40,7 +40,4 @@ cc_library_static {
         "libbt-utils",
     ],
     cflags: ["-DBUILDCFG"],
-    sanitize: {
-        never: true,
-    },
 }
