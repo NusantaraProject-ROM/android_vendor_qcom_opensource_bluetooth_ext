@@ -417,6 +417,7 @@ public final class Avrcp_ext {
     private static class SHOQueue {
         static BluetoothDevice device;
         static boolean PlayReq;
+        static boolean isRetry;
     }
 
     static {
@@ -1436,7 +1437,7 @@ public final class Avrcp_ext {
                             Log.e(TAG, "1: SHO complete");
                         }
 
-                        if(mHandler.hasMessages(MESSAGE_START_SHO)) {
+                        if(mHandler.hasMessages(MESSAGE_START_SHO) && (!SHOQueue.isRetry)) {
                             mHandler.removeMessages(MESSAGE_START_SHO);
                             triggerSHO(SHOQueue.device, SHOQueue.PlayReq, false);
                         }
@@ -1638,7 +1639,7 @@ public final class Avrcp_ext {
                     synchronized (Avrcp_ext.this) {
                         isShoActive = false;
                         Log.d(TAG, "3: SHO complete");
-                        if (mHandler.hasMessages(MESSAGE_START_SHO)) {
+                        if (mHandler.hasMessages(MESSAGE_START_SHO) && (!SHOQueue.isRetry)) {
                             mHandler.removeMessages(MESSAGE_START_SHO);
                             triggerSHO(SHOQueue.device, SHOQueue.PlayReq, false);
                         }
@@ -5136,6 +5137,7 @@ public final class Avrcp_ext {
                 Message msg = mHandler.obtainMessage(MESSAGE_START_SHO, PlayReq?1:0, 0, device);
                 SHOQueue.device = device;
                 SHOQueue.PlayReq = PlayReq;
+                SHOQueue.isRetry = false;
                 mHandler.sendMessageDelayed(msg, 3000);
                 Log.d(TAG, "4: SHO Queued");
                 return true;
@@ -5158,6 +5160,7 @@ public final class Avrcp_ext {
             }
             mHandler.removeMessages(MESSAGE_START_SHO);
             triggerSHO(device, PlayReq, true);
+            return ret;
         }
         synchronized (Avrcp_ext.this) {
             if (!PlayReq || isInCall || isFMActive) {
@@ -5177,9 +5180,13 @@ public final class Avrcp_ext {
     private void triggerSHO(BluetoothDevice device, boolean PlayReq, boolean isRetry) {
         Message msg = mHandler.obtainMessage(MESSAGE_START_SHO, PlayReq?1:0, isRetry?1:0, device);
         if(isRetry) {
+            SHOQueue.device = device;
+            SHOQueue.PlayReq = PlayReq;
+            SHOQueue.isRetry = true;
             mHandler.sendMessageDelayed(msg, 2000);
             Log.e(TAG, "Retry SHO after delay");
         } else {
+            SHOQueue.isRetry = false;
             mHandler.sendMessage(msg);
         }
     }
