@@ -41,6 +41,8 @@ import android.content.res.Resources;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.media.AudioManager;
+import android.media.AudioDeviceCallback;
+import android.media.AudioDeviceInfo;
 import android.media.AudioAttributes;
 import android.media.AudioPlaybackConfiguration;
 import android.media.MediaDescription;
@@ -176,10 +178,11 @@ public final class Avrcp_ext {
     HashMap<BluetoothDevice, Integer> mVolumeMap = new HashMap();
     public static final String VOLUME_MAP = "bluetooth_volume_map";
     private boolean isShoActive = false;
-
+    AudioManagerAudioDeviceCallback mAudioManagerAudioDeviceCallback;
     private boolean twsShoEnabled = false;
     byte[] dummyaddr = {(byte)0xFA, (byte)0xCE, (byte)0xFA,
                         (byte)0xCE, (byte)0xFA, (byte)0xCE};
+    private boolean cache_play_cmd = false;
     private static final String playerStateUpdateBlackListedAddr[] = {
          "BC:30:7E", //bc-30-7e-5e-f6-27, Name: Porsche BT 0310; bc-30-7e-8c-22-cb, Name: Audi MMI 1193
          "00:1E:43", //00-1e-43-14-f0-68, Name: Audi MMI 4365
@@ -606,6 +609,8 @@ public final class Avrcp_ext {
 
         mAudioManager.registerAudioPlaybackCallback(
                 mAudioManagerPlaybackCb, mAudioManagerPlaybackHandler);
+        mAudioManagerAudioDeviceCallback = new AudioManagerAudioDeviceCallback();
+        mAudioManager.registerAudioDeviceCallback(mAudioManagerAudioDeviceCallback, mHandler);
         changePathDepth = 0;
         changePathFolderType = 0;
         changePathDirection = 0;
@@ -1764,6 +1769,43 @@ public final class Avrcp_ext {
             }
             Log.v(TAG, "Exit handleMessage");
         }
+    }
+
+    private class AudioManagerAudioDeviceCallback extends AudioDeviceCallback {
+        @Override
+        public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
+            Log.i(TAG,"onAudioDevicesAdded");
+            for (int i = 0; i < addedDevices.length; i++) {
+                if (addedDevices[i].getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP) {
+                    int index = getActiveDeviceIndex();
+                    String addr = null;
+                    if (index != INVALID_DEVICE_INDEX) {
+                        addr = deviceFeatures[index].mCurrentDevice.getAddress();
+                    }
+                    if (addr != null && cache_play_cmd &&
+                        Objects.equals(addr, addedDevices[i].getAddress())) {
+                        cache_play_cmd = false;
+                        process_cached_play();
+                    }
+                    //clear cache play cmd unconditionally
+                    cache_play_cmd = false;
+                }
+            }
+        }
+    }
+    private void process_cached_play() {
+        Log.d(TAG,"process_cached_play");
+        int index = getActiveDeviceIndex();
+        handlePassthroughCmd(getByteAddress(deviceFeatures[index].mCurrentDevice),
+                             BluetoothAvrcp.PASSTHROUGH_ID_PLAY,
+                             AvrcpConstants_ext.KEY_STATE_PRESS);
+        Message msg = mHandler.obtainMessage(MSG_NATIVE_REQ_PASS_THROUGH,
+                                             BluetoothAvrcp.PASSTHROUGH_ID_PLAY,
+                                             AvrcpConstants_ext.KEY_STATE_RELEASE);
+        Bundle data = new Bundle();
+        data.putByteArray("BdAddress", getByteAddress(deviceFeatures[index].mCurrentDevice));
+        msg.setData(data);
+        mHandler.sendMessageDelayed(msg,10);
     }
 
     private void updatePlayStatusForDevice(int deviceIndex, PlaybackState state) {
@@ -5102,7 +5144,16 @@ public final class Avrcp_ext {
         return INVALID_DEVICE_INDEX;
     }
 
-
+    private int getActiveDeviceIndex() {
+        for (int i = 0; i < maxAvrcpConnections; i++) {
+            if (deviceFeatures[i].mCurrentDevice != null &&
+                deviceFeatures[i].isActiveDevice) {
+                Log.d(TAG,"Active device index: " + i);
+                return i;
+            }
+        }
+        return INVALID_DEVICE_INDEX;
+    }
     public void storeVolumeForDevice(BluetoothDevice device) {
         SharedPreferences.Editor pref = getVolumeMap().edit();
         int index = getIndexForDevice(device);
@@ -5323,6 +5374,14 @@ public final class Avrcp_ext {
                 skip = true;
             }
         }
+        if (a2dp_active_device == null &&
+            code == KeyEvent.KEYCODE_MEDIA_PLAY) {
+            if (action == KeyEvent.ACTION_DOWN) {
+                cache_play_cmd = true;
+            } else if (action == KeyEvent.ACTION_UP && cache_play_cmd) {
+                Log.d(TAG,"play cmd cached, ignore release");
+            }
+        }
         if (!skip && (mA2dpService != null) && !Objects.equals(a2dp_active_device, device)) {
             Log.w(TAG, "code " + code + " action " + action + " from inactive device");
             if (code == KeyEvent.KEYCODE_MEDIA_PLAY) {
@@ -5330,6 +5389,7 @@ public final class Avrcp_ext {
                         mAudioManager.isMusicActive() &&
                         (mA2dpState == BluetoothA2dp.STATE_PLAYING)) {
                     ignore_play = true;
+                    cache_play_cmd = false;
                 }
                 if (action == KeyEvent.ACTION_DOWN) {
                     Log.d(TAG, "AVRCP Trigger Handoff");
@@ -5355,6 +5415,11 @@ public final class Avrcp_ext {
         if (ignore_play) {
             ignore_play = false;
             Log.d(TAG, "ignore_play: " + ignore_play + " since another PT came before play release");
+        }
+
+        if (cache_play_cmd) {
+            Log.d(TAG,"caching play cmd");
+            return;
         }
 
         if (DEBUG) Log.d(TAG, "Avrcp current play state: " +
