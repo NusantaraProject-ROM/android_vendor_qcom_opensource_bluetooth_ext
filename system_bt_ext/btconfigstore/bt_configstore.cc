@@ -348,6 +348,13 @@ static bool btConfigStoreLoadProperties(uint32_t vPropType,
         LOG_INFO(LOG_TAG, "%s:: prop type: %s, prop value: %s", __func__,
                 convertPropTypeToStringFormat(vProp.type), vProp.value);
         vPropList.push_back(vProp);
+        vProp.type = BT_PROP_A2DP_MCAST_TEST;
+        strlcpy(vProp.value,
+                config_get_string(config, section_name, "a2dpMcastSupported", "null"),
+                sizeof(vProp.value));
+        LOG_INFO(LOG_TAG, "%s:: prop type: %s, prop value: %s", __func__,
+                convertPropTypeToStringFormat(vProp.type), vProp.value);
+        vPropList.push_back(vProp);
         break;
 
       case BT_PROP_SOC_TYPE:
@@ -394,6 +401,15 @@ static bool btConfigStoreLoadProperties(uint32_t vPropType,
         vProp.type = BT_PROP_WIPOWER;
         strlcpy(vProp.value,
                 config_get_string(config, section_name, "wiPowerSupported", "null"),
+                sizeof(vProp.value));
+        LOG_INFO(LOG_TAG, "%s:: prop type: %s, prop value: %s", __func__,
+                convertPropTypeToStringFormat(vProp.type), vProp.value);
+        vPropList.push_back(vProp);
+        break;
+      case BT_PROP_A2DP_MCAST_TEST:
+        vProp.type = BT_PROP_A2DP_MCAST_TEST;
+        strlcpy(vProp.value,
+                config_get_string(config, section_name, "a2dpMcastSupported", "null"),
                 sizeof(vProp.value));
         LOG_INFO(LOG_TAG, "%s:: prop type: %s, prop value: %s", __func__,
                 convertPropTypeToStringFormat(vProp.type), vProp.value);
