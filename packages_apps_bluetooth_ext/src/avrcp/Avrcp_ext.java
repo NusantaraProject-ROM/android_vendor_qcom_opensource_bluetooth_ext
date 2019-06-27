@@ -2790,10 +2790,19 @@ public final class Avrcp_ext {
         if (requested || ((deviceFeatures[i].mLastReportedPosition != playPositionMs) &&
              ((playPositionMs >= deviceFeatures[i].mNextPosMs) ||
              (playPositionMs <= deviceFeatures[i].mPrevPosMs))) && deviceFeatures[i].isActiveDevice) {
-            if (!requested) deviceFeatures[i].mPlayPosChangedNT = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
-            if (deviceFeatures[i].mCurrentDevice != null)
-                registerNotificationRspPlayPosNative(deviceFeatures[i].mPlayPosChangedNT,
-                   (int)playPositionMs, getByteAddress(deviceFeatures[i].mCurrentDevice));
+            if (!requested)
+                deviceFeatures[i].mPlayPosChangedNT = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
+            if (deviceFeatures[i].mCurrentDevice != null) {
+                if (!registerNotificationRspPlayPosNative(deviceFeatures[i].mPlayPosChangedNT,
+                        (int)playPositionMs, getByteAddress(deviceFeatures[i].mCurrentDevice))) {
+                    Log.w(TAG,"Fail to send rsp to remote, restore to interim if change rsp fail");
+                    if (!requested) {
+                        deviceFeatures[i].mPlayPosChangedNT =
+                                AvrcpConstants.NOTIFICATION_TYPE_INTERIM;
+                        return;
+                    }
+                }
+            }
             deviceFeatures[i].mLastReportedPosition = playPositionMs;
             if (playPositionMs != PlaybackState.PLAYBACK_POSITION_UNKNOWN) {
                 deviceFeatures[i].mNextPosMs = playPositionMs + deviceFeatures[i].mPlaybackIntervalMs;
