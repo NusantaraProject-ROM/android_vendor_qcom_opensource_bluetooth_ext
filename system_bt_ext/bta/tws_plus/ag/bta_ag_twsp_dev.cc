@@ -223,6 +223,18 @@ tBTA_AG_SCB* twsp_get_best_mic_scb () {
     if (selected_idx == -1) {
         return nullptr;
     } else {
+        APPL_TRACE_DEBUG("%s: selected eb state : %d", __func__, twsp_devices[selected_idx].state);
+        if (twsp_devices[selected_idx].state != TWSPLUS_EB_STATE_INEAR) {
+            for (int i=0; i<MAX_TWSPLUS_DEVICES; i++) {
+                if (twsp_devices[i].state == TWSPLUS_EB_STATE_INEAR) {
+                    selected_idx = i;
+                    APPL_TRACE_DEBUG("%s: selected in ear idx: %d", __func__, selected_idx);
+                }
+            }
+        }
+        g_latest_selected_eb_role = twsp_devices[selected_idx].role;
+        APPL_TRACE_DEBUG("%s: g_latest_selected_eb_role updated: %d\n", __func__,
+                        g_latest_selected_eb_role);
         return twsp_devices[selected_idx].p_scb;
     }
 }
@@ -277,7 +289,8 @@ void process_mic_quality_change(int eb_idx, uint8_t mic_quality) {
     last_sel_role = get_lat_selected_mic_eb_role();
     APPL_TRACE_DEBUG("%s: last_sel_role : %d\n", __func__, last_sel_role);
     if (get_best_mic_quality_eb_role() == twsp_devices[eb_idx].role &&
-            last_sel_role != twsp_devices[eb_idx].role) {
+            last_sel_role != twsp_devices[eb_idx].role &&
+            twsp_devices[eb_idx].state == TWSPLUS_EB_STATE_INEAR) {
             //Trigger the swap
             APPL_TRACE_DEBUG("%s: Select EB%d  mic, SWAP", __func__, eb_idx);
             select_microphone_path(twsp_devices[eb_idx].p_scb);
