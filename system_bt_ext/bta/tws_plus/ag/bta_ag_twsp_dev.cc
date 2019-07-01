@@ -596,6 +596,11 @@ bool bta_ag_twsp_parse_qbc(tBTA_AG_SCB* p_scb, char* p_s,
     int i;
     char* p;
 
+    if (p_s == NULL) {
+        APPL_TRACE_ERROR("%s: Invalid Argument", __func__);
+        return false;
+    }
+
     for (i = 0; i < 2; i++) {
         /* skip to comma delimiter */
         for (p = p_s; *p != ',' && *p != 0; p++)
