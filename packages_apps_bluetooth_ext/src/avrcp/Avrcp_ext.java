@@ -1122,15 +1122,18 @@ public final class Avrcp_ext {
                     Log.e(TAG,"invalid index for device");
                     break;
                 }
+                byte absVol = (byte) ((byte) msg.arg1 & 0x7f); // discard MSB as it is RFD
                 if (DEBUG) Log.v(TAG, "MSG_NATIVE_REQ_VOLUME_CHANGE addr: " + address);
 
                 if (((!(deviceFeatures[deviceIndex].isActiveDevice)) &&
                     (deviceFeatures[deviceIndex].mInitialRemoteVolume != -1)) ||
                     (!deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice)) {
+                        if (deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice) {
+                           deviceFeatures[deviceIndex].mRemoteVolume = absVol;
+                        }
                         if (DEBUG) Log.v(TAG, "MSG_NATIVE_REQ_VOLUME_CHANGE ignored");
                         break;
                 }
-                byte absVol = (byte) ((byte) msg.arg1 & 0x7f); // discard MSB as it is RFD
                 int absolutevol = absVol;
                 if (DEBUG)
                     Log.v(TAG, "MSG_NATIVE_REQ_VOLUME_CHANGE: volume=" + absVol + " ctype="
