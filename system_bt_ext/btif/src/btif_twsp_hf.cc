@@ -123,6 +123,24 @@ int btif_hf_get_other_connected_twsp_index(int current_index)
     return btif_max_hf_clients;
 }
 
+/*******************************************************************************
+**
+** Function         btif_hf_twsp_send_bvra_update
+**
+** Description      Send BVRA update for connected TWS+ peer earbud
+**
+** Returns          void
+**
+*******************************************************************************/
+
+void btif_hf_twsp_send_bvra_update(int current_index, tBTA_AG_RES_DATA* ag_res) {
+    int peer_eb_idx = btif_hf_get_other_connected_twsp_index(current_index);
+    if ((peer_eb_idx >= 0) && (peer_eb_idx < BTA_AG_MAX_NUM_CLIENTS) &&
+        (btif_hf_cb[peer_eb_idx].peer_feat & BTA_AG_PEER_FEAT_VREC)) {
+        BTIF_TRACE_DEBUG("%s: Send BVRA update for peer earbud, idx: %d", __func__, peer_eb_idx);
+        BTA_AgResult(btif_hf_cb[peer_eb_idx].handle, BTA_AG_BVRA_RES, ag_res);
+    }
+}
 
 }  // namespace headset
 }  // namespace bluetooth

@@ -47,5 +47,7 @@ int get_idx_primary_eb(RawAddress* bd_addr);
 
 int btif_hf_get_other_connected_twsp_index(int idx);
 
+void btif_hf_twsp_send_bvra_update(int idx, tBTA_AG_RES_DATA* ag_res);
+
 }  // namespace headset
 }  // namespace bluetooth
