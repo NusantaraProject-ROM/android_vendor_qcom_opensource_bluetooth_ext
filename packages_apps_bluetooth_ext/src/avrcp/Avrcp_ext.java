@@ -3602,6 +3602,10 @@ public final class Avrcp_ext {
                 int browseInfoID = getBrowseId(packageName);
                 if (browseInfoID != -1) {
                     mBrowsePlayerInfoList.remove(browseInfoID);
+                    BrowsedMediaPlayer_ext player =
+                            mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
+                    if (player != null)
+                        player.updateBrowsablePlayerList(packageName);
                 }
             }
         }
