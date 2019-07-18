@@ -606,13 +606,21 @@ bool bta_ag_twsp_parse_qbc(tBTA_AG_SCB* p_scb, char* p_s,
         for (p = p_s; *p != ',' && *p != 0; p++)
         ;
 
-        /* get integer value */
-        *p = 0;
-        n[i] = utl_str2int(p_s);
-        p_s = p + 1;
-        if (p_s == 0) {
+        if (*p == 0) {
+            n[i] = utl_str2int(p_s);
             break;
+        } else {
+            /* get integer value */
+            *p = 0;
+            n[i] = utl_str2int(p_s);
+            p_s = p + 1;
         }
+    }
+
+    if (i != 1) {
+        //String doesn't have two parts with a comma delimiter
+        APPL_TRACE_ERROR("%s: Invalid QBC string", __func__);
+        return false;
     }
 
     /* process values */
