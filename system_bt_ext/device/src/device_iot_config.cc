@@ -361,7 +361,11 @@ bool device_iot_config_int_add_one(const char* section, const char* key) {
   int result = 0;
   std::unique_lock<std::mutex> lock(config_lock);
   result = config_get_int(config, section, key, result);
-  result += 1;
+  if (result >= 0) {
+    result += 1;
+  } else {
+    result = 0;
+  }
   config_set_int(config, section, key, result);
   device_iot_config_save();
 
