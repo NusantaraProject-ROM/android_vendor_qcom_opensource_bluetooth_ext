@@ -307,7 +307,8 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                 /*SCO is up!*/
                 p_sco->state = BTA_AG_SCO_OPEN_ST;
                 other_scb = get_other_twsp_scb((p_scb->peer_addr));
-                if (other_scb && twsp_sco_active(other_scb) == false) {
+                if (other_scb && twsp_sco_active(other_scb) == false &&
+                        get_twsp_state(other_scb) == TWSPLUS_EB_STATE_INEAR) {
                     APPL_TRACE_WARNING("Calling SCO open");
                     dispatch_event_primary_peer_device(p_scb, BTA_AG_SCO_OPEN_E);
                 }
