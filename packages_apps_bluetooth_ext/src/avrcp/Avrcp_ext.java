@@ -2248,7 +2248,7 @@ public final class Avrcp_ext {
                 for (int i = 0; i < maxAvrcpConnections; i++) {
                     if (device != null && deviceFeatures[i].mCurrentDevice != null) {
                         if ((isPlaying != isPlayingState(deviceFeatures[i].mCurrentPlayState)) &&
-                            (device.equals(deviceFeatures[i].mCurrentDevice))) {
+                            (Objects.equals(deviceFeatures[i].mCurrentDevice, device))) {
                             updateA2dpPlayState = true;
                             deviceFeatures[i].mLastStateUpdate = SystemClock.elapsedRealtime();
                         }
@@ -2389,7 +2389,7 @@ public final class Avrcp_ext {
         if (updateA2dpPlayState && newState != null && newState.getState() == PlaybackState.STATE_PLAYING) {
             for (int i = 0; i < maxAvrcpConnections; i++) {
                 if (device != null && (deviceFeatures[i].mCurrentDevice != null) &&
-                          device.equals(deviceFeatures[i].mCurrentDevice))
+                          Objects.equals(deviceFeatures[i].mCurrentDevice, device))
                     sendPlayPosNotificationRsp(false, i);
             }
         }
@@ -3361,7 +3361,7 @@ public final class Avrcp_ext {
         BluetoothDevice active_device = null;
         for (int i = 0; i < maxAvrcpConnections; i++) {
             if (deviceFeatures[i].mCurrentDevice != null) {
-                if(deviceFeatures[i].mCurrentDevice.equals(device)) {
+                if(device != null && Objects.equals(deviceFeatures[i].mCurrentDevice, device)) {
                     Log.v(TAG,"device is already added in connected list, ignore now");
                     return;
                 }
@@ -3447,8 +3447,8 @@ public final class Avrcp_ext {
                     }
                 }
             }
-            else if (deviceFeatures[i].mCurrentDevice != null &&
-                    !(deviceFeatures[i].mCurrentDevice.equals(device)) &&
+            else if (deviceFeatures[i].mCurrentDevice != null && device != null &&
+                    !(Objects.equals(deviceFeatures[i].mCurrentDevice, device)) &&
                     deviceFeatures[i].isActiveDevice &&
                     !isTwsPlusPair(deviceFeatures[i].mCurrentDevice, device)) {
                 deviceFeatures[i].isActiveDevice = false;
@@ -3480,8 +3480,8 @@ public final class Avrcp_ext {
     public void setAvrcpDisconnectedDevice(BluetoothDevice device) {
         Log.i(TAG,"Enter setAvrcpDisconnectedDevice");
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
-            if (deviceFeatures[i].mCurrentDevice !=null &&
-                    deviceFeatures[i].mCurrentDevice.equals(device)) {
+            if (deviceFeatures[i].mCurrentDevice !=null && device != null &&
+                    Objects.equals(deviceFeatures[i].mCurrentDevice, device)) {
                 if (deviceFeatures[i].isActiveDevice &&
                       deviceFeatures[i].isAbsoluteVolumeSupportingDevice) {
                     storeVolumeForDevice(device);
@@ -3501,8 +3501,8 @@ public final class Avrcp_ext {
                device which is left supporting absolute
                volume as active device
             */
-            if (deviceFeatures[i].mCurrentDevice != null &&
-                    !(deviceFeatures[i].mCurrentDevice.equals(device))) {
+            if (deviceFeatures[i].mCurrentDevice != null && device != null &&
+                    !(Objects.equals(deviceFeatures[i].mCurrentDevice, device))) {
                 Log.i(TAG,"setAvrcpDisconnectedDevice : Active device changed to index = " + i);
                 if (device.isTwsPlusDevice() &&
                     isTwsPlusPair(device,deviceFeatures[i].mCurrentDevice )) {
@@ -3520,7 +3520,7 @@ public final class Avrcp_ext {
             mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), true);
         }
 
-        if (mBrowsingActiveDevice != null && device.equals(mBrowsingActiveDevice)) {
+        if (mBrowsingActiveDevice != null && Objects.equals(mBrowsingActiveDevice, device)) {
             Log.w(TAG,"setAvrcpDisconnect: Browse active device disconned reset it");
             mBrowsingActiveDevice = null;
         }
@@ -3724,7 +3724,7 @@ public final class Avrcp_ext {
         mCurrentBrowsingDevice = mAdapter.getRemoteDevice(address);
         // checking for error cases
         BluetoothDevice device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(bdaddr);
-        if (mBrowsingActiveDevice != null && !device.equals(mBrowsingActiveDevice)) {
+        if (mBrowsingActiveDevice != null && !Objects.equals(mBrowsingActiveDevice, device)) {
             status = AvrcpConstants_ext.RSP_INTERNAL_ERR;
             Log.w(TAG, "setBrowsedPlayer: Cmd from browse inactive device reject it");
         } else if (mMediaPlayerInfoList.isEmpty()) {
@@ -4433,7 +4433,7 @@ public final class Avrcp_ext {
 
         /* Browsed player is already set */
         if (folderObj.mScope == AvrcpConstants_ext.BTRC_SCOPE_FILE_SYSTEM) {
-            if (mBrowsingActiveDevice != null && !device.equals(mBrowsingActiveDevice)) {
+            if (mBrowsingActiveDevice != null && !Objects.equals(mBrowsingActiveDevice, device)) {
                 Log.e(TAG, "handleGetFolderItemBrowse: Cmd from browse inactive device, reject it");
                 getFolderItemsRspNative(bdaddr, AvrcpConstants_ext.RSP_INTERNAL_ERR, (short) 0,
                         (byte) 0x00, 0, null, null, null, null, null, null, null, null);
@@ -4491,7 +4491,7 @@ public final class Avrcp_ext {
             return;
         }
 
-        if (mBrowsingActiveDevice != null && !device.equals(mBrowsingActiveDevice)) {
+        if (mBrowsingActiveDevice != null && !Objects.equals(mBrowsingActiveDevice, device)) {
             Log.w(TAG, "play item Cmd from browse inactive device, reject it");
             playItemRspNative(bdaddr, AvrcpConstants_ext.RSP_INTERNAL_ERR);
             return;
@@ -4525,7 +4525,7 @@ public final class Avrcp_ext {
         }
         BluetoothDevice device =
                 BluetoothAdapter.getDefaultAdapter().getRemoteDevice(itemAttr.mAddress);
-        if (mBrowsingActiveDevice != null && !device.equals(mBrowsingActiveDevice)) {
+        if (mBrowsingActiveDevice != null && !Objects.equals(mBrowsingActiveDevice, device)) {
             Log.e(TAG, "Item attributes from browse inactive device, reject it");
             getItemAttrRspNative(
                     itemAttr.mAddress, AvrcpConstants_ext.RSP_INTERNAL_ERR, (byte) 0, null, null);
@@ -4552,7 +4552,7 @@ public final class Avrcp_ext {
 
     private void handleGetTotalNumOfItemsResponse(byte[] bdaddr, byte scope) {
         BluetoothDevice device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(bdaddr);
-        if (mBrowsingActiveDevice != null && !device.equals(mBrowsingActiveDevice)) {
+        if (mBrowsingActiveDevice != null && !Objects.equals(mBrowsingActiveDevice, device)) {
             getTotalNumOfItemsRspNative(bdaddr, AvrcpConstants_ext.RSP_INTERNAL_ERR, 0, 0);
             Log.w(TAG, "GetTotalNumOfItems: Cmd from browse inactive device reject it");
             return;
@@ -5134,8 +5134,8 @@ public final class Avrcp_ext {
 
     private int getIndexForDevice(BluetoothDevice device) {
         for (int i = 0; i < maxAvrcpConnections; i++) {
-            if (deviceFeatures[i].mCurrentDevice != null &&
-                    deviceFeatures[i].mCurrentDevice.equals(device)) {
+            if (deviceFeatures[i].mCurrentDevice != null && device != null &&
+                    Objects.equals(deviceFeatures[i].mCurrentDevice, device)) {
                 Log.i(TAG,"device found at index " + i);
                 return i;
             }
