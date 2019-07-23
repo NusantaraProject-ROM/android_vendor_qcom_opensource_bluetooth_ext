@@ -878,14 +878,15 @@ public final class Avrcp_ext {
             {
                 String address = (String) msg.obj;
                 if (DEBUG)
-                    Log.v(TAG, "MSG_GET_RC_FEATURES: address="+address+
-                            ", features="+msg.arg1);
+                    Log.v(TAG, "MSG_GET_RC_FEATURES: address = " + address +
+                            ", features = " + msg.arg1);
                 BluetoothDevice device = mAdapter.getRemoteDevice(address);
                 deviceIndex = getIndexForDevice(device);
                 if (deviceIndex == INVALID_DEVICE_INDEX) {
                     Log.v(TAG,"device entry not present, bailing out");
                     return;
                 }
+                BluetoothDevice mDevice = mA2dpService.getActiveDevice();
                 deviceFeatures[deviceIndex].mFeatures = msg.arg1;
                 deviceFeatures[deviceIndex].mFeatures =
                     modifyRcFeatureFromBlacklist(deviceFeatures[deviceIndex].mFeatures,
@@ -907,7 +908,6 @@ public final class Avrcp_ext {
                 } else if (device.isTwsPlusDevice()) {
                     if (twsShoEnabled) {
                         //SHO is enabled, check if TWS+ device is active
-                        BluetoothDevice mDevice = mA2dpService.getActiveDevice();
                         int index = -1;
                         if (mDevice != null) index = getIndexForDevice(mDevice);
                         if (mDevice == null || (mDevice != null && (mDevice.isTwsPlusDevice() ||
@@ -921,7 +921,7 @@ public final class Avrcp_ext {
                         }
                     } else
                         mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), true);
-                } else if (deviceFeatures[deviceIndex].isActiveDevice) {
+                } else if (mDevice != null && mDevice.equals(device)) {
                     mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
                         isAbsoluteVolumeSupported(deviceIndex));
                     Log.v(TAG,"update audio manager for abs vol state = "
@@ -2851,10 +2851,6 @@ public final class Avrcp_ext {
      */
 
  public boolean isAbsoluteVolumeSupported() {
-      /* if (mA2dpService.isMulticastFeatureEnabled() || maxAvrcpConnections >= 2) {
-            if (DEBUG) Log.v(TAG, "isAbsoluteVolumeSupported : Absolute volume is false as multicast or dual a2dp is enabled");
-            return false;
-      }*/
         boolean status = false;
         for (int i = 0; i < maxAvrcpConnections; i++) {
             if (deviceFeatures[i].mCurrentDevice != null &&
@@ -2875,7 +2871,6 @@ public final class Avrcp_ext {
         boolean status = false;
         Log.v(TAG, "Enter isAbsoluteVolumeSupported with index " + index);
         if (deviceFeatures[index].mCurrentDevice != null) {
-
             if (deviceFeatures[index].isAbsoluteVolumeSupportingDevice) {
                 Log.v(TAG, "isAbsoluteVolumeSupported: yes, for dev: " + index);
                 status = true;
@@ -3269,7 +3264,7 @@ public final class Avrcp_ext {
             mAudioManager.avrcpSupportsAbsoluteVolume(mAddress, true);
         }
         else {
-            mAudioManager.avrcpSupportsAbsoluteVolume(mAddress, isAbsoluteVolumeSupported(i));
+            mAudioManager.avrcpSupportsAbsoluteVolume(mAddress, false);
         }
 
         SharedPreferences pref = mContext.getSharedPreferences(ABSOLUTE_VOLUME_BLACKLIST,
@@ -3458,14 +3453,6 @@ public final class Avrcp_ext {
                 Log.i(TAG,"removed at " + i);
                 deviceFeatures[i].mRemoteVolume = -1;
                 deviceFeatures[i].mLocalVolume = -1;
-                /* device is disconnect and some response form music app was
-                 * pending for this device clear it.*/
-// TODOuv
-//                if (mBrowserDevice != null &&
-//                        mBrowserDevice.equals(device)) {
-//                    Log.i(TAG,"clearing mBrowserDevice on disconnect");
-//                    mBrowserDevice = null;
-//                }
             }
             /* Multicast scenario both abs vol supported
                Active device got disconnected so make other
@@ -5271,6 +5258,7 @@ public final class Avrcp_ext {
             Log.e(TAG,"Invalid device index for setAbsVolumeFlag");
             return;
         }
+        int volume = getVolume(device);
         //updating abs volume supported or not to audio when active device change is success
         mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(),
             isAbsoluteVolumeSupported(deviceIndex));
@@ -5278,14 +5266,14 @@ public final class Avrcp_ext {
             Log.d(TAG,"isAbsoluteVolumeSupportingDevice is false or volume is not stored");
             return;
         }
-        if(deviceFeatures[deviceIndex].mInitialRemoteVolume == -1 || getVolume(device) == -1) {
+        if(deviceFeatures[deviceIndex].mInitialRemoteVolume == -1 || volume == -1) {
             Log.e(TAG,"intial volume is not updated or volume is not stored");
             return;
         }
         Message msg = mHandler.obtainMessage();
         msg.what = MESSAGE_UPDATE_ABS_VOLUME_STATUS;
         msg.arg1 = deviceIndex;
-        msg.arg2 = deviceFeatures[deviceIndex].mLocalVolume;
+        msg.arg2 = volume;
         mHandler.sendMessage(msg);
         Log.d(TAG,"setAbsVolumeFlag = " + isAbsoluteVolumeSupported(deviceIndex));
         return;
