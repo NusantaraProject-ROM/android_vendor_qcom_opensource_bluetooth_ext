@@ -283,7 +283,7 @@ static void profile_database_add_(profile_db_entry_t *db_entry)
 
 max_pow_feature_t  max_radiated_power_fetch(const profile_t profile, profile_info_t feature_name)
 {
-  static max_pow_feature_t Tech_max_power = {0xFF, 0xFF, 0xFF, false, false, false};
+  static max_pow_feature_t Tech_max_power = {0x80, 0x80, 0x80, false, false, false};
   assert(profile);
   LOG_WARN(LOG_TAG, "max_radiated_power_fetch:profile %d", profile);
 

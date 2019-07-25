@@ -29,51 +29,36 @@
 
 package org.codeaurora.bluetooth.batestapp;
 
-import android.app.Service;
-import android.media.AudioFocusRequest;
-import android.media.AudioAttributes;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothBATransmitter;
-import android.bluetooth.BluetoothBAEncryptionKey;
-import android.bluetooth.BluetoothBAStreamServiceRecord;
+import android.bluetooth.BluetoothProfile;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.bluetooth.BluetoothProfile;
-import android.util.Log;
-import android.os.IBinder;
-import android.content.Context;
-import java.util.Map;
-import java.util.HashMap;
-
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
 import android.media.AudioFormat;
 import android.media.AudioManager;
-import android.media.AudioTrack;
+import android.media.AudioManager.OnAudioFocusChangeListener;
 import android.media.AudioRecord;
+import android.media.AudioTrack;
+import android.media.MediaRecorder;
+import android.media.audiofx.AcousticEchoCanceler;
+import android.media.audiofx.AutomaticGainControl;
+import android.media.audiofx.NoiseSuppressor;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
 
-import java.io.IOException;
-
-import android.media.MediaRecorder;
-import android.media.AudioManager;
-import android.media.AudioManager.OnAudioFocusChangeListener;
-
-import android.media.audiofx.AcousticEchoCanceler;
-import android.media.audiofx.AutomaticGainControl;
-import android.media.audiofx.NoiseSuppressor;
-
-// class to handle all interactions with Audio part of Broadcast Audio Transmitter.
+// Class to handle all interactions with Audio part of Broadcast Audio Transmitter.
 public class BAAudio {
 
+    static final String TAG = "BAAPP   ";
     public static final String BASERVICE_STATE_CHANGED = "android.bluetooth.bat.service";
     public static final String EXTRA_BA_STATE = "android.bluetooth.extra.ba.state";
     public static final String EXTRA_CONN_STATE = "android.bluetooth.extra.conn.state";
-    private static final String TAG = Utils.TAG + "BAAudio";
     private static final int SAMPLE_RATE = 16000;
     /* CHANNEL_CONFIGURATION_MONO @deprecated Use {@link #CHANNEL_OUT_MONO} or {@link #CHANNEL_IN_MONO} instead.  */
     private static final int CHANNEL_CONFIG_RECORD = AudioFormat.CHANNEL_IN_MONO;
@@ -86,17 +71,12 @@ public class BAAudio {
     private final static int MSG_STOP_RECORD_PLAY = 1;
     private final static int MSG_START_RECORD_PLAY = 2;
     private final static int MSG_AUDIO_FOCUS_CHANGE = 3;
-    private static BluetoothBATransmitter sBATprofile = null;
     private static boolean sIsBAReady = false;
-    private static BluetoothBAStreamServiceRecord mServiceRecord;
     private static boolean sIsPlaying = false;
     private BluetoothAdapter mAdapter;
     private BAAudioReceiver mReceiver;
     private Context mContext;
     private int mCurrBATState;
-    private BluetoothBAEncryptionKey mCurrEncKey;
-    private int mCurrDiv;
-    private int mCurrStreamId;
     private AudioRecord mAudioRecord = null;
     private AudioTrack mAudioTrack = null;
     private int mCurrAudioFocusState = AudioManager.AUDIOFOCUS_LOSS;
@@ -105,6 +85,9 @@ public class BAAudio {
     private StreamingThread mStrThread;
     // This is returned when requesting focus from AudioManager
     private AudioFocusRequest mfocusRequest;
+    private int BAT_State = BroadcastAudioAppActivity.STATE_DISABLED;
+    static int BA_TRANSMITTER = 23;
+
     private OnAudioFocusChangeListener mAudioFocusListener = new OnAudioFocusChangeListener() {
         public void onAudioFocusChange(int focusVal) {
             Log.d(TAG, "focusChangs val = " + focusVal);
@@ -114,39 +97,34 @@ public class BAAudio {
     };
 
     public BAAudio(Context context) {
+
         Log.d(TAG, " BAAudio constructor");
         mContext = context;
         mReceiver = new BAAudioReceiver();
         mAdapter = BluetoothAdapter.getDefaultAdapter();
-        IntentFilter filter = new IntentFilter(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED);
-        filter.addAction(BluetoothBATransmitter.ACTION_BAT_ENCRYPTION_KEY_CHANGED);
-        filter.addAction(BluetoothBATransmitter.ACTION_BAT_DIV_CHANGED);
-        filter.addAction(BluetoothBATransmitter.ACTION_BAT_STREAMING_ID_CHANGED);
-        mContext.registerReceiver(mReceiver, filter);
-        if (mAdapter != null) {
-            mAdapter.getProfileProxy(mContext, new BATServiceListener(),
-                    BluetoothProfile.BA_TRANSMITTER);
-        }
-        mCurrEncKey = null;
-        mServiceRecord = null;
-        mCurrDiv = BluetoothBATransmitter.INVALID_DIV;
-        mCurrStreamId = 0;
-        mCurrBATState = BluetoothBATransmitter.STATE_DISABLED;
 
+        IntentFilter filter = new IntentFilter(
+                BroadcastAudioAppActivity.ACTION_BAT_STATE_CHANGED);
+        filter.addAction(BroadcastAudioAppActivity.ACTION_BAT_ENCRYPTION_KEY_CHANGED);
+        filter.addAction(BroadcastAudioAppActivity.ACTION_BAT_STATE_CHANGED);
+        mContext.registerReceiver(mReceiver, filter);
+
+        mCurrBATState = BroadcastAudioAppActivity.STATE_DISABLED;
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+
         HandlerThread thread = new HandlerThread("BAaudioHandler");
         thread.start();
         Looper looper = thread.getLooper();
         mHandler = new BAMsgHandler(looper);
-        AudioAttributes streamAttributes =
-             new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
-                                          .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                                          .build();
-        mfocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                                      .setAudioAttributes(streamAttributes)
-                                      .setOnAudioFocusChangeListener(mAudioFocusListener)
-                                      .build();
 
+        AudioAttributes streamAttributes =
+                new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .build();
+        mfocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(streamAttributes)
+                        .setOnAudioFocusChangeListener(mAudioFocusListener)
+                                .build();
     }
 
     public void broadcastServiceConnection(boolean isConnected, int state) {
@@ -167,107 +145,13 @@ public class BAAudio {
             mContext.unregisterReceiver(mReceiver);
         }
     }
-
-    public boolean enableBA() {
-        Log.d(TAG, " enableBA currState = " + mCurrBATState);
-        if (sBATprofile == null) {
-            Log.d(TAG, " profile null, return");
-            return false;
-        }
-        if ((mCurrBATState == BluetoothBATransmitter.STATE_PAUSED) ||
-                (mCurrBATState == BluetoothBATransmitter.STATE_PLAYING)) {
-            return false;
-        }
-        return sBATprofile.setBATState(BluetoothBATransmitter.ENABLE_BA_TRANSMITTER);
-    }
-
-    public boolean disableBA() {
-        Log.d(TAG, " disableBA currState = " + mCurrBATState);
-        if (sBATprofile == null) {
-            Log.d(TAG, " profile null, return");
-            return false;
-        }
-        if (mCurrBATState == BluetoothBATransmitter.STATE_DISABLED) {
-            return false;
-        }
-        return sBATprofile.setBATState(BluetoothBATransmitter.DISABLE_BA_TRANSMITTER);
-    }
-
-    public int getBATState() {
-        Log.d(TAG, " getBATState currState = " + mCurrBATState);
-        if (sBATprofile != null) {
-            mCurrBATState = sBATprofile.getBATState();
-        }
-        Log.d(TAG, " getBATState returning  = " + mCurrBATState);
-        return mCurrBATState;
-    }
-
-    public BluetoothBAEncryptionKey getEncKey() {
-        Log.d(TAG, " getEncKey currState = " + mCurrBATState);
-        if (sBATprofile != null) {
-            mCurrEncKey = sBATprofile.getEncryptionKey();
-        }
-        for (int i = 0; i < BluetoothBAEncryptionKey.ENCRYPTION_KEY_LENGTH; i++) {
-            if (mCurrEncKey != null)
-                Log.d(TAG, " EncrycptionKey[ " + i + "] = " + mCurrEncKey.getEncryptionKey()[i]);
-        }
-        return mCurrEncKey;
-    }
-
-    public int getStreamId() {
-        Log.d(TAG, " getStreamId mCurrStreamId = " + mCurrStreamId);
-        if (sBATprofile != null) {
-            mCurrStreamId = (int) sBATprofile.getStreamId();
-        }
-        Log.d(TAG, " getStreamid returning  = " + mCurrStreamId);
-        return mCurrStreamId;
-    }
-
-    public int getDIV() {
-        Log.d(TAG, " getDIV mCurrDiv = " + mCurrDiv);
-        if (sBATprofile != null) {
-            mCurrDiv = sBATprofile.getDIV();
-        }
-        Log.d(TAG, " getDIV returning  = " + mCurrDiv);
-        return mCurrDiv;
-    }
-
-    public boolean refreshEncryptionKey() {
-        Log.d(TAG, " refreshEncryptionKey mCurrBATState = " + mCurrBATState);
-        if (sBATprofile == null) {
-            return false;
-        }
-        return sBATprofile.refreshEncryptionKey();
-    }
-
-    public BluetoothBAStreamServiceRecord getBAServiceRecord() {
-        Log.d(TAG, " getBAServiceRecord mCurrBATState = " + mCurrBATState);
-        if (sBATprofile == null) {
-            Log.d(TAG, " Profile not up, return null ");
-            return null;
-        }
-        try {
-            mServiceRecord = sBATprofile.getBAServiceRecord();
-            Long[] streamIDs = mServiceRecord.getStreamIds();
-            Log.d(TAG, " streamIDs =  " + streamIDs.length + "streamId = " + streamIDs[0]);
-            Map<Integer, Long> mServiceRecordData = mServiceRecord.getServiceRecord(streamIDs[0]);
-            for (Map.Entry<Integer, Long> entry : mServiceRecordData.entrySet()) {
-                Log.d(TAG, " Key< " + entry.getKey() + " >" + " value <" + entry.getValue() + ">");
-            }
-        } catch (Exception e) {
-            Log.d(TAG, " Exception occured ");
-            return null;
-        }
-        return mServiceRecord;
-    }
-
     private synchronized void initAudioRecordSink() {
-        mAudioRecord = new AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, SAMPLE_RATE,
-                CHANNEL_CONFIG_RECORD, AUDIO_FORMAT, RECORD_BUF_SIZE);
+        mAudioRecord = new AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                SAMPLE_RATE, CHANNEL_CONFIG_RECORD, AUDIO_FORMAT, RECORD_BUF_SIZE);
         Log.d(TAG," mAudioRecord initialized = " + mAudioRecord.getState());
         if (AutomaticGainControl.isAvailable()) {
-            AutomaticGainControl agc = AutomaticGainControl.create(mAudioRecord.getAudioSessionId
-                    ());
+            AutomaticGainControl agc = AutomaticGainControl.create(
+                    mAudioRecord.getAudioSessionId());
             if (agc != null) {
                 Log.d(TAG, "AGC is " + (agc.getEnabled() ? "enabled" : "disabled"));
                 agc.setEnabled(true);
@@ -296,8 +180,8 @@ public class BAAudio {
             if (aec != null) {
                 Log.d(TAG, "AEC is " + (aec.getEnabled() ? "enabled" : "disabled"));
                 aec.setEnabled(true);
-                Log.d(TAG, "AEC is " + (aec.getEnabled() ? "enabled" : "disabled" + " after trying to" +
-                        " disable"));
+                Log.d(TAG, "AEC is " + (aec.getEnabled() ? "enabled" : "disabled"
+                        + " after trying to" + " disable"));
             }
         } else {
             Log.d(TAG, "aec is unavailable");
@@ -341,34 +225,18 @@ public class BAAudio {
         }
     }
 
-    class BATServiceListener implements BluetoothProfile.ServiceListener {
-        @Override
-        public void onServiceConnected(int profile, BluetoothProfile proxy) {
-            Log.d(TAG, " onServiceConnected profile = " + profile);
-            sBATprofile = (BluetoothBATransmitter) proxy;
-            sIsBAReady = true;
-            mCurrBATState = sBATprofile.getBATState();
-            broadcastServiceConnection(true, mCurrBATState);
-        }
-
-        @Override
-        public void onServiceDisconnected(int profile) {
-            Log.d(TAG, " onServiceDisconnected profile = " + profile);
-            sIsBAReady = false;
-            mCurrBATState = BluetoothBATransmitter.STATE_DISABLED;
-            sBATprofile = null;
-            broadcastServiceConnection(false, mCurrBATState);
-        }
-    }
-
     private class BAAudioReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
+
             String action = intent.getAction();
-            int extraVal = 0;
             Log.d(TAG, action);
-            if (action.equals(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED)) {
-                extraVal = intent.getIntExtra(BluetoothBATransmitter.EXTRA_STATE,
+            int extraVal = 0;
+
+            if(action == null)
+                return;
+            if (action.equals(BroadcastAudioAppActivity.ACTION_BAT_STATE_CHANGED)) {
+                extraVal = intent.getIntExtra(BroadcastAudioAppActivity.EXTRA_STATE,
                         -1);
                 if (extraVal != -1)
                     mCurrBATState = extraVal;
@@ -376,26 +244,10 @@ public class BAAudio {
                         "extraVal = "
                         + extraVal);
             }
-            if (action.equals(BluetoothBATransmitter.ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
-                mCurrEncKey = (BluetoothBAEncryptionKey) intent.getParcelableExtra
-                        (BluetoothBATransmitter.EXTRA_ECNRYPTION_KEY);
-                Log.d(TAG, " ACTION_BAT_ENCRYPTION_KEY_CHANGED ");
-            }
-            if (action.equals(BluetoothBATransmitter.ACTION_BAT_DIV_CHANGED)) {
-                extraVal = intent.getIntExtra(BluetoothBATransmitter.EXTRA_DIV_VALUE,
-                        -1);
-                if (extraVal != -1)
-                    mCurrDiv = extraVal;
-                Log.d(TAG, " ACTION_BAT_DIV_CHANGED mCurrDiv = " + mCurrDiv + "extraVal = " +
-                        extraVal);
-            }
-            if (action.equals(BluetoothBATransmitter.ACTION_BAT_STREAMING_ID_CHANGED)) {
-                extraVal = intent.getIntExtra(BluetoothBATransmitter.EXTRA_STREAM_ID,
-                        -1);
-                if (extraVal != -1)
-                    mCurrStreamId = extraVal;
-                Log.d(TAG, " ACTION_BAT_STREAMING_ID_CHANGED mCurrStreamId = "
-                        + mCurrStreamId + " extraVal = " + extraVal);
+            // Need to get BAT State for above class.
+            if (action.equals(BroadcastAudioAppActivity.ACTION_BAT_STATE_CHANGED)) {
+                final int state = intent.getIntExtra(BroadcastAudioAppActivity.EXTRA_STATE, -1);
+                BAT_State = state;
             }
         }
     }
@@ -445,9 +297,9 @@ public class BAAudio {
                 case MSG_START_RECORD_PLAY:
                     Log.d(TAG, " Current Audio Focus = " + mCurrAudioFocusState);
                     if (mCurrAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
-                        Log.d(TAG, " Transient Loss occused, call must be in progress, don't " +
-                                "start now ");
-                    //requestAudioFocus (AudioManager.OnAudioFocusChangeListener l, int, int)
+                        Log.d(TAG, " Transient Loss occurred, call must be in progress, don't "
+                            + "start now ");
+                    // requestAudioFocus (AudioManager.OnAudioFocusChangeListener l, int, int)
                     // method was deprecated in API level 26. use requestAudioFocus(AudioFocusRequest)
                     int focusGranted = mAudioManager.requestAudioFocus(mfocusRequest);
                     Log.d(TAG, " Focus Granted = " + focusGranted);

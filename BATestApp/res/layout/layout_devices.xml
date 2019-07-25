@@ -50,7 +50,7 @@
         android:layout_alignParentBottom="true"
         android:text="@string/go_previous" />
 
-    <android.support.v7.widget.RecyclerView
+    <ListView
         android:id="@+id/id_lv_deviceslist"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

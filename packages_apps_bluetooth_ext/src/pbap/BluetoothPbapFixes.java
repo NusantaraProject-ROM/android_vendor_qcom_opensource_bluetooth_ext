@@ -521,4 +521,11 @@ public class BluetoothPbapFixes {
                 mNotificationManager.cancelAll();
         }
     }
+
+    static boolean isRebonded(BluetoothDevice remoteDevice) {
+        String isRebonded = PbapSdpResponse.get(
+                remoteDevice.getAddress().substring(0,8));
+        return ((isRebonded != null) && isRebonded.equalsIgnoreCase("Y"));
+    }
+
 }

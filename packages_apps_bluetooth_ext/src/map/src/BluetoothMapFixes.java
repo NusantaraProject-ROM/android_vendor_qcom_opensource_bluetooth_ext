@@ -273,4 +273,10 @@ public class BluetoothMapFixes {
         }
         return !ismap14Enabled;
     }
+
+    static boolean isRebonded(BluetoothDevice remoteDevice) {
+        String isRebonded = mapSdpResponse.get(
+            remoteDevice.getAddress().substring(0,8));
+        return ((isRebonded != null) && isRebonded.equalsIgnoreCase("Y"));
+    }
 }

@@ -27,7 +27,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.codeaurora.bluetooth.batestapp;
+package com.android.bluetooth.ba;
 
 import android.app.Service;
 
@@ -35,7 +35,6 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.BluetoothManager;
-
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -57,9 +56,8 @@ import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 
-import android.bluetooth.BluetoothBAEncryptionKey;
-import android.bluetooth.BluetoothBAStreamServiceRecord;
-import android.bluetooth.BluetoothBATransmitter;
+import com.android.bluetooth.ba.BluetoothBAEncryptionKey;
+import com.android.bluetooth.ba.BluetoothBAStreamServiceRecord;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -70,20 +68,16 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.ParcelUuid;
 import android.os.Message;
-import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.RemoteException;
-
+import android.os.Binder;
 import android.util.Log;
 
 import com.android.internal.util.IState;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
-
-import org.codeaurora.bluetooth.batestapp.IGattBroadcastService;
-import org.codeaurora.bluetooth.batestapp.IGattBroadcastServiceCallback;
-import org.codeaurora.bluetooth.batestapp.BAAudio;
+import com.android.bluetooth.btservice.ProfileService;
 
 import java.util.List;
 import java.util.UUID;
@@ -92,156 +86,119 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class GattBroadcastService extends Service {
-    private static final String TAG = Utils.TAG + "GattBroadcastService";
+public class GattBroadcastService  {
+    private static final String TAG = "GattBroadcastService";
 
-    public static final UUID GATT_BROADCAST_SERVICE_UUID = UUID.fromString
+    private final UUID GATT_BROADCAST_SERVICE_UUID = UUID.fromString
             ("0000FE06-0000-1000-8000-00805F9B34FB");
-    public static final UUID BROADCAST_VERSION_UUID = UUID.fromString
+    private final UUID BROADCAST_VERSION_UUID = UUID.fromString
             ("0000BCA4-d102-11e1-9b23-00025b00a5a5");
-    public static final UUID BROADCAST_ADDRESS_UUID = UUID.fromString
+    private final UUID BROADCAST_ADDRESS_UUID = UUID.fromString
             ("0000BCA7-d102-11e1-9b23-00025b00a5a5");
-    public static final UUID BROADCAST_STATUS_UUID = UUID.fromString
+    private final UUID BROADCAST_STATUS_UUID = UUID.fromString
             ("0000BCA5-d102-11e1-9b23-00025b00a5a5");
-    public static final UUID BROADCAST_SECKEY_UUID = UUID.fromString
+    private final UUID BROADCAST_SECKEY_UUID = UUID.fromString
             ("0000BCAC-d102-11e1-9b23-00025b00a5a5");
-    public static final UUID BROADCAST_STREAM_SERVICE_RECORDS_UUID = UUID.fromString
+    private final UUID BROADCAST_STREAM_SERVICE_RECORDS_UUID = UUID.fromString
             ("0000BCA6-d102-11e1-9b23-00025b00a5a5");
-    public static final UUID BROADCAST_IDENTIFIER_UUID = UUID.fromString
+    private final UUID BROADCAST_IDENTIFIER_UUID = UUID.fromString
             ("0000BCA8-d102-11e1-9b23-00025b00a5a5");
-    //status codes
-    public static final int BRA_ENABLED_SUCESSS = 0;
-    public static final int BRA_ENABLED_FAILED = 1;
-    public static final int BRA_DISABLED_SUCESSS = 2;
-    public static final int BRA_DISABLED_FAILED = 3;
-    public static final int ASSOCIATE_BCA_RECEIVER_SUCCESS = 4;
-    public static final int ASSOCIATE_BCA_RECEIVER_FAILED = 5;
 
+    // Status Codes
+    private final int BRA_ENABLED_SUCCESS = 0;
+    private final int BRA_ENABLED_FAILED = 1;
+    private final int BRA_DISABLED_SUCCESS = 2;
+    private final int BRA_DISABLED_FAILED = 3;
+    private final int ASSOCIATE_BCA_RECEIVER_SUCCESS = 4;
+    private final int ASSOCIATE_BCA_RECEIVER_FAILED = 5;
 
-    private static final int FETCH_OWN_RANDOM_ADDRESS = 0;
-    private static final int NOTIFY_CB_ASSOCIATE_BCA_RECEIVER = 1;
-    private static final int NOTIFY_CB_CONFIGURE_BRA = 2;
-    private static final int NOTIFY_CB_ONLOST_ONFOUND_RECEIVER = 3;
-    private static final int HANDLER_ARG_NOT_USED = -1;
+    private final int FETCH_OWN_RANDOM_ADDRESS = 0;
+    private final int NOTIFY_CB_ASSOCIATE_BCA_RECEIVER = 1;
+    private final int NOTIFY_CB_CONFIGURE_BRA = 2;
+    private final int NOTIFY_CB_ONLOST_ONFOUND_RECEIVER = 3;
+    private final int HANDLER_ARG_NOT_USED = -1;
+    private final int LE_DEVICE_NAME_MAX_LENGTH = 15;
 
-    private static final int LE_DEVICE_NAME_MAX_LENGTH = 15;
-
-    public BluetoothManager mBluetoothManager;
-    public BAAudio mBAAudio;
-    public BleScanner mBleScanner;
-    public BleAdvertiser mBleAdvertiser;
+    private BluetoothManager mBluetoothManager;
+    private BATService mBATService;
+    private BleScanner mBleScanner;
+    private BleAdvertiser mBleAdvertiser;
     private BluetoothAdapter mBluetoothAdapter;
     private GattBroadcastServiceReceiver mReceiver;
     private GattBroadcastServiceStateMachine mStateMachine;
     private boolean mIsBAPairing = false;
     private BluetoothDevice mDevice = null;
-    private IGattBroadcastServiceCallback mGattBroadcastServiceCallback = null;
     private Context mContext;
     private GattBroadcastServiceMessageHandler mSessionHandler = null;
 
-    private final IGattBroadcastService.Stub mBinder = new IGattBroadcastService.Stub() {
-
-        public void registerCallbacks(IGattBroadcastServiceCallback cb) {
-            Log.i(TAG, "registerCallbacks");
-            if (mGattBroadcastServiceCallback == null)
-                mGattBroadcastServiceCallback = cb;
+    private void configureBroadcastReceiverAssociation(boolean enable) {
+        Log.i(TAG, "configureBroadcastReceiverAssociation :" + enable);
+        //Do not forward BRA Enable/Disable request to state machine, if BT is not on.
+        if (isBluetoothLeOn() && mStateMachine != null) {
+            mStateMachine.sendMessage(GattBroadcastServiceStateMachine
+                    .CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION, enable);
+        } else if (mSessionHandler != null) {
+            int status = enable ? BRA_ENABLED_FAILED: BRA_DISABLED_SUCCESS;
+            mSessionHandler.sendMessage(
+                    mSessionHandler.obtainMessage(NOTIFY_CB_CONFIGURE_BRA, status));
+        } else {
+            Log.i(TAG, "mSessionHandler is null");
         }
+    }
 
-        public void deRegisterCallbacks(IGattBroadcastServiceCallback cb) {
-            Log.i(TAG, "deRegisterCallbacks");
-            if (mGattBroadcastServiceCallback == cb)
-                mGattBroadcastServiceCallback = null;
+    private void associateBCAReceiver(BluetoothDevice device) {
+        Log.i(TAG, "associateBCAReceiver :" + device);
+         //Do not forward associate BCA Receiver request to state machine, if BT is not on.
+        if (isBluetoothLeOn() && mStateMachine != null) {
+            mStateMachine.sendMessage(GattBroadcastServiceStateMachine
+                    .ASSOCIATE_BCA_RECEIVER, device);
+        } else if (mSessionHandler != null) {
+            mSessionHandler.sendMessage(
+                    mSessionHandler.obtainMessage(NOTIFY_CB_ASSOCIATE_BCA_RECEIVER,
+                            ASSOCIATE_BCA_RECEIVER_FAILED, HANDLER_ARG_NOT_USED, device));
+        } else {
+            Log.i(TAG, "mSessionHandler is null");
         }
+    }
 
-        public void configureBroadcastReceiverAssociation(boolean enable) {
-            Log.i(TAG, "configureBroadcastReceiverAssociation :"+enable);
-            //Do not forward BRA Enable/Disable request to state machine, if BT is not on.
-            if (isBluetoothLeOn() && mStateMachine != null) {
-                mStateMachine.sendMessage(GattBroadcastServiceStateMachine
-                        .CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION, enable);
-            } else if (mSessionHandler != null) {
-                int status = enable ? BRA_ENABLED_FAILED: BRA_DISABLED_SUCESSS;
-                mSessionHandler.sendMessage(
-                        mSessionHandler.obtainMessage(NOTIFY_CB_CONFIGURE_BRA, status));
-            } else {
-                Log.i(TAG, "mSessionHandler is null");
-            }
-        }
+    public void start(Context context) {
 
-        public void associateBCAReceiver(BluetoothDevice device) {
-            Log.i(TAG, "associateBCAReceiver :"+device);
-             //Do not forward associate BCA Receiver request to state machine, if BT is not on.
-            if (isBluetoothLeOn() && mStateMachine != null) {
-                mStateMachine.sendMessage(GattBroadcastServiceStateMachine
-                        .ASSOCIATE_BCA_RECEIVER, device);
-            } else if (mSessionHandler != null) {
-                mSessionHandler.sendMessage(
-                        mSessionHandler.obtainMessage(NOTIFY_CB_ASSOCIATE_BCA_RECEIVER,
-                        ASSOCIATE_BCA_RECEIVER_FAILED, HANDLER_ARG_NOT_USED, device));
-            } else {
-                Log.i(TAG, "mSessionHandler is null");
-            }
-        }
-
-    };
-
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        Log.i(TAG, "onCreate");
-
-        mContext = getApplicationContext();
-        if (!initAdapter()) {
-            Log.e(TAG, "onCreate: Unexpected error");
-            stopSelf();
-            return;
-        }
-
-        mBAAudio = new BAAudio(mContext);
-        mBleScanner = new BleScanner(this, mContext);
-        mBleAdvertiser = new BleAdvertiser(this, mContext);
+        mContext = context;
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        mBluetoothManager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+        mBleScanner = new BleScanner();
+        mBleAdvertiser = new BleAdvertiser();
 
         HandlerThread thread = new HandlerThread("BluetoothGattBroadcastServiceHandler");
         thread.start();
         Looper looper = thread.getLooper();
 
-        mSessionHandler = new GattBroadcastServiceMessageHandler(this, looper);
-
-        mStateMachine = new GattBroadcastServiceStateMachine(this, mContext);
-        Log.i("GattBroadcastServiceStateMachine", "make");
+        mSessionHandler = new GattBroadcastServiceMessageHandler(looper);
+        mBATService = BATService.getBATService();
+        mStateMachine = new GattBroadcastServiceStateMachine();
         mStateMachine.start();
         mReceiver = new GattBroadcastServiceReceiver();
 
-        IntentFilter filter = new IntentFilter();
-
-        filter.addAction(BluetoothAdapter.ACTION_BLE_STATE_CHANGED);
-        filter.addAction(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED);
-        filter.addAction(BluetoothBATransmitter.ACTION_BAT_ENCRYPTION_KEY_CHANGED);
-        filter.addAction(BluetoothBATransmitter.ACTION_BAT_DIV_CHANGED);
-        filter.addAction(BluetoothBATransmitter.ACTION_BAT_STREAMING_ID_CHANGED);
+        IntentFilter filter = new IntentFilter(BATService.ACTION_BAT_STATE_CHANGED);
+        filter.addAction(BATService.ACTION_BAT_ENCRYPTION_KEY_CHANGED);
+        filter.addAction(BATService.ACTION_BAT_DIV_CHANGED);
+        filter.addAction(BATService.ACTION_BAT_STREAMING_ID_CHANGED);
         filter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
         filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
-        registerReceiver(mReceiver, filter);
+        filter.addAction(BATService.ACTION_BAT_BRA_ENABLE);
+        filter.addAction(BATService.ACTION_BAT_BRA_DISABLE);
+        filter.addAction(BATService.ACTION_BAT_ASSOCIATE_BCA_RECEIVER);
+        mContext.registerReceiver(mReceiver, filter);
     }
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i(TAG, " onStartCommand");
-        return START_NOT_STICKY;
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Log.i(TAG, "onDestroy");
-
+    public void stop() {
+        Log.i(TAG, "Stop");
         if (mStateMachine != null) {
             mStateMachine.doQuit();
         }
 
         if (mSessionHandler != null) {
-            //Perform cleanup in Handler running on worker Thread
+            // Perform cleanup in Handler running on Worker Thread
             mSessionHandler.removeCallbacksAndMessages(null);
             Looper looper = mSessionHandler.getLooper();
             if (looper != null) {
@@ -253,37 +210,8 @@ public class GattBroadcastService extends Service {
         }
 
         if (mReceiver != null) {
-            unregisterReceiver(mReceiver);
+            mContext.unregisterReceiver(mReceiver);
         }
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        // Return the interface
-        return mBinder;
-    }
-
-    private boolean initAdapter() {
-        mBluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        if (mBluetoothManager == null)
-        {
-            Log.e(TAG, "mBluetoothManager is null");
-            return false;
-        }
-
-        mBluetoothAdapter = mBluetoothManager.getAdapter();
-        if (mBluetoothAdapter == null) {
-            Log.e(TAG, "mBluetoothAdapter is null");
-            return false;
-        }
-
-        boolean isBtEnabled = mBluetoothAdapter.isEnabled();
-        if (!isBtEnabled) {
-           Log.e(TAG, "bt is not enabled");
-           return false;
-        }
-
-        return true;
     }
 
     private boolean isBluetoothLeOn() {
@@ -292,7 +220,7 @@ public class GattBroadcastService extends Service {
                 Log.i(TAG, "isBluetoothLeOn: true");
                 return true;
             } else {
-                Log.i(TAG, "bluetooth le state " + mBluetoothAdapter.getLeState());
+                Log.i(TAG, "Bluetooth LE state " + mBluetoothAdapter.getLeState());
             }
         } else {
             Log.i(TAG, " mBluetoothAdapter is null");
@@ -302,12 +230,10 @@ public class GattBroadcastService extends Service {
 
 
     private final class GattBroadcastServiceMessageHandler extends Handler {
-        Context mContxt;
-        private static final String TAG = Utils.TAG + "GattBroadcastServiceMessageHandler";
+        private static final String TAG = "GattBroadcastServiceMessageHandler";
 
-        private GattBroadcastServiceMessageHandler(Context contxt, Looper looper) {
+        private GattBroadcastServiceMessageHandler(Looper looper) {
             super(looper);
-            mContxt = contxt;
             Log.i(TAG, "GattBroadcastServiceMessageHandler ");
         }
 
@@ -325,25 +251,20 @@ public class GattBroadcastService extends Service {
                 case NOTIFY_CB_ASSOCIATE_BCA_RECEIVER:
                     status = msg.arg1;
                     dev = (BluetoothDevice) msg.obj;
-                    try {
-                        if (mGattBroadcastServiceCallback != null) {
-                            mGattBroadcastServiceCallback
-                                    .onAssociatedBCAReceiver(dev, status);
-                        }
-                    } catch (RemoteException e) {
-                        Log.e(TAG, "remote exception:  ", e);
-                    }
+                    Intent notify_on_associated_BCA_Receiver = new Intent(
+                            BATService.ACTION_BAT_ON_ASSOCIATED_BCA_RECEIVER);
+                    notify_on_associated_BCA_Receiver.putExtra(BATService.EXTRA_STATUS, status);
+                    notify_on_associated_BCA_Receiver.putExtra(BluetoothDevice.EXTRA_DEVICE, dev);
+                    mContext.sendBroadcast(notify_on_associated_BCA_Receiver,
+                            BATService.BLUETOOTH_PERM_ADMIN);
                     break;
                 case NOTIFY_CB_CONFIGURE_BRA:
                     status = msg.arg1;
-                    try {
-                        if (mGattBroadcastServiceCallback != null) {
-                            mGattBroadcastServiceCallback
-                                    .onConfiguredBroadcastReceiverAssociation(status);
-                        }
-                    } catch (RemoteException e) {
-                        Log.e(TAG, "remote exception:  ", e);
-                    }
+                    Intent notify_configure_bra = new Intent(
+                            BATService.ACTION_BAT_BRA_STATE_CHANGED);
+                    notify_configure_bra.putExtra(BATService.EXTRA_STATUS, status);
+                    mContext.sendBroadcast(notify_configure_bra,
+                            BATService.BLUETOOTH_PERM_ADMIN);
                     break;
                 case NOTIFY_CB_ONLOST_ONFOUND_RECEIVER:
                     boolean isFound;
@@ -357,12 +278,14 @@ public class GattBroadcastService extends Service {
                     } else {
                         return;
                     }
-                    try {
-                        if (mGattBroadcastServiceCallback != null)
-                            mGattBroadcastServiceCallback.onFoundOnLostBCAReceiver(result, isFound);
-                    } catch (RemoteException e) {
-                        Log.e(TAG, "remote exception:  ", e);
-                    }
+
+                    Intent notify_onlost_onfound_receiver = new Intent(
+                            BATService.ACTION_BAT_ONFOUND_ONLOST_BCA_RECEIVER);
+                    notify_onlost_onfound_receiver.putExtra(BATService.EXTRA_SCAN_RESULT,
+                            result);
+                    notify_onlost_onfound_receiver.putExtra(BATService.EXTRA_ONFOUND, isFound);
+                    mContext.sendBroadcast(notify_onlost_onfound_receiver,
+                            BATService.BLUETOOTH_PERM_ADMIN);
                     break;
                 default:
                     break;
@@ -370,20 +293,14 @@ public class GattBroadcastService extends Service {
         }
     };
 
-    public class BleScanner {
-        private static final String TAG = Utils.TAG + "GattBroadcastService: BleScanner";
+    private class BleScanner {
+        private static final String TAG = "GattBroadcastService: BleScanner";
         private BluetoothLeScanner mScanner;
         private ScanCallback mCallback;
-        private GattBroadcastService mService;
-        private Context mContext;
-        private BluetoothGatt mBluetoothGatt = null;
-        private String mOwnAddress = null;
         private boolean mScanning = false;
 
-        private BleScanner(GattBroadcastService svc, Context context) {
-            Log.i(TAG, "BleScanner ");
-            mService = svc;
-            mContext = context;
+        private BleScanner() {
+            Log.d(TAG, "BleScanner ");
             mCallback = new GattBroadcastReceiverScanCallback();
             mScanner = mBluetoothAdapter.getBluetoothLeScanner();
         }
@@ -397,8 +314,8 @@ public class GattBroadcastService extends Service {
                         List<ScanFilter> filters = new ArrayList<ScanFilter>();
                         ScanSettings.Builder settingBuilder = new ScanSettings.Builder();
                         filters.add(new ScanFilter.Builder()
-                                .setServiceSolicitationUuid(new ParcelUuid(GattBroadcastService
-                                        .GATT_BROADCAST_SERVICE_UUID))
+                                .setServiceSolicitationUuid(new ParcelUuid(
+                                        GATT_BROADCAST_SERVICE_UUID))
                                 .build());
                         settingBuilder.setScanMode(ScanSettings.SCAN_MODE_BALANCED);
                         settingBuilder.setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH |
@@ -436,9 +353,9 @@ public class GattBroadcastService extends Service {
     }
 
 
-    public class BleAdvertiser {
+    private class BleAdvertiser {
 
-        private static final String TAG = Utils.TAG + "GattBroadcastService: BleAdvertiser";
+        private static final String TAG = "GattBroadcastService: BleAdvertiser";
         private final int DIV_LENGTH = 2;
         public static final int BRA_ENABLED_STREAMING_PAUSED_ADV_INTERVAL = 160;// 100ms
         public static final int BRA_ENABLED_STREAMING_ACTIVE_ADV_INTERVAL = 160;// 100ms
@@ -447,8 +364,6 @@ public class GattBroadcastService extends Service {
         private BluetoothLeAdvertiser mAdvertiser;
         private BluetoothGattServer mGattServer;
         private AdvertisingSetCallback mCallback;
-        private GattBroadcastService mService;
-        private Context mContext;
         private int mState;
 
         //characterstic related object
@@ -469,7 +384,8 @@ public class GattBroadcastService extends Service {
          * GATT callbacks
          */
         private final BluetoothGattServerCallback mGattCallbacks = new
-                BluetoothGattServerCallback() {
+            BluetoothGattServerCallback() {
+
             @Override
             public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
 
@@ -532,8 +448,8 @@ public class GattBroadcastService extends Service {
 
             @Override
             public void onCharacteristicReadRequest(BluetoothDevice device, int requestId,
-                                                    int offset, BluetoothGattCharacteristic
-                                                            characteristic) {
+                    int offset, BluetoothGattCharacteristic characteristic) {
+
                 if (mState == BluetoothProfile.STATE_CONNECTED) {
                     UUID uuid = characteristic.getUuid();
                     byte[] value = {0};
@@ -572,10 +488,8 @@ public class GattBroadcastService extends Service {
             }
         };
 
-        private BleAdvertiser(GattBroadcastService svc, Context context) {
+        private BleAdvertiser() {
             Log.i(TAG, "BleAdvertiser");
-            mService = svc;
-            mContext = context;
             mCallback = new GattBroadcastAdvertiseCallback();
             mAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
 
@@ -603,8 +517,7 @@ public class GattBroadcastService extends Service {
             Log.i(TAG, "startAdvertising:");
             if (isBluetoothLeOn() == false) return;
 
-            AdvertiseData data = generateAdvertiseData(GattBroadcastService
-                    .GATT_BROADCAST_SERVICE_UUID,
+            AdvertiseData data = generateAdvertiseData(GATT_BROADCAST_SERVICE_UUID,
                     getDiv());
 
             AdvertisingSetParameters.Builder parameters = new AdvertisingSetParameters.Builder();
@@ -822,9 +735,6 @@ public class GattBroadcastService extends Service {
         }
 
         private class BroadcastAddress {
-            public static final int LAP_OFFSET = 0;
-            public static final int UAP_OFFSET = 3;
-            public static final int NAP_OFFSET = 4;
             public static final int BROADCAST_ADDRESS_LENGTH = 7;
             private byte[] mAddress;
 
@@ -1018,8 +928,10 @@ public class GattBroadcastService extends Service {
                             Map<Integer, Long> mServiceRecordData = record.getServiceRecord
                                     (streamIDs[i]);
                             for (Map.Entry<Integer, Long> entry : mServiceRecordData.entrySet()) {
+
                                 Log.i(TAG, " Key< " + entry.getKey() + " >" + " value <"
                                         + entry.getValue() + ">");
+
                                 if (entry.getKey() == BluetoothBAStreamServiceRecord
                                         .BSSR_TYPE_SECURITY_ID) {
                                     long entryValue = entry.getValue().longValue();
@@ -1330,6 +1242,14 @@ public class GattBroadcastService extends Service {
                     }
                     mDevice = null;
                 }
+            } else if (action.equals(BATService.ACTION_BAT_BRA_ENABLE)) {
+                configureBroadcastReceiverAssociation(true);
+            } else if (action.equals(BATService.ACTION_BAT_BRA_DISABLE)) {
+                configureBroadcastReceiverAssociation(false);
+            } else if (action.equals(BATService.ACTION_BAT_ASSOCIATE_BCA_RECEIVER)) {
+                BluetoothDevice device = (BluetoothDevice) intent.getParcelableExtra(
+                    BluetoothDevice.EXTRA_DEVICE);
+                associateBCAReceiver(device);
             } else {
                 if (action.equals(BluetoothAdapter.ACTION_BLE_STATE_CHANGED)
                     || isBluetoothLeOn()) {
@@ -1341,7 +1261,7 @@ public class GattBroadcastService extends Service {
         }
     }
 
-    public class GattBroadcastServiceStateMachine extends StateMachine {
+    class GattBroadcastServiceStateMachine extends StateMachine {
 
         public static final int INTENT = 1;
         public static final int CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION = 2;
@@ -1353,14 +1273,10 @@ public class GattBroadcastService extends Service {
         private BRADisabledStreamingActive mBRADisabledStreamingActive;
         private BRAEnabledStreamingPaused mBRAEnabledStreamingPaused;
         private BRAEnabledStreamingActive mBRAEnabledStreamingActive;
-        private GattBroadcastService mService;
-        private Context mContext;
         private BluetoothAdapter mAdapter;
 
-        private GattBroadcastServiceStateMachine(GattBroadcastService svc, Context context) {
+        private GattBroadcastServiceStateMachine() {
             super("GattBroadcastServiceStateMachine");
-            mService = svc;
-            mContext = context;
             mAdapter = BluetoothAdapter.getDefaultAdapter();
 
             mBRADisabledStreamingDisabled = new BRADisabledStreamingDisabled();
@@ -1375,10 +1291,9 @@ public class GattBroadcastService extends Service {
             addState(mBRAEnabledStreamingPaused);
             addState(mBRAEnabledStreamingActive);
 
-            if ( mBAAudio.getBATState() ==
-            BluetoothBATransmitter.STATE_PLAYING) {
+            if (mBATService.getBATState() == BATService.STATE_PLAYING) {
                 setInitialState(mBRADisabledStreamingActive);
-                int div = mBAAudio.getDIV();
+                int div = mBATService.getDIV();
                 Log.d("GattBroadcastServiceStateMachine:", "div = " + div);
                 if (div != -1) {
                     mBleAdvertiser.setDiv(div);
@@ -1390,7 +1305,7 @@ public class GattBroadcastService extends Service {
                         BleAdvertiser.BRA_DISABLED_STREAMING_ACTIVE_ADV_INTERVAL);
                 }
             }
-            else if (mBAAudio.getBATState() == BluetoothBATransmitter.STATE_PAUSED)
+            else if (mBATService.getBATState() == BATService.STATE_PAUSED)
                 setInitialState(mBRADisabledStreamingPaused);
             else
                 setInitialState(mBRADisabledStreamingDisabled);
@@ -1430,36 +1345,28 @@ public class GattBroadcastService extends Service {
                         String action = intent.getAction();
                         Log.i(TAG, action);
 
-                        if (action.equals(BluetoothAdapter.ACTION_BLE_STATE_CHANGED)) {
-                            int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,
-                                    BluetoothAdapter.ERROR);
-                            int prevState = intent.getIntExtra(BluetoothAdapter
-                                    .EXTRA_PREVIOUS_STATE, BluetoothAdapter.ERROR);
-                            processBTStateChangedEvent(state, prevState);
-                        } else if (action.equals(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED)) {
-                            int state = intent.getIntExtra(BluetoothBATransmitter.EXTRA_STATE, -1);
-                            int prevState = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_PREVIOUS_STATE, -1);
+                        if (action.equals(BATService.ACTION_BAT_STATE_CHANGED)) {
+                            int state = intent.getIntExtra(BATService.EXTRA_STATE, -1);
+                            int prevState = intent.getIntExtra(
+                                    BATService.EXTRA_PREVIOUS_STATE, -1);
                             processBATStateChangedEvent(state, prevState);
-                        } else if (action.equals(BluetoothBATransmitter
-                                .ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
+                        } else if (action.equals(
+                                    BATService.ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
                             BluetoothBAEncryptionKey encKey = intent.getParcelableExtra
-                                    (BluetoothBATransmitter.EXTRA_ECNRYPTION_KEY);
+                                    (BATService.EXTRA_ECNRYPTION_KEY);
                             processBATEncryptionKeyChangedEvent(encKey);
-                        } else if (action.equals(BluetoothBATransmitter.ACTION_BAT_DIV_CHANGED)) {
-                            int div = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_DIV_VALUE, -1);
+                        } else if (action.equals(BATService.ACTION_BAT_DIV_CHANGED)) {
+                            int div = intent.getIntExtra(BATService.EXTRA_DIV_VALUE, -1);
                             processBATDivChangedEvent(div);
-                        } else if (action.equals(BluetoothBATransmitter
-                                .ACTION_BAT_STREAMING_ID_CHANGED)) {
-                            int streamingId = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_STREAM_ID, -1);
+                        } else if (action.equals(BATService.ACTION_BAT_STREAMING_ID_CHANGED)) {
+                            int streamingId = intent.getIntExtra(
+                                    BATService.EXTRA_STREAM_ID, -1);
                             processBATStreamingIdChangedEvent(streamingId);
                         }
                         break;
 
                     case CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION:
-                        boolean enable = (boolean) message.obj;
+                        boolean enable = (Boolean) message.obj;
                         processConfigureBroadcastReceiverAssociation(enable);
                         break;
 
@@ -1481,37 +1388,21 @@ public class GattBroadcastService extends Service {
                     return;
                 }
                 switch (state) {
-                    case BluetoothBATransmitter.STATE_PAUSED:
-                        if (mBAAudio != null && mBleAdvertiser != null) {
+                    case BATService.STATE_PAUSED:
+                        if (mBATService != null && mBleAdvertiser != null) {
                             mBleAdvertiser.mBroadcastStreamServiceRecords
-                                .setBroadcastStreamServiceRecords(mBAAudio.getBAServiceRecord());
+                                .setBroadcastStreamServiceRecords(mBATService.getBAServiceRecord());
 
-                            processBATDivChangedEvent(mBAAudio.getDIV());
+                            processBATDivChangedEvent(mBATService.getDIV());
 
                             mBleAdvertiser.startAdvertising(false,
                                 BleAdvertiser.BRA_DISABLED_STREAMING_PAUSED_ADV_INTERVAL);
 
                             transitionTo(mBRADisabledStreamingPaused);
                         } else {
-                            Log.e(TAG, "mBAAudio: " + mBAAudio + " mBleAdvertiser: "
+                            Log.e(TAG, "mBATService: " + mBATService + " mBleAdvertiser: "
                                     + mBleAdvertiser);
                         }
-                        break;
-                    default:
-                        Log.w(TAG, "state " + state + " not handled");
-                        break;
-                }
-            }
-
-            private void processBTStateChangedEvent(int state, int prevState) {
-                Log.i(TAG, "processBTStateChangedEvent prevState " + prevState
-                        + " state: " + state);
-                if (prevState == state) {
-                    return;
-                }
-                switch (state) {
-                    case BluetoothAdapter.STATE_BLE_TURNING_OFF:
-                        stopSelf();
                         break;
                     default:
                         Log.w(TAG, "state " + state + " not handled");
@@ -1579,30 +1470,20 @@ public class GattBroadcastService extends Service {
                         String action = intent.getAction();
                         Log.i(TAG, action);
 
-                        if (action.equals(BluetoothAdapter.ACTION_BLE_STATE_CHANGED)) {
-                            int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,
-                                    BluetoothAdapter.ERROR);
-                            int prevState = intent.getIntExtra(BluetoothAdapter
-                                    .EXTRA_PREVIOUS_STATE, BluetoothAdapter.ERROR);
-                            processBTStateChangedEvent(state, prevState);
-                        } else if (action.equals(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED)) {
-                            int state = intent.getIntExtra(BluetoothBATransmitter.EXTRA_STATE, -1);
-                            int prevState = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_PREVIOUS_STATE, -1);
+                        if (action.equals(BATService.ACTION_BAT_STATE_CHANGED)) {
+                            int state = intent.getIntExtra(BATService.EXTRA_STATE, -1);
+                            int prevState = intent.getIntExtra(
+                                BATService.EXTRA_PREVIOUS_STATE, -1);
                             processBATStateChangedEvent(state, prevState);
-                        } else if (action.equals(BluetoothBATransmitter
-                                .ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
+                        } else if (action.equals(BATService.ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
                             BluetoothBAEncryptionKey encKey = intent.getParcelableExtra
-                                    (BluetoothBATransmitter.EXTRA_ECNRYPTION_KEY);
+                                    (BATService.EXTRA_ECNRYPTION_KEY);
                             processBATEncryptionKeyChangedEvent(encKey);
-                        } else if (action.equals(BluetoothBATransmitter.ACTION_BAT_DIV_CHANGED)) {
-                            int div = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_DIV_VALUE, -1);
+                        } else if (action.equals(BATService.ACTION_BAT_DIV_CHANGED)) {
+                            int div = intent.getIntExtra(BATService.EXTRA_DIV_VALUE, -1);
                             processBATDivChangedEvent(div);
-                        } else if (action.equals(BluetoothBATransmitter
-                                .ACTION_BAT_STREAMING_ID_CHANGED)) {
-                            int streamingId = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_STREAM_ID, -1);
+                        } else if (action.equals(BATService.ACTION_BAT_STREAMING_ID_CHANGED)) {
+                            int streamingId = intent.getIntExtra(BATService.EXTRA_STREAM_ID, -1);
                             processBATStreamingIdChangedEvent(streamingId);
                         }
                         break;
@@ -1628,7 +1509,7 @@ public class GattBroadcastService extends Service {
                     return;
                 }
                 switch (state) {
-                    case BluetoothBATransmitter.STATE_DISABLED:
+                    case BATService.STATE_DISABLED:
                         if (mBleAdvertiser != null) {
                             mBleAdvertiser.stopAdvertising();
                             transitionTo(mBRADisabledStreamingDisabled);
@@ -1636,7 +1517,7 @@ public class GattBroadcastService extends Service {
                             Log.e(TAG, "mBleAdvertiser is null");
                         }
                         break;
-                    case BluetoothBATransmitter.STATE_PLAYING:
+                    case BATService.STATE_PLAYING:
                         if (mBleAdvertiser != null) {
                             mBleAdvertiser.stopAdvertising();
 
@@ -1649,27 +1530,6 @@ public class GattBroadcastService extends Service {
                             Log.e(TAG, "mBleAdvertiser is null");
                         }
 
-                        break;
-                    default:
-                        Log.w(TAG, "state " + state + " not handled");
-                        break;
-                }
-            }
-
-            private void processBTStateChangedEvent(int state, int prevState) {
-                Log.i(TAG, "processBTStateChangedEvent prevState: " + prevState
-                        + " state: " + state);
-                if (prevState == state) {
-                    return;
-                }
-                switch (state) {
-                    case BluetoothAdapter.STATE_BLE_ON:
-                        if (mBleAdvertiser != null) {
-                            mBleAdvertiser.stopAdvertising();
-                            transitionTo(mBRADisabledStreamingDisabled);
-                        } else {
-                            Log.e(TAG, "mBleAdvertiser is null");
-                        }
                         break;
                     default:
                         Log.w(TAG, "state " + state + " not handled");
@@ -1694,7 +1554,7 @@ public class GattBroadcastService extends Service {
                 }
             }
 
-            private void processBATStreamingIdChangedEvent(int streamingId) {
+            private void processBATStreamingIdChangedEvent(long streamingId) {
                 Log.i(TAG, "processBATStreamingIdChangedEvent streamingId:" + streamingId);
                 if (streamingId != -1) {
                     mBleAdvertiser.mBroadcastStatus.setActiveStreamId((byte) streamingId);
@@ -1704,14 +1564,14 @@ public class GattBroadcastService extends Service {
             private void processConfigureBroadcastReceiverAssociation(boolean enable) {
                 Log.i(TAG, "processConfigureBroadcastReceiverAssociation enable:" + enable);
                 if (enable) {
-                    if (mBAAudio != null && mSessionHandler != null
+                    if (mBATService != null && mSessionHandler != null
                         && mBleScanner != null && mBleAdvertiser != null) {
 
                         mBleAdvertiser.stopAdvertising();
 
-                        processBATDivChangedEvent(mBAAudio.getDIV());
-                        processBATStreamingIdChangedEvent(mBAAudio.getStreamId());
-                        processBATEncryptionKeyChangedEvent(mBAAudio.getEncKey());
+                        processBATDivChangedEvent(mBATService.getDIV());
+                        processBATStreamingIdChangedEvent(mBATService.getStreamId());
+                        processBATEncryptionKeyChangedEvent(mBATService.getEncryptionKey());
 
                         mBleAdvertiser.startAdvertising(true,
                                 BleAdvertiser.BRA_ENABLED_STREAMING_PAUSED_ADV_INTERVAL);
@@ -1722,12 +1582,12 @@ public class GattBroadcastService extends Service {
 
                         mSessionHandler.sendMessage(
                                 mSessionHandler.obtainMessage(NOTIFY_CB_CONFIGURE_BRA,
-                                BRA_ENABLED_SUCESSS));
+                                BRA_ENABLED_SUCCESS));
 
                     } else {
                         Log.e(TAG, "mSessionHandler: " + mSessionHandler
-                                + " mBAAudio: " + mBAAudio + " mBleScanner: " + mBleScanner
-                                + " mBleAdvertiser: " + mBleAdvertiser);
+                                + " mBATService: " + mBATService + " mBleScanner: "
+                                + mBleScanner + " mBleAdvertiser: " + mBleAdvertiser);
                         mSessionHandler.sendMessage(
                                 mSessionHandler.obtainMessage(NOTIFY_CB_CONFIGURE_BRA,
                                 BRA_ENABLED_FAILED));
@@ -1769,36 +1629,26 @@ public class GattBroadcastService extends Service {
                         String action = intent.getAction();
                         Log.i(TAG, action);
 
-                        if (action.equals(BluetoothAdapter.ACTION_BLE_STATE_CHANGED)) {
-                            int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,
-                                    BluetoothAdapter.ERROR);
-                            int prevState = intent.getIntExtra(BluetoothAdapter
-                                    .EXTRA_PREVIOUS_STATE, BluetoothAdapter.ERROR);
-                            processBTStateChangedEvent(state, prevState);
-                        } else if (action.equals(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED)) {
-                            int state = intent.getIntExtra(BluetoothBATransmitter.EXTRA_STATE, -1);
-                            int prevState = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_PREVIOUS_STATE, -1);
+                        if (action.equals(BATService.ACTION_BAT_STATE_CHANGED)) {
+                            int state = intent.getIntExtra(BATService.EXTRA_STATE, -1);
+                            int prevState = intent.getIntExtra(
+                                    BATService.EXTRA_PREVIOUS_STATE, -1);
                             processBATStateChangedEvent(state, prevState);
-                        } else if (action.equals(BluetoothBATransmitter
-                                .ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
+                        } else if (action.equals(BATService.ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
                             BluetoothBAEncryptionKey encKey = intent.getParcelableExtra
-                                    (BluetoothBATransmitter.EXTRA_ECNRYPTION_KEY);
+                                    (BATService.EXTRA_ECNRYPTION_KEY);
                             processBATEncryptionKeyChangedEvent(encKey);
-                        } else if (action.equals(BluetoothBATransmitter.ACTION_BAT_DIV_CHANGED)) {
-                            int div = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_DIV_VALUE, -1);
+                        } else if (action.equals(BATService.ACTION_BAT_DIV_CHANGED)) {
+                            int div = intent.getIntExtra(BATService.EXTRA_DIV_VALUE, -1);
                             processBATDivChangedEvent(div);
-                        } else if (action.equals(BluetoothBATransmitter
-                                .ACTION_BAT_STREAMING_ID_CHANGED)) {
-                            int streamingId = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_STREAM_ID, -1);
+                        } else if (action.equals(BATService.ACTION_BAT_STREAMING_ID_CHANGED)) {
+                            int streamingId = intent.getIntExtra(BATService.EXTRA_STREAM_ID, -1);
                             processBATStreamingIdChangedEvent(streamingId);
                         }
                         break;
 
                     case CONFIGURE_BROADCAST_RECEIVER_ASSOCIATION:
-                        boolean enable = (boolean) message.obj;
+                        boolean enable = (Boolean) message.obj;
                         processConfigureBroadcastReceiverAssociation(enable);
                         break;
 
@@ -1820,7 +1670,7 @@ public class GattBroadcastService extends Service {
                     return;
                 }
                 switch (state) {
-                    case BluetoothBATransmitter.STATE_DISABLED:
+                    case BATService.STATE_DISABLED:
                         if (mBleAdvertiser != null) {
                             mBleAdvertiser.stopAdvertising();
                             transitionTo(mBRADisabledStreamingDisabled);
@@ -1828,7 +1678,7 @@ public class GattBroadcastService extends Service {
                             Log.e(TAG, "mBleAdvertiser is null");
                         }
                         break;
-                    case BluetoothBATransmitter.STATE_PAUSED:
+                    case BATService.STATE_PAUSED:
                         if (mBleAdvertiser != null) {
                             mBleAdvertiser.stopAdvertising();
 
@@ -1844,27 +1694,6 @@ public class GattBroadcastService extends Service {
                         break;
                     default:
                         Log.w(TAG, "state " + state + " not handled");
-                        break;
-                }
-            }
-
-            private void processBTStateChangedEvent(int state, int prevState) {
-                Log.i(TAG, "processBTStateChangedEvent prevState: " + prevState
-                        + " state: " + state);
-                if (prevState == state) {
-                    return;
-                }
-                switch (state) {
-                    case BluetoothAdapter.STATE_BLE_ON:
-                        if (mBleAdvertiser != null) {
-                            mBleAdvertiser.stopAdvertising();
-                            transitionTo(mBRADisabledStreamingDisabled);
-                        } else {
-                            Log.i(TAG, "mBleAdvertiser is null");
-                        }
-                        break;
-                    default:
-                        Log.w(TAG, "state " + state + " not handled");;
                         break;
                 }
             }
@@ -1886,7 +1715,7 @@ public class GattBroadcastService extends Service {
                 }
             }
 
-            private void processBATStreamingIdChangedEvent(int streamingId) {
+            private void processBATStreamingIdChangedEvent(long streamingId) {
                 Log.i(TAG, "processBATStreamingIdChangedEvent streamingId:" + streamingId);
                 if (streamingId != -1) {
                     mBleAdvertiser.mBroadcastStatus.setActiveStreamId((byte) streamingId);
@@ -1896,14 +1725,14 @@ public class GattBroadcastService extends Service {
             private void processConfigureBroadcastReceiverAssociation(boolean enable) {
                 Log.i(TAG, "processConfigureBroadcastReceiverAssociation enable:" + enable);
                 if (enable) {
-                    if (mBAAudio != null && mSessionHandler != null
+                    if (mBATService != null && mSessionHandler != null
                         && mBleScanner != null && mBleAdvertiser != null) {
 
                         mBleAdvertiser.stopAdvertising();
 
-                        processBATDivChangedEvent(mBAAudio.getDIV());
-                        processBATStreamingIdChangedEvent(mBAAudio.getStreamId());
-                        processBATEncryptionKeyChangedEvent(mBAAudio.getEncKey());
+                        processBATDivChangedEvent(mBATService.getDIV());
+                        processBATStreamingIdChangedEvent(mBATService.getStreamId());
+                        processBATEncryptionKeyChangedEvent(mBATService.getEncryptionKey());
 
                         mBleAdvertiser.startAdvertising(true,
                                 BleAdvertiser.BRA_ENABLED_STREAMING_ACTIVE_ADV_INTERVAL);
@@ -1914,12 +1743,12 @@ public class GattBroadcastService extends Service {
 
                         mSessionHandler.sendMessage(
                                 mSessionHandler.obtainMessage(NOTIFY_CB_CONFIGURE_BRA,
-                                BRA_ENABLED_SUCESSS));
+                                BRA_ENABLED_SUCCESS));
 
                     } else {
                         Log.e(TAG, "mSessionHandler: " + mSessionHandler
-                                + " mBAAudio: " + mBAAudio + " mBleScanner: " + mBleScanner
-                                + " mBleAdvertiser: " + mBleAdvertiser);
+                                + " mBATService: " + mBATService + " mBleScanner: "
+                                + mBleScanner + " mBleAdvertiser: " + mBleAdvertiser);
                         mSessionHandler.sendMessage(
                                 mSessionHandler.obtainMessage(NOTIFY_CB_CONFIGURE_BRA,
                                 BRA_ENABLED_FAILED));
@@ -1959,30 +1788,20 @@ public class GattBroadcastService extends Service {
                         String action = intent.getAction();
                         Log.i(TAG, action);
 
-                        if (action.equals(BluetoothAdapter.ACTION_BLE_STATE_CHANGED)) {
-                            int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,
-                                    BluetoothAdapter.ERROR);
-                            int prevState = intent.getIntExtra(BluetoothAdapter
-                                    .EXTRA_PREVIOUS_STATE, BluetoothAdapter.ERROR);
-                            processBTStateChangedEvent(state, prevState);
-                        } else if (action.equals(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED)) {
-                            int state = intent.getIntExtra(BluetoothBATransmitter.EXTRA_STATE, -1);
-                            int prevState = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_PREVIOUS_STATE, -1);
+                        if (action.equals(BATService.ACTION_BAT_STATE_CHANGED)) {
+                            int state = intent.getIntExtra(BATService.EXTRA_STATE, -1);
+                            int prevState = intent.getIntExtra(
+                                    BATService.EXTRA_PREVIOUS_STATE, -1);
                             processBATStateChangedEvent(state, prevState);
-                        } else if (action.equals(BluetoothBATransmitter
-                                .ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
+                        } else if (action.equals(BATService.ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
                             BluetoothBAEncryptionKey encKey = intent.getParcelableExtra
-                                    (BluetoothBATransmitter.EXTRA_ECNRYPTION_KEY);
+                                    (BATService.EXTRA_ECNRYPTION_KEY);
                             processBATEncryptionKeyChangedEvent(encKey);
-                        } else if (action.equals(BluetoothBATransmitter.ACTION_BAT_DIV_CHANGED)) {
-                            int div = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_DIV_VALUE, -1);
+                        } else if (action.equals(BATService.ACTION_BAT_DIV_CHANGED)) {
+                            int div = intent.getIntExtra(BATService.EXTRA_DIV_VALUE, -1);
                             processBATDivChangedEvent(div);
-                        } else if (action.equals(BluetoothBATransmitter
-                                .ACTION_BAT_STREAMING_ID_CHANGED)) {
-                            int streamingId = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_STREAM_ID, -1);
+                        } else if (action.equals(BATService.ACTION_BAT_STREAMING_ID_CHANGED)) {
+                            int streamingId = intent.getIntExtra(BATService.EXTRA_STREAM_ID, -1);
                             processBATStreamingIdChangedEvent(streamingId);
                         }
                         break;
@@ -2010,7 +1829,7 @@ public class GattBroadcastService extends Service {
                     return;
                 }
                 switch (state) {
-                    case BluetoothBATransmitter.STATE_DISABLED:
+                    case BATService.STATE_DISABLED:
                         if (mBleScanner != null) {
                             mBleScanner.discoverBroadcastAudioReceiver(false);
                         } else {
@@ -2026,37 +1845,8 @@ public class GattBroadcastService extends Service {
 
                         transitionTo(mBRADisabledStreamingDisabled);
                         break;
-                    case BluetoothBATransmitter.STATE_PLAYING:
+                    case BATService.STATE_PLAYING:
                         transitionTo(mBRAEnabledStreamingActive);
-                        break;
-                    default:
-                        Log.w(TAG, "state " + state + " not handled");
-                        break;
-                }
-            }
-
-            private void processBTStateChangedEvent(int state, int prevState) {
-                Log.i(TAG, "processBTStateChangedEvent prevState: " + prevState
-                        + " state: " + state);
-                if (prevState == state) {
-                    return;
-                }
-                switch (state) {
-                    case BluetoothAdapter.STATE_BLE_ON:
-                        if (mBleScanner != null) {
-                            mBleScanner.discoverBroadcastAudioReceiver(false);
-                        } else {
-                            Log.i(TAG, "mBleScanner is null");
-                        }
-
-                        if (mBleAdvertiser != null) {
-                            mBleAdvertiser.closeServer();
-                            mBleAdvertiser.stopAdvertising();
-                        } else {
-                            Log.i(TAG, "mBleAdvertiser is null");
-                        }
-
-                        transitionTo(mBRADisabledStreamingDisabled);
                         break;
                     default:
                         Log.w(TAG, "state " + state + " not handled");
@@ -2081,7 +1871,7 @@ public class GattBroadcastService extends Service {
                 }
             }
 
-            private void processBATStreamingIdChangedEvent(int streamingId) {
+            private void processBATStreamingIdChangedEvent(long streamingId) {
                 Log.i(TAG, "processBATStreamingIdChangedEvent streamingId:" + streamingId);
                 if (streamingId != -1) {
                     mBleAdvertiser.mBroadcastStatus.setActiveStreamId((byte) streamingId);
@@ -2093,7 +1883,7 @@ public class GattBroadcastService extends Service {
                 if (enable) {
                     Log.i(TAG, "Unexpected, Ignoring BRA enable");
                 } else {
-                    int status = BRA_DISABLED_SUCESSS;
+                    int status = BRA_DISABLED_SUCCESS;
                     if (mBleScanner != null) {
                         mBleScanner.discoverBroadcastAudioReceiver(false);
                     } else {
@@ -2156,30 +1946,20 @@ public class GattBroadcastService extends Service {
                         String action = intent.getAction();
                         Log.i(TAG, action);
 
-                        if (action.equals(BluetoothAdapter.ACTION_BLE_STATE_CHANGED)) {
-                            int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,
-                                    BluetoothAdapter.ERROR);
-                            int prevState = intent.getIntExtra(BluetoothAdapter
-                                    .EXTRA_PREVIOUS_STATE, BluetoothAdapter.ERROR);
-                            processBTStateChangedEvent(state, prevState);
-                        } else if (action.equals(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED)) {
-                            int state = intent.getIntExtra(BluetoothBATransmitter.EXTRA_STATE, -1);
-                            int prevState = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_PREVIOUS_STATE, -1);
+                        if (action.equals(BATService.ACTION_BAT_STATE_CHANGED)) {
+                            int state = intent.getIntExtra(BATService.EXTRA_STATE, -1);
+                            int prevState = intent.getIntExtra(
+                                    BATService.EXTRA_PREVIOUS_STATE, -1);
                             processBATStateChangedEvent(state, prevState);
-                        } else if (action.equals(BluetoothBATransmitter
-                                .ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
+                        } else if (action.equals(BATService.ACTION_BAT_ENCRYPTION_KEY_CHANGED)) {
                             BluetoothBAEncryptionKey encKey = intent.getParcelableExtra
-                                    (BluetoothBATransmitter.EXTRA_ECNRYPTION_KEY);
+                                    (BATService.EXTRA_ECNRYPTION_KEY);
                             processBATEncryptionKeyChangedEvent(encKey);
-                        } else if (action.equals(BluetoothBATransmitter.ACTION_BAT_DIV_CHANGED)) {
-                            int div = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_DIV_VALUE, -1);
+                        } else if (action.equals(BATService.ACTION_BAT_DIV_CHANGED)) {
+                            int div = intent.getIntExtra(BATService.EXTRA_DIV_VALUE, -1);
                             processBATDivChangedEvent(div);
-                        } else if (action.equals(BluetoothBATransmitter
-                                .ACTION_BAT_STREAMING_ID_CHANGED)) {
-                            int streamingId = intent.getIntExtra(BluetoothBATransmitter
-                                    .EXTRA_STREAM_ID, -1);
+                        } else if (action.equals(BATService.ACTION_BAT_STREAMING_ID_CHANGED)) {
+                            int streamingId = intent.getIntExtra(BATService.EXTRA_STREAM_ID, -1);
                             processBATStreamingIdChangedEvent(streamingId);
                         }
                         break;
@@ -2205,7 +1985,7 @@ public class GattBroadcastService extends Service {
                     return;
                 }
                 switch (state) {
-                    case BluetoothBATransmitter.STATE_DISABLED:
+                    case BATService.STATE_DISABLED:
                         if (mBleScanner != null) {
                             mBleScanner.discoverBroadcastAudioReceiver(false);
                         } else {
@@ -2221,37 +2001,8 @@ public class GattBroadcastService extends Service {
 
                         transitionTo(mBRADisabledStreamingDisabled);
                         break;
-                    case BluetoothBATransmitter.STATE_PAUSED:
+                    case BATService.STATE_PAUSED:
                         transitionTo(mBRAEnabledStreamingPaused);
-                        break;
-                    default:
-                        Log.w(TAG, "state " + state + " not handled");
-                        break;
-                }
-            }
-
-            private void processBTStateChangedEvent(int state, int prevState) {
-                Log.i(TAG, "processBTStateChangedEvent prevState: " + prevState
-                        + " state: " + state);
-                if (prevState == state) {
-                    return;
-                }
-                switch (state) {
-                    case BluetoothAdapter.STATE_BLE_ON:
-                        if (mBleScanner != null) {
-                            mBleScanner.discoverBroadcastAudioReceiver(false);
-                        } else {
-                            Log.i(TAG, "mBleScanner is null");
-                        }
-
-                        if (mBleAdvertiser != null) {
-                            mBleAdvertiser.closeServer();
-                            mBleAdvertiser.stopAdvertising();
-                        } else {
-                            Log.i(TAG, "mBleAdvertiser is null");
-                        }
-
-                        transitionTo(mBRADisabledStreamingDisabled);
                         break;
                     default:
                         Log.w(TAG, "state " + state + " not handled");
@@ -2276,7 +2027,7 @@ public class GattBroadcastService extends Service {
                 }
             }
 
-            private void processBATStreamingIdChangedEvent(int streamingId) {
+            private void processBATStreamingIdChangedEvent(long streamingId) {
                 Log.i(TAG, "processBATStreamingIdChangedEvent streamingId:" + streamingId);
                 if (streamingId != -1) {
                     mBleAdvertiser.mBroadcastStatus.setActiveStreamId((byte) streamingId);
@@ -2288,7 +2039,7 @@ public class GattBroadcastService extends Service {
                 if (enable) {
                     Log.i(TAG, "Unexpected, Ignoring BRA enable");
                 } else {
-                    int status = BRA_DISABLED_SUCESSS;
+                    int status = BRA_DISABLED_SUCCESS;
                     if (mBleScanner != null) {
                         mBleScanner.discoverBroadcastAudioReceiver(false);
                     } else {
@@ -2315,7 +2066,6 @@ public class GattBroadcastService extends Service {
                     } else {
                         Log.e(TAG, "mSessionHandler is null");
                     }
-
                 }
             }
 
@@ -2323,7 +2073,6 @@ public class GattBroadcastService extends Service {
                 Log.i(TAG, "processAssociateBCAReceiver BD address:" + device.getAddress());
                 mBleAdvertiser.connectDevice(device);
             }
-
         }
     }
 }

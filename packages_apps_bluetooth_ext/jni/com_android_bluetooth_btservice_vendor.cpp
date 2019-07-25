@@ -65,6 +65,7 @@ int load_bt_configstore_lib();
 
 static jmethodID method_onBredrCleanup;
 static jmethodID method_iotDeviceBroadcast;
+static jmethodID method_bqrDeliver;
 static jmethodID method_devicePropertyChangedCallback;
 static jmethodID method_adapterPropertyChangedCallback;
 static jmethodID method_ssrCleanupCallback;
@@ -157,6 +158,34 @@ static void iot_device_broadcast_callback(RawAddress* bd_addr, uint16_t error,
                     (jint)error_info, (jint)event_mask, (jint)lmp_ver, (jint)lmp_subver,
                     (jint)manufacturer_id, (jint)power_level, (jint)rssi, (jint)link_quality,
                     (jint)glitch_count);
+}
+
+static void bqr_delivery_callback(RawAddress* bd_addr, uint8_t lmp_ver, uint16_t lmp_subver,
+        uint16_t manufacturer_id, std::vector<uint8_t> bqr_raw_data) {
+  ALOGI("%s", __func__);
+  CallbackEnv sCallbackEnv(__func__);
+  if (!sCallbackEnv.valid()) return;
+
+  ScopedLocalRef<jbyteArray> addr(
+      sCallbackEnv.get(), sCallbackEnv->NewByteArray(sizeof(RawAddress)));
+  if (!addr.get()) {
+    ALOGE("Error while allocation byte array for addr in %s", __func__);
+    return;
+  }
+  sCallbackEnv->SetByteArrayRegion(addr.get(), 0, sizeof(RawAddress),
+      (jbyte*)bd_addr->address);
+
+  ScopedLocalRef<jbyteArray> raw_data(
+      sCallbackEnv.get(), sCallbackEnv->NewByteArray(bqr_raw_data.size()));
+  if (!raw_data.get()) {
+    ALOGE("Error while allocation byte array for bqr raw data in %s", __func__);
+    return;
+  }
+  sCallbackEnv->SetByteArrayRegion(raw_data.get(), 0, bqr_raw_data.size(),
+      (jbyte*)bqr_raw_data.data());
+
+  sCallbackEnv->CallVoidMethod(mCallbacksObj, method_bqrDeliver, addr.get(),
+      (jint)lmp_ver, (jint)lmp_subver, (jint)manufacturer_id, raw_data.get());
 }
 
 static void adapter_vendor_properties_callback(bt_status_t status,
@@ -255,6 +284,7 @@ static btvendor_callbacks_t sBluetoothVendorCallbacks = {
     sizeof(sBluetoothVendorCallbacks),
     bredr_cleanup_callback,
     iot_device_broadcast_callback,
+    bqr_delivery_callback,
     remote_device_properties_callback,
     NULL,
     adapter_vendor_properties_callback,
@@ -265,6 +295,7 @@ static void classInitNative(JNIEnv* env, jclass clazz) {
 
     method_onBredrCleanup = env->GetMethodID(clazz, "onBredrCleanup", "(Z)V");
     method_iotDeviceBroadcast = env->GetMethodID(clazz, "iotDeviceBroadcast", "([BIIIIIIIIII)V");
+    method_bqrDeliver = env->GetMethodID(clazz, "bqrDeliver", "([BIII[B)V");
     method_devicePropertyChangedCallback = env->GetMethodID(
       clazz, "devicePropertyChangedCallback", "([B[I[[B)V");
     method_adapterPropertyChangedCallback = env->GetMethodID(

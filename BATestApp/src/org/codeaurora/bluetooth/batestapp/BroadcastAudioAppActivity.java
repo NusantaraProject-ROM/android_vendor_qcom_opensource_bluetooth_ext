@@ -29,79 +29,128 @@
 
 package org.codeaurora.bluetooth.batestapp;
 
-import android.Manifest;
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
+import android.os.Handler;
+import android.os.Message;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
 import android.util.Log;
-
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.ToggleButton;
-import android.app.Activity;
-import org.codeaurora.bluetooth.batestapp.BAAudio;
-import android.bluetooth.BluetoothBATransmitter;
-
+import android.widget.Toast;
 
 public class BroadcastAudioAppActivity extends Activity implements
-        CompoundButton.OnCheckedChangeListener, View.OnClickListener {
+    CompoundButton.OnCheckedChangeListener, View.OnClickListener {
 
-    //private ToggleButton mBtnBtEnable;
-    private ToggleButton mBAEnable;
-    private ToggleButton mMegaPhoneEnable;
+    public static final String ACTION_BAT_BA_ENABLE =
+            "com.android.bluetooth.bat.profile.action.BA_ENABLE";
+    public static final String ACTION_BAT_BA_DISABLE =
+            "com.android.bluetooth.bat.profile.action.BA_DISABLE";
+    public static final String ACTION_BAT_BRA_ENABLE =
+            "com.android.bluetooth.bat.profile.action.BRA_ENABLE";
+    public static final String ACTION_BAT_BRA_DISABLE =
+            "com.android.bluetooth.bat.profile.action.BRA_DISABLE";
+    public static final String ACTION_BAT_ENCRYPTION_KEY_REFRESH =
+            "com.android.bluetooth.bat.profile.action.ENCRYPTION_KEY_REFRESH";
+    public static final String ACTION_BAT_ASSOCIATE_BCA_RECEIVER =
+            "com.android.bluetooth.bat.profile.action.ASSOCIATE_BCA_RECEIVER";
+    public static final String ACTION_BAT_STATE_CHANGED =
+            "com.android.bluetooth.bat.profile.action.BA_STATE_CHANGED";
+    public static final String EXTRA_STATE =
+            "com.android.bluetooth.bat.profile.extra.STATE";
+    public static final String EXTRA_PREVIOUS_STATE =
+            "com.android.bluetooth.bat.profile.extra.PREV_STATE";
+    public static final String ACTION_BAT_ONFOUND_ONLOST_BCA_RECEIVER =
+            "com.android.bluetooth.bat.profile.action.ONFOUND_ONLOST_BCA_RECEIVER";
+    public static final String EXTRA_SCAN_RESULT =
+            "com.android.bluetooth.bat.profile.extra.EXTRA_SCAN_RESULT";
+    public static final String EXTRA_ONFOUND =
+            "com.android.bluetooth.bat.profile.extra.EXTRA_ONFOUND";
+    public static final String ACTION_BAT_BRA_STATE_CHANGED =
+            "com.android.bluetooth.bat.profile.action.BRA_STATE_CHANGED";
+    public static final String EXTRA_STATUS =
+            "com.android.bluetooth.bat.profile.extra.STATUS";
+    public static final String ACTION_BAT_ON_ASSOCIATED_BCA_RECEIVER =
+            "com.android.bluetooth.bat.profile.action.ON_ASSOCIATED_BCA_RECEIVER";
+    public static final String ACTION_BAT_ENCRYPTION_KEY_CHANGED =
+            "com.android.bluetooth.bat.profile.action.BA_ENC_KEY_CHANGED";
+    public static final String EXTRA_ECNRYPTION_KEY =
+            "com.android.bluetooth.bat.profile.extra.ENC_KEY";
+
+    public static final int STATE_DISABLED = 0;
+    public static final int STATE_PAUSED = 1;
+    public static final int STATE_PLAYING = 2;
+
+    private static final String TAG = BAAudio.TAG + "BAAppActivity";
+    BAAudio mBAAudiobj = null;
+    private ToggleButton mBAEnable, mMegaPhoneEnable;
     private BluetoothAdapter mBtAdapter;
-    private String mMsg;
-    private static final String TAG = Utils.TAG +"BroadcastAudioAppActivity";
-    private final int REQUEST_ENABLE_BT = 1001;
-    private final int PERMISSIONS_REQUEST_BLUETOOTH = 1002;
-    private Button mBtnBRAEnable;
-    private Button mBtnChangeEnc;
-    BAAudio mBAAudiobj =  null;
+    private Button mBtnBRAEnable, mBtnChangeEnc;
     private boolean isStateChangePending = false;
-    private int expectedState = BluetoothBATransmitter.STATE_DISABLED;
+    private int expectedState = STATE_DISABLED;
+    private int BATState = STATE_DISABLED;
+
+    // Implementation of 30 sec Timeout for BT
+    private static final int BA_ENABLE_TIMEOUT = 0;
+    private static final int BA_ENABLE_TIMEOUT_VALUE = 30000;
+
+    private void onTimeout() {
+        mTimeoutHandler.sendMessageDelayed(mTimeoutHandler.obtainMessage(BA_ENABLE_TIMEOUT),
+                BA_ENABLE_TIMEOUT_VALUE);
+    }
+
+    private final Handler mTimeoutHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case BA_ENABLE_TIMEOUT:
+                    Context context = getApplicationContext();
+                    Toast toast = Toast.makeText(context, "BA Not enabled properly", Toast.LENGTH_SHORT);
+                    toast.show();
+                    Log.d(TAG, "BA not enabled properly");
+                    isStateChangePending = false;
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate ");
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.layout_main);
         mBAEnable = (ToggleButton) findViewById(R.id.id_switch_bt_enable);
         mBAEnable.setOnCheckedChangeListener(this);
-        mMegaPhoneEnable =  (ToggleButton) findViewById(R.id.id_switch_mp);
+        mMegaPhoneEnable = (ToggleButton) findViewById(R.id.id_switch_mp);
         mMegaPhoneEnable.setOnCheckedChangeListener(this);
         mBtnChangeEnc = (Button) findViewById(R.id.id_btn_enc_change);
         mBtnChangeEnc.setOnClickListener(this);
-
         mBtnBRAEnable = (Button) findViewById(R.id.id_btn_enable_bra);
         mBtnBRAEnable.setOnClickListener(this);
         mBtnBRAEnable.setEnabled(false);
-
         mBtAdapter = BluetoothAdapter.getDefaultAdapter();
+
         if (mBtAdapter == null) {
             Log.d(TAG, " Device does not support Bluetooth");
             return;
         }
-
         boolean isBtEnabled = mBtAdapter.isEnabled();
-        if (isBtEnabled) {
-            startService(new Intent(BroadcastAudioAppActivity.this, GattBroadcastService.class));
-        }
 
         IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-        filter.addAction(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED);
+        filter.addAction(ACTION_BAT_STATE_CHANGED);
         filter.addAction(BAAudio.BASERVICE_STATE_CHANGED);
         registerReceiver(mReceiver, filter);
 
-        Log.d(TAG, " Creating BAAudio ");
         mBAAudiobj = new BAAudio(getApplicationContext());
-        Log.d(TAG, " LauncherActivity  constructor - ");
     }
 
     @Override
@@ -116,51 +165,53 @@ public class BroadcastAudioAppActivity extends Activity implements
 
     @Override
     public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-        Log.d(TAG, " onCheckChanged isChecked = " + isChecked + " button = " + compoundButton
-                                                 +" stateChangePending " + isStateChangePending);
-            if(mBtAdapter == null) return;
-            if (!mBtAdapter.isEnabled()) return;
-            if (mBAAudiobj == null) return;
 
-            if (compoundButton == mBAEnable) {
-                if (isStateChangePending) return;
-                if (isChecked) {
-                    if(mBAAudiobj.getBATState() == BluetoothBATransmitter.STATE_DISABLED) {
-                        isStateChangePending = true;
-                        expectedState = BluetoothBATransmitter.STATE_PAUSED;
-                        mBAEnable.setEnabled(false);
-                        mBAAudiobj.enableBA();
-                    }
-                } else {
-                   if(mBAAudiobj.getBATState() != BluetoothBATransmitter.STATE_DISABLED) {
-                       isStateChangePending = true;
-                       expectedState = BluetoothBATransmitter.STATE_DISABLED;
-                       mBAEnable.setEnabled(false);
-                       mBAAudiobj.disableBA();
-                   }
+        Log.d(TAG, " onCheckChanged isChecked = " + isChecked + " button = " +
+                compoundButton + " stateChangePending " + isStateChangePending);
+
+        if (mBtAdapter == null || !mBtAdapter.isEnabled() || mBAAudiobj == null)
+            return;
+
+        if (compoundButton == mBAEnable) {
+            if (isStateChangePending)
+                return;
+            if (isChecked) {
+                if(BATState == STATE_DISABLED) {
+                    isStateChangePending = true;
+                    expectedState = STATE_PAUSED;
+                    mBAEnable.setEnabled(false);
+                    Intent intent_to_enable_BA = new Intent(ACTION_BAT_BA_ENABLE);
+                    sendBroadcast(intent_to_enable_BA);
+                    onTimeout();
                 }
+            } else {
+               if(BATState != STATE_DISABLED) {
+                   isStateChangePending = true;
+                   expectedState = STATE_DISABLED;
+                   mBAEnable.setEnabled(false);
+                   Intent intent_to_disable_BA = new Intent(ACTION_BAT_BA_DISABLE);
+                   sendBroadcast(intent_to_disable_BA);
+               }
             }
-            if (compoundButton == mMegaPhoneEnable) {
-                if (isChecked) {
-                    boolean started = mBAAudiobj.startRecordAndPlay();
-                    setMPButtonText(started);
-                } else {
-                   mBAAudiobj.stopRecordAndPlay();
-                   setMPButtonText(false);
-                }
+        } else if (compoundButton == mMegaPhoneEnable) {
+            if (isChecked) {
+                boolean started = mBAAudiobj.startRecordAndPlay();
+                setMPButtonText(started);
+            } else {
+               mBAAudiobj.stopRecordAndPlay();
+               setMPButtonText(false);
             }
+        }
     }
 
     @Override
     public void onClick(View view) {
-        Log.d(TAG, " onClick  view :"+view);
         if (view == mBtnBRAEnable) {
             startActivity(new Intent(BroadcastAudioAppActivity.this,
                     BroadcastAudioDeviceListActivity.class));
-        }
-        if (view == mBtnChangeEnc) {
-            if (mBAAudiobj == null) return;
-            mBAAudiobj.refreshEncryptionKey();
+        } else if (view == mBtnChangeEnc) {
+            Intent intent_to_refresh_EncKey = new Intent(ACTION_BAT_ENCRYPTION_KEY_REFRESH);
+            sendBroadcast(intent_to_refresh_EncKey);
         }
     }
 
@@ -173,22 +224,20 @@ public class BroadcastAudioAppActivity extends Activity implements
             if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
                 int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter
                         .ERROR);
-                int prevState = intent.getIntExtra(BluetoothAdapter.EXTRA_PREVIOUS_STATE,
-                        BluetoothAdapter.ERROR);
-                //setButtonText(state);
                 if (state == BluetoothAdapter.STATE_TURNING_OFF
                     || state == BluetoothAdapter.STATE_OFF) {
-                    setBRAButtonState(BluetoothBATransmitter.STATE_DISABLED);
+                    setBRAButtonState(STATE_DISABLED);
                 }
             }
 
-            if (action.equals(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED)) {
-                final int state = intent.getIntExtra(BluetoothBATransmitter.EXTRA_STATE,
-                        -1);
+            if (action.equals(ACTION_BAT_STATE_CHANGED)) {
+                final int state = intent.getIntExtra(EXTRA_STATE, -1);
+                BATState = state;
                 if(state != -1) {
                     setBRAButtonState(state);
+                    mTimeoutHandler.removeCallbacksAndMessages(null);
                     Log.d(TAG, " stateChangePending " + isStateChangePending + " expectedState = "
-                            +expectedState + " state " + state);
+                            + expectedState + " state " + state);
                     if (isStateChangePending) {
                         isStateChangePending = false;
                         mBAEnable.setEnabled(true);
@@ -202,9 +251,10 @@ public class BroadcastAudioAppActivity extends Activity implements
                 }
             }
             if (action.equals(BAAudio.BASERVICE_STATE_CHANGED)) {
-                final boolean serviceState = intent.getBooleanExtra(BAAudio.EXTRA_CONN_STATE, false);
+                final boolean serviceState = intent.getBooleanExtra(BAAudio.EXTRA_CONN_STATE,
+                        false);
                 final int baState = intent.getIntExtra(BAAudio.EXTRA_BA_STATE, -1);
-                Log.d(TAG, " Service state changed servicState = "
+                Log.d(TAG, " Service state changed serviceState = "
                         + serviceState + " baState = " + baState);
                 setBAButtonText(baState);
             }
@@ -223,14 +273,13 @@ public class BroadcastAudioAppActivity extends Activity implements
     private void setBAButtonText(int state) {
         boolean currentCheckStatus = mBAEnable.isChecked();
         Log.d(TAG," setBAButtonText state = " + state + " isChecked() = " + currentCheckStatus);
-        if(state == BluetoothBATransmitter.STATE_DISABLED) {
+        if(state == STATE_DISABLED) {
             if (currentCheckStatus) {
-                // button was cheked and we are making it false, need to set it
+                // button was checked and we are making it false, need to set it
                 Log.d(TAG, " setting button false ");
                 mBAEnable.setChecked(false);
             }
-        }
-        else {
+        } else {
             if (!currentCheckStatus) {
                Log.d(TAG, " setting button true ");
                mBAEnable.setChecked(true);
@@ -240,7 +289,7 @@ public class BroadcastAudioAppActivity extends Activity implements
 
     private void setBRAButtonState(int state) {
         Log.d(TAG, "setBRAButtonState state : "+state);
-        if(state == BluetoothBATransmitter.STATE_DISABLED) {
+        if(state == STATE_DISABLED) {
             mBtnBRAEnable.setEnabled(false);
         } else {
             mBtnBRAEnable.setEnabled(true);

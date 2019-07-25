@@ -30,38 +30,37 @@
 package com.android.bluetooth.ba;
 
 import android.bluetooth.BluetoothA2dp;
-import android.bluetooth.BluetoothBATransmitter;
-import android.bluetooth.BluetoothBAStreamServiceRecord;
-import android.bluetooth.BluetoothBAEncryptionKey;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothA2dp;
 
-import android.bluetooth.IBluetoothBATransmitter;
+import com.android.bluetooth.ba.BluetoothBAStreamServiceRecord;
+import com.android.bluetooth.ba.BluetoothBAEncryptionKey;
+import com.android.bluetooth.btservice.ProfileService;
+import com.android.bluetooth.a2dp.A2dpService;
+import com.android.bluetooth.hfp.HeadsetService;
+import com.android.bluetooth.Utils;
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.media.AudioManager;
 import android.os.Bundle;
-import android.provider.Settings;
+import android.os.Binder;
 import android.os.SystemProperties;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
-import com.android.bluetooth.btservice.ProfileService;
-import com.android.bluetooth.a2dp.A2dpService;
-import com.android.bluetooth.hfp.HeadsetService;
-import com.android.bluetooth.Utils;
+import android.provider.Settings;
+import android.media.AudioManager;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.nio.ByteBuffer;
 
 /**
  * Provides Bluetooth Broadcast Audio profile, as a service in
@@ -69,41 +68,217 @@ import java.util.Objects;
  * @hide
  */
 public class BATService extends ProfileService {
+
     private static final boolean DBG = true;
-    private static final String TAG="BATService";
+    private static final String TAG = "BATService";
 
     private static final int NUM_SERIVCE_RECORD = 1;
     private static final long STREAM_ID_48 = 1;
     // currently we are using 512(fr_samples),186(frame_size),frequency.
     // check GattService specification for more details
-    //private static final long   CODEC_CONFIG_CELT = (long)0x020000BA0100;
+    //private static final long  CODEC_CONFIG_CELT = (long)0x020000BA0100;
     // Messages
-    public static final int MESSAGE_BAT_STATE_CHANGE_REQ = 1;
-    public static final int MESSAGE_BAT_REFRESH_ENC_KEY_REQ = 2;
-    public static final int MESSAGE_BAT_VOL_CHANGE_REQ = 3;
+    private final int MESSAGE_BAT_STATE_CHANGE_REQ = 1;
+    private final int MESSAGE_BAT_REFRESH_ENC_KEY_REQ = 2;
+    private final int MESSAGE_BAT_VOL_CHANGE_REQ = 3;
 
-    public static final int MESSAGE_BAT_STATE_CHANGE_EVT = 101;
-    public static final int MESSAGE_BAT_ENC_CHANGE_EVT = 102;
-    public static final int MESSAGE_BAT_DIV_CHANGE_EVT = 103;
-    public static final int MESSAGE_BAT_STREAMING_ID_EVT = 104;
+    private final int MESSAGE_BAT_STATE_CHANGE_EVT = 101;
+    private final int MESSAGE_BAT_ENC_CHANGE_EVT = 102;
+    private final int MESSAGE_BAT_DIV_CHANGE_EVT = 103;
+    private final int MESSAGE_BAT_STREAMING_ID_EVT = 104;
 
-    private static final String BLUETOOTH_PERM = android.Manifest.permission.BLUETOOTH;
-    public static final String mBAAddress = "CE:FA:CE:FA:CE:FA";
-    public static BluetoothDevice mBADevice;
+    private final String BLUETOOTH_PERM = android.Manifest.permission.BLUETOOTH;
+    static final String BLUETOOTH_PERM_ADMIN = android.Manifest.permission.BLUETOOTH_ADMIN;
+    public static final String mBAAddress = "FA:CE:FA:CE:FA:CE";
+    private BluetoothDevice mBADevice;
     // we will listen for vol change intent from audio manager.
     // this intent is called in all following 3 cases
     // 1 - Local vol changing when there is no abs vol
     // 2 - Local vol changes if abs vol not supported
     // 3 - Vol changed from remote if abs vol is supported
+
+    /**
+     * Intent used to update state change of Broadcast Audio Transmitter.
+     *
+     * This intent will have 2 extras:
+     * #EXTRA_STATE - The current state of the profile.
+     * #EXTRA_PREVIOUS_STATE - The previous state of the profile.
+     *
+     * value of states can be any of
+     * STATE_DISABLED: Broadcast Audio is disabled.
+     * STATE_PAUSED:   Broadcast Audio is enabled but streaming is paused.
+     * STATE_PLAYING:  Broadcast Audio is enabled but streaming is ongoing.
+     *
+     */
+    protected static final String ACTION_BAT_STATE_CHANGED =
+            "com.android.bluetooth.bat.profile.action.BA_STATE_CHANGED";
+    protected static final String EXTRA_STATE =
+            "com.android.bluetooth.bat.profile.extra.STATE";
+    protected static final String EXTRA_PREVIOUS_STATE =
+            "com.android.bluetooth.bat.profile.extra.PREV_STATE";
+
+     /**
+     * Intent is used to update state change of Broadcast Receiver Association.
+     *
+     * This intent will have 1 extra:
+     * #EXTRA_STATUS – status code
+     *
+     * value of states can be any of
+     *
+     * BRA_ENABLED_SUCESSS (0)
+     * BRA_ENABLED_FAILED (1)
+     * BRA_DISABLED_SUCESSS (2)
+     * BRA_DISABLED_FAILED(3)
+     */
+    protected static final String ACTION_BAT_BRA_STATE_CHANGED =
+            "com.android.bluetooth.bat.profile.action.BRA_STATE_CHANGED";
+    protected static final String EXTRA_STATUS =
+            "com.android.bluetooth.bat.profile.extra.STATUS";
+
+    /**
+     * Intent is used to for updating  Broadcast Audio Receiver info, after Broadcast audio receiver is Lost or Found.
+     *
+     * This intent will have 2 extras:
+     * #EXTRA_SCAN_RESULT – Scan Result for particular device.
+     * #EXTRA_ONFOUND –  true if device found, false if device lost.
+     *
+     */
+    protected static final String ACTION_BAT_ONFOUND_ONLOST_BCA_RECEIVER =
+            "com.android.bluetooth.bat.profile.action.ONFOUND_ONLOST_BCA_RECEIVER";
+    protected static final String EXTRA_SCAN_RESULT =
+            "com.android.bluetooth.bat.profile.extra.EXTRA_SCAN_RESULT";
+    protected static final String EXTRA_ONFOUND =
+            "com.android.bluetooth.bat.profile.extra.EXTRA_ONFOUND";
+
+    /**
+     * Intent is used to for updating Broadcast Audio Aeceiver info, after a Broadcast audio receiver is associated.
+     *
+     * This intent will have 2 extras:
+     * #EXTRA_DEVICE–  BluetoothDevice info
+     * #EXTRA_STATUS – Status code
+     *
+     *  value of status code can be any of
+     *
+     *  ASSOCIATE_BCA_RECEIVER_SUCCESS(4)
+     *  ASSOCIATE_BCA_RECEIVER_FAILED(5)
+     */
+    protected static final String ACTION_BAT_ON_ASSOCIATED_BCA_RECEIVER =
+            "com.android.bluetooth.bat.profile.action.ON_ASSOCIATED_BCA_RECEIVER";
+
+    /**
+     * Intent is used, when Broadcast Audio Encryption Key is refreshed.
+     *
+     */
+    private final String ACTION_BAT_ENCRYPTION_KEY_REFRESHED =
+            "com.android.bluetooth.bat.profile.action.ENCRYPTION_KEY_REFRESHED";
+    private final String ACTION_BAT_ENCRYPTION_KEY_REFRESH =
+            "com.android.bluetooth.bat.profile.action.ENCRYPTION_KEY_REFRESH";
+
+    /**
+     * Intents are used to enable/disable Broadcast audio
+     */
+    private final String ACTION_BAT_BA_ENABLE =
+            "com.android.bluetooth.bat.profile.action.BA_ENABLE";
+    private final String ACTION_BAT_BA_DISABLE =
+            "com.android.bluetooth.bat.profile.action.BA_DISABLE";
+
+    /**
+     * Intent used to update encryption key .
+     *
+     * This intent will have 1 extra:
+     * #EXTRA_ENCRYPTION_KEY - The current value of encryption key.
+     *
+     * value of EncyptionKey would be 128-bit value. This value would change
+     * on every new BA session. We will send BluetoothBAEncryptionKey object.
+     *
+     */
+    protected static final String ACTION_BAT_ENCRYPTION_KEY_CHANGED =
+            "com.android.bluetooth.bat.profile.action.BA_ENC_KEY_CHANGED";
+    protected static final String EXTRA_ECNRYPTION_KEY =
+            "com.android.bluetooth.bat.profile.extra.ENC_KEY";
+
+    /**
+     * Intent used to update DIV value .
+     *
+     * This intent will have 1 extras:
+     * #EXTRA_DIV_VALUE - The current value of DIV.
+     *
+     * value of DIV would be 2 byte value. This value would change
+     * on every new BA session. We will send integer value.
+     *
+     */
+    protected static final String ACTION_BAT_DIV_CHANGED =
+            "com.android.bluetooth.bat.profile.action.BA_DIV_CHANGED";
+    protected static final String EXTRA_DIV_VALUE =
+            "com.android.bluetooth.bat.profile.extra.DIV";
+
+    /**
+     * Intent used to update  active stream id for Broadcast Audio Transmitter.
+     *
+     * This intent will have 1 extra:
+     * #EXTRA_STREAM_ID - The active streaming id.
+     *
+     * value of states can be any of
+     * 0: Broadcast Audio is not in STATE_PLAYING.
+     * valid streaming id:   Valid streaming id if BA is in STATE_PLAYING.
+     */
+    protected static final String ACTION_BAT_STREAMING_ID_CHANGED =
+            "com.android.bluetooth.bat.profile.action.BA_STR_ID_CHANGED";
+    protected static final String EXTRA_STREAM_ID =
+            "com.android.bluetooth.bat.profile.extra.STR_ID";
+
+    /**
+     * Intent used to update  Vendor Specific AVRCP Command.
+     *
+     * This intent will be sent whenever there is Vendor Specific AVRCP command
+     * received from primary headset.
+     *
+     * This intent will have 2 extra:
+     * #EXTRA_AVRCP_VS_ENABLE_BA - value describing enable/disable of BA.
+     * #EXTRA_AVRCP_VS_ENABLE_RA - value describing enable/disable of receiver
+     *                              association mode.
+     *
+     * value of states can be any of
+     * 0: Disable  BA/RA.
+     * 1: ENABLE  BA/RA.
+     */
+    private final String ACTION_BAT_AVRCP_VS_CMD =
+            "com.android.bluetooth.bat.profile.action.BA_AVRCP_VS_CMD";
+    private final String EXTRA_AVRCP_VS_ENABLE_BA =
+            "com.android.bluetooth.bat.profile.extra.ENABLE_BA";
+    private final String EXTRA_AVRCP_VS_ENABLE_RA =
+            "com.android.bluetooth.bat.profile.extra.ENABLE_RA";
+    protected static final String ACTION_BAT_BRA_ENABLE =
+            "com.android.bluetooth.bat.profile.action.BRA_ENABLE";
+    public static final String ACTION_BAT_BRA_DISABLE =
+            "com.android.bluetooth.bat.profile.action.BRA_DISABLE";
+    protected static final String ACTION_BAT_ASSOCIATE_BCA_RECEIVER =
+            "com.android.bluetooth.bat.profile.action.ASSOCIATE_BCA_RECEIVER";
+
+    protected static final int STATE_DISABLED = 0;
+    protected static final int STATE_PAUSED = 1;
+    protected static final int STATE_PLAYING = 2;
+    private final int ENABLE_BA_TRANSMITTER = 0;
+    private final int DISABLE_BA_TRANSMITTER = 1;
+    private final int INVALID_DIV = 0xFFFF;
+    public static int BA_TRANSMITTER = 23;      // Added to access in Config.java
+
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(AudioManager.VOLUME_CHANGED_ACTION)) {
+
+            String action = intent.getAction();
+            Log.d(TAG," action: " + action);
+
+            if(action == null)
+                return;
+            if (action.equals(AudioManager.VOLUME_CHANGED_ACTION)) {
                 Log.d(TAG," onReceive  AudioManager Vol Changed");
                 int streamType = intent.getIntExtra(AudioManager.EXTRA_VOLUME_STREAM_TYPE, -1);
                 Log.d(TAG," streamType = " + streamType);
                 if (streamType == AudioManager.STREAM_MUSIC) {
-                    int streamValue = intent.getIntExtra(AudioManager.EXTRA_VOLUME_STREAM_VALUE, -1);
+                    int streamValue = intent.getIntExtra(
+                            AudioManager.EXTRA_VOLUME_STREAM_VALUE, -1);
                     int streamPrevValue = intent.getIntExtra(
                             AudioManager.EXTRA_PREV_VOLUME_STREAM_VALUE, -1);
                     Log.d(TAG," prevVol = " + streamPrevValue + " streamVol = " + streamValue);
@@ -112,6 +287,22 @@ public class BATService extends ProfileService {
                     }
                     mMsgHandler.obtainMessage(MESSAGE_BAT_VOL_CHANGE_REQ,
                             streamValue,streamValue).sendToTarget();
+                }
+            } else if (action.equals(ACTION_BAT_BA_ENABLE)) {
+                setBATState(ENABLE_BA_TRANSMITTER);
+            } else if (action.equals(ACTION_BAT_BA_DISABLE)) {
+                setBATState(DISABLE_BA_TRANSMITTER);
+            } else if (action.equals(ACTION_BAT_ENCRYPTION_KEY_REFRESH)) {
+               refreshEncryptionKey();
+            } else if (action.equals(BluetoothAdapter.ACTION_BLE_STATE_CHANGED)) {
+                int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,
+                        BluetoothAdapter.ERROR);
+                int prevState = intent.getIntExtra(BluetoothAdapter.EXTRA_PREVIOUS_STATE,
+                        BluetoothAdapter.ERROR);
+                if (state == BluetoothAdapter.STATE_BLE_ON || state == BluetoothAdapter.STATE_ON) {
+                    Log.d(TAG,"ACTION_BLE_STATE_CHANGED state: " + state);
+                    mGattBroadcastService = new GattBroadcastService();
+                    mGattBroadcastService.start(getApplicationContext());
                 }
             }
         }
@@ -128,6 +319,8 @@ public class BATService extends ProfileService {
     private BATMessageHandler mMsgHandler;
     private static BATService sBATService;
     private BluetoothAdapter mAdapter;
+    private GattBroadcastService mGattBroadcastService;
+
     // we need pending state only during transition from enable/disable.
     // no need for statemachine, at this point. Can be manager with a variable.
 
@@ -137,6 +330,15 @@ public class BATService extends ProfileService {
 
     protected IProfileServiceBinder initBinder() {
         return new BluetoothBATBinder(this);
+    }
+
+    private static class BluetoothBATBinder extends Binder implements IProfileServiceBinder {
+
+        BluetoothBATBinder(BATService service) {}
+
+        @Override
+        public void cleanup() {
+        }
     }
 
     @Override
@@ -156,7 +358,7 @@ public class BATService extends ProfileService {
         mMsgHandler = new BATMessageHandler(looper);
         Log.d(TAG," mMsgHandler = " + mMsgHandler);
         // initialize with default value.
-        mCurrDIV = BluetoothBATransmitter.INVALID_DIV;
+        mCurrDIV = INVALID_DIV;
         byte[] mEncryptionKey = new byte[BluetoothBAEncryptionKey.ENCRYPTION_KEY_LENGTH];
         mCurrEncryptionKey = new BluetoothBAEncryptionKey(mEncryptionKey,
                 BluetoothBAEncryptionKey.SECURITY_KEY_TYPE_PRIVATE);
@@ -183,21 +385,26 @@ public class BATService extends ProfileService {
                 BluetoothBAStreamServiceRecord.BSSR_SAMPLE_SIZE_16_BIT);
         mServiceRecord.addServiceRecordValue(STREAM_ID_48,
                 BluetoothBAStreamServiceRecord.BSSR_TYPE_AFH_UPDATE_METHOD_ID,
-                BluetoothBAStreamServiceRecord.BSSR_AFH_CHANNEL_MAP_UPDATE_METHOD_TRIGGERED_SYNC_TRAIN);
+                BluetoothBAStreamServiceRecord
+                .BSSR_AFH_CHANNEL_MAP_UPDATE_METHOD_TRIGGERED_SYNC_TRAIN);
         mServiceRecord.addServiceRecordValue(STREAM_ID_48,
                 BluetoothBAStreamServiceRecord.BSSR_TYPE_CODEC_CONFIG_CELT_FREQ_ID,
                 BluetoothBAStreamServiceRecord.BSSR_CODEC_FREQ_48KHZ);
         mServiceRecord.addServiceRecordValue(STREAM_ID_48,
                 BluetoothBAStreamServiceRecord.BSSR_TYPE_CODEC_CONFIG_CELT_FRAME_SIZE_ID,(long)186);
         mServiceRecord.addServiceRecordValue(STREAM_ID_48,
-                BluetoothBAStreamServiceRecord.BSSR_TYPE_CODEC_CONFIG_CELT_FRAME_SAMPLES_ID, (long)512);
+                BluetoothBAStreamServiceRecord
+                .BSSR_TYPE_CODEC_CONFIG_CELT_FRAME_SAMPLES_ID, (long)512);
 
         IntentFilter filter = new IntentFilter(AudioManager.VOLUME_CHANGED_ACTION);
+        filter.addAction(ACTION_BAT_BA_ENABLE);
+        filter.addAction(ACTION_BAT_BA_DISABLE);
+        filter.addAction(ACTION_BAT_ENCRYPTION_KEY_REFRESH);
+        filter.addAction(BluetoothAdapter.ACTION_BLE_STATE_CHANGED);
         registerReceiver(mBroadcastReceiver, filter);
         mMsgHandler.obtainMessage(MESSAGE_BAT_VOL_CHANGE_REQ,
                 mCurrVolLevel,mCurrVolLevel).sendToTarget();
         mBADevice = mAdapter.getRemoteDevice(mBAAddress);
-        Log.d(TAG, "BATService :: start - ");
         return true;
     }
 
@@ -209,6 +416,10 @@ public class BATService extends ProfileService {
             Looper looper = mMsgHandler.getLooper();
             if(looper != null)
                 looper.quit();
+        }
+
+        if(mGattBroadcastService != null) {
+            mGattBroadcastService.stop();
         }
         Log.d(TAG, "BATService :: stop - ");
         return true;
@@ -257,8 +468,6 @@ public class BATService extends ProfileService {
             if (DBG)  {
                 if (instance == null) {
                     Log.d(TAG, "sBATService(): service not available");
-                } else if (!instance.isAvailable()) {
-                    Log.d(TAG,"sBATService(): service is cleaning up");
                 }
             }
         }
@@ -268,7 +477,7 @@ public class BATService extends ProfileService {
         sBATService = null;
     }
 
-    public static String dumpMessageString(int message) {
+    private String dumpMessageString(int message) {
         String str = "UNKNOWN";
         switch (message) {
             case MESSAGE_BAT_STATE_CHANGE_REQ: str = "REQ_STATE_CHANGE"; break;
@@ -283,7 +492,7 @@ public class BATService extends ProfileService {
         return str;
     }
 
-    public static String dumpStateString ( int state) {
+    private String dumpStateString ( int state) {
         String str = "UNKNOWN";
         switch (state) {
             case BA_STACK_STATE_IDLE: str = "BT_STACK_STATE_IDLE"; break;
@@ -304,7 +513,8 @@ public class BATService extends ProfileService {
         // when state changes from PENDING to IDLE, send A2DP Connected -> Disconnected
         if((mPrevStackBATState == BA_STACK_STATE_PENDING) &&
                 (mCurrStackBATState == BA_STACK_STATE_IDLE)) {
-            intent.putExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, BluetoothProfile.STATE_CONNECTED);
+            intent.putExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE,
+                    BluetoothProfile.STATE_CONNECTED);
             intent.putExtra(BluetoothProfile.EXTRA_STATE, BluetoothProfile.STATE_DISCONNECTED);
             updateConnectionState = true;
         }
@@ -382,43 +592,44 @@ public class BATService extends ProfileService {
         int broadcastSate;
         switch (mCurrStackBATState) {
             case BA_STACK_STATE_IDLE:
-                broadcastSate = BluetoothBATransmitter.STATE_DISABLED;
+                broadcastSate = STATE_DISABLED;
                 break;
             case BA_STACK_STATE_PAUSED:
-                broadcastSate = BluetoothBATransmitter.STATE_PAUSED;
+                broadcastSate = STATE_PAUSED;
                 break;
             case BA_STACK_STATE_STREAMING:
-                broadcastSate = BluetoothBATransmitter.STATE_PLAYING;
+                broadcastSate = STATE_PLAYING;
                 break;
             default:
                 // we don't want to send intent for other states.
                 return;
         }
         Log.d(TAG," broadcasting state = " + broadcastSate);
-        Intent intent = new Intent(BluetoothBATransmitter.ACTION_BAT_STATE_CHANGED);
-        intent.putExtra(BluetoothBATransmitter.EXTRA_STATE, broadcastSate);
-        sendBroadcast(intent);
+        Intent intent = new Intent(ACTION_BAT_STATE_CHANGED);
+        intent.putExtra(EXTRA_STATE, broadcastSate);
+        intent.putExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, mPrevStackBATState);
+        sendBroadcast(intent, BLUETOOTH_PERM_ADMIN);
     }
 
     private void broadcastEncKeyUpdate(BluetoothBAEncryptionKey encKey) {
         Log.d(TAG," broadcastEncKeyUpdate ");
-        Intent intent = new Intent(BluetoothBATransmitter.ACTION_BAT_ENCRYPTION_KEY_CHANGED);
-        intent.putExtra(BluetoothBATransmitter.EXTRA_ECNRYPTION_KEY, encKey);
-        sendBroadcast(intent);
+        Intent intent = new Intent(ACTION_BAT_ENCRYPTION_KEY_CHANGED);
+        intent.putExtra(EXTRA_ECNRYPTION_KEY, encKey);
+        sendBroadcast(intent, BLUETOOTH_PERM_ADMIN);
     }
 
     private void broadcastDIVUpdate(int div) {
         Log.d(TAG," broadcastDIVUpdate div =  "+ div);
-        Intent intent = new Intent(BluetoothBATransmitter.ACTION_BAT_DIV_CHANGED);
-        intent.putExtra(BluetoothBATransmitter.EXTRA_DIV_VALUE, div);
-        sendBroadcast(intent);
+        Intent intent = new Intent(ACTION_BAT_DIV_CHANGED);
+        intent.putExtra(EXTRA_DIV_VALUE, div);
+        sendBroadcast(intent, BLUETOOTH_PERM_ADMIN);
     }
 
     private void broadcastStramIdpdate(int streamID) {
-        Log.d(TAG," broadcastStramIdpdate streamID =  "+ streamID);
-        Intent intent = new Intent(BluetoothBATransmitter.ACTION_BAT_STREAMING_ID_CHANGED);
-        intent.putExtra(BluetoothBATransmitter.EXTRA_STREAM_ID, streamID);
-        sendBroadcast(intent);
+        Log.d(TAG," broadcastStramIdpdate streamID =  " + streamID);
+        Intent intent = new Intent(ACTION_BAT_STREAMING_ID_CHANGED);
+        intent.putExtra(EXTRA_STREAM_ID, streamID);
+        sendBroadcast(intent, BLUETOOTH_PERM_ADMIN);
     }
 
     // this api checks if abs vol is supported by AVRCP with any of the connected devices
@@ -453,7 +664,7 @@ public class BATService extends ProfileService {
         if((mPrevStackBATState == BA_STACK_STATE_PENDING) &&
                 (mCurrStackBATState == BA_STACK_STATE_PAUSED)) {
             Log.d(TAG," updating AudioManager: Connected for BA ");
-            mAudioManager.setBluetoothA2dpDeviceConnectionStateSuppressNoisyIntent(
+            mAudioManager.handleBluetoothA2dpActiveDeviceChange(
                 mBADevice, BluetoothProfile.STATE_CONNECTED,BluetoothProfile.A2DP, true, -1);
             //BA audio works on the principal of absVol
             //Currently mm-audio tracks value of last updated absVol support,
@@ -471,13 +682,13 @@ public class BATService extends ProfileService {
                 // as a2dp has to be updated as well. Switching should happen to
                 // A2DP in this case.
                 Log.d(TAG," updating AudioManager: Connected for A2DP ");
-                mAudioManager.setBluetoothA2dpDeviceConnectionStateSuppressNoisyIntent(
+                mAudioManager.handleBluetoothA2dpActiveDeviceChange(
                     a2dpActiveDevice, BluetoothProfile.STATE_CONNECTED,BluetoothProfile.A2DP,
                     true, -1);
             } else {// a2dp active device is null.
                 // inform BA device as disconnected. we have to send noisy intent
                 // because BA seems to be last device.
-                mAudioManager.setBluetoothA2dpDeviceConnectionStateSuppressNoisyIntent(
+                mAudioManager.handleBluetoothA2dpActiveDeviceChange(
                         mBADevice, BluetoothProfile.STATE_DISCONNECTED,BluetoothProfile.A2DP,
                         false, -1);
             }
@@ -497,12 +708,12 @@ public class BATService extends ProfileService {
     }
 
     // service level apis to be called from native callbacks
-    public void processBAStateUpdate(int newState) {
+    private void processBAStateUpdate(int newState) {
         Log.d(TAG," processBAStateUpdate newState = " + dumpStateString(newState));
         mMsgHandler.obtainMessage(MESSAGE_BAT_STATE_CHANGE_EVT, newState,0).sendToTarget();
     }
 
-    public void processEncryptionKeyUpdate(int size, byte[] enc_key) {
+    private void processEncryptionKeyUpdate(int size, byte[] enc_key) {
         Log.d(TAG," processEncryptionKeyUpdate size = " + size);
         Bundle data =  new Bundle();
         data.putByteArray("encKey", enc_key);
@@ -511,34 +722,24 @@ public class BATService extends ProfileService {
         mMsgHandler.sendMessage(msg);
     }
 
-    public void processDivUpdate(int size, byte[] div_key) {
+    private void processDivUpdate(int size, byte[] div_key) {
         Log.d(TAG," processDivUpdate size = " + size);
         ByteBuffer bb = ByteBuffer.wrap(div_key);
         Message msg = mMsgHandler.obtainMessage(MESSAGE_BAT_DIV_CHANGE_EVT, (int)bb.getShort(), 0);
         mMsgHandler.sendMessage(msg);
     }
 
-   public void processStreamIdUpdate(int streamId) {
+    private void processStreamIdUpdate(int streamId) {
        Log.d(TAG," processStreamIdUpdate streamID = " + streamId);
        Message msg = mMsgHandler.obtainMessage(MESSAGE_BAT_STREAMING_ID_EVT, (int)streamId, 0);
        mMsgHandler.sendMessage(msg);
-   }
+    }
 
     public boolean isBATActive() {
         Log.d(TAG," isBATActive  mCurrStackState = " + dumpStateString(mCurrStackBATState));
         return ((mCurrStackBATState == BA_STACK_STATE_PAUSED) ||
                 (mCurrStackBATState == BA_STACK_STATE_AUDIO_PENDING) ||
                 (mCurrStackBATState == BA_STACK_STATE_STREAMING));
-    }
-
-    public boolean isBATPlaying() {
-        Log.d(TAG," isBATPlaying  mCurrStackState = " + dumpStateString(mCurrStackBATState));
-        return (mCurrStackBATState == BA_STACK_STATE_STREAMING);
-    }
-
-    public boolean isBATPaused() {
-        Log.d(TAG," isBATPaused  mCurrStackState = " + dumpStateString(mCurrStackBATState));
-        return (mCurrStackBATState == BA_STACK_STATE_PAUSED);
     }
 
     public boolean isA2dpSuspendFromBA() {
@@ -548,7 +749,7 @@ public class BATService extends ProfileService {
         return isCodecReconfigRequired;
     }
 
-    public boolean isA2dpPlaying() {
+    private boolean isA2dpPlaying() {
         A2dpService a2dpService = A2dpService.getA2dpService();
         if (a2dpService == null) {
             Log.d(TAG," isA2dpPlaying = false a2dpService null");
@@ -569,7 +770,7 @@ public class BATService extends ProfileService {
         return false;
     }
 
-    public boolean isCallActive() {
+    private boolean isCallActive() {
         HeadsetService headsetService = HeadsetService.getHeadsetService();
         if (headsetService == null) {
             Log.d(TAG," isCallActive = false HeadsetService null");
@@ -626,7 +827,7 @@ public class BATService extends ProfileService {
             switch(msg.what) {
                 case MESSAGE_BAT_STATE_CHANGE_REQ:
                     int newState = msg.arg1;
-                    if (newState == BluetoothBATransmitter.ENABLE_BA_TRANSMITTER) {
+                    if (newState == ENABLE_BA_TRANSMITTER) {
                         if (isCallActive()) {
                             Log.d(TAG," Call active, can't initilze BA ");
                             return;
@@ -637,8 +838,7 @@ public class BATService extends ProfileService {
                             //mAudioManager.setParameters("A2dpSuspended=true");
                         }
                         setBAStateNative(1);
-                    }
-                    if (newState == BluetoothBATransmitter.DISABLE_BA_TRANSMITTER) {
+                    } else if (newState == DISABLE_BA_TRANSMITTER) {
                         isCodecReconfigRequired = false;
                         setBAStateNative(0);
                     }
@@ -686,12 +886,12 @@ public class BATService extends ProfileService {
     public boolean setBATState(int newState) {
         Log.d(TAG," setBATState ( " + newState + ") currState = "
               + dumpStateString(mCurrStackBATState));
-        if((newState == BluetoothBATransmitter.ENABLE_BA_TRANSMITTER) &&
+        if((newState == ENABLE_BA_TRANSMITTER) &&
              (mCurrStackBATState != BA_STACK_STATE_IDLE)) {
             // we are already enabled, or in process of getting enabled
             return false;
         }
-        if((newState == BluetoothBATransmitter.DISABLE_BA_TRANSMITTER) &&
+        if((newState == DISABLE_BA_TRANSMITTER) &&
            (mCurrStackBATState == BA_STACK_STATE_IDLE)) {
             // we are already disabled
             return false;
@@ -701,7 +901,7 @@ public class BATService extends ProfileService {
             return false;
         if (mMsgHandler.hasMessages(MESSAGE_BAT_STATE_CHANGE_REQ))
             return false;
-        if (isCallActive() && (newState == BluetoothBATransmitter.ENABLE_BA_TRANSMITTER)) {
+        if (isCallActive() && (newState == ENABLE_BA_TRANSMITTER)) {
             Log.d(TAG," setBATState Call active, can't initilze BA ");
             return false;
         }
@@ -709,26 +909,26 @@ public class BATService extends ProfileService {
         return true;
     }
 
-    public int getBATState() {
-        int state = BluetoothBATransmitter.STATE_DISABLED;
+    protected int getBATState() {
+        int state = STATE_DISABLED;
         Log.d(TAG," getBATState = " + dumpStateString(mCurrStackBATState));
         switch (mCurrStackBATState) {
             case BA_STACK_STATE_IDLE:
             case BA_STACK_STATE_PENDING:
-                state = BluetoothBATransmitter.STATE_DISABLED;
+                state = STATE_DISABLED;
                 break;
             case BA_STACK_STATE_PAUSED:
             case BA_STACK_STATE_AUDIO_PENDING:
-                state = BluetoothBATransmitter.STATE_PAUSED;
+                state = STATE_PAUSED;
                 break;
             case BA_STACK_STATE_STREAMING:
-                state = BluetoothBATransmitter.STATE_PLAYING;
+                state = STATE_PLAYING;
                 break;
         }
         return state;
     }
 
-    public int getDIV() {
+    protected int getDIV() {
         Log.d(TAG," getDIV = " + mCurrDIV);
         if ((mCurrStackBATState == BA_STACK_STATE_IDLE) ||
             (mCurrStackBATState == BA_STACK_STATE_PENDING))
@@ -736,13 +936,13 @@ public class BATService extends ProfileService {
         return mCurrDIV;
     }
 
-    public long getStreamId() {
+    protected long getStreamId() {
         Log.d(TAG," getStreamId state = " + dumpStateString(mCurrStackBATState));
         // send same ID every time.
         return STREAM_ID_48;
     }
 
-    public BluetoothBAEncryptionKey getEncryptionKey() {
+    protected BluetoothBAEncryptionKey getEncryptionKey() {
         Log.d(TAG," getEncryptionKey state = " + dumpStateString(mCurrStackBATState));
         if ((mCurrStackBATState == BA_STACK_STATE_IDLE) ||
                 (mCurrStackBATState == BA_STACK_STATE_PENDING) )
@@ -750,7 +950,7 @@ public class BATService extends ProfileService {
         return mCurrEncryptionKey;
     }
 
-    public boolean refreshEncryptionKey() {
+    private boolean refreshEncryptionKey() {
         Log.d(TAG," refreshEncryptionKey state = " + dumpStateString(mCurrStackBATState));
         if (mCurrStackBATState == BA_STACK_STATE_IDLE)
             return false;
@@ -758,91 +958,10 @@ public class BATService extends ProfileService {
         return true;
     }
 
-    public BluetoothBAStreamServiceRecord getBAServiceRecord() {
+    protected BluetoothBAStreamServiceRecord getBAServiceRecord() {
         Log.d(TAG," getBAServiceRecord state = " + dumpStateString(mCurrStackBATState));
         return mServiceRecord;
     }
-    //Binder object: Must be static class or memory leak may occur
-    private static class BluetoothBATBinder extends IBluetoothBATransmitter.Stub
-        implements IProfileServiceBinder {
-        private BATService mService;
-
-        private BATService getService() {
-            if (!Utils.checkCaller()) {
-                Log.w(TAG,"A2dp call not allowed for non-active user");
-                return null;
-            }
-
-            if (mService != null && mService.isAvailable()) {
-                return mService;
-            }
-            return null;
-        }
-
-        BluetoothBATBinder(BATService svc) {
-            mService = svc;
-        }
-
-        public boolean setBATState(int state) {
-            BATService service = getService();
-            if(service == null) return false;
-            return service.setBATState(state);
-        }
-
-        public int getBATState() {
-            BATService service = getService();
-            if(service == null) return BluetoothBATransmitter.STATE_DISABLED;
-            return service.getBATState();
-        }
-
-        public int getDIV() {
-            BATService service = getService();
-            if(service == null) return 0;
-            return service.getDIV();
-        }
-
-        public long getStreamId() {
-            BATService service = getService();
-            if(service == null) return (long)0;
-            return service.getStreamId();
-        }
-
-        public BluetoothBAEncryptionKey getEncryptionKey() {
-            BATService service = getService();
-            if(service == null) return null;
-            return service.getEncryptionKey();
-        }
-
-        public boolean refreshEncryptionKey() {
-            BATService service = getService();
-            if(service == null) return false;
-            return service.refreshEncryptionKey();
-        }
-
-        public BluetoothBAStreamServiceRecord getBAServiceRecord() {
-            BATService service = getService();
-            if(service == null) return null;
-            return service.getBAServiceRecord();
-        }
-
-        public List<BluetoothDevice> getConnectedDevices() {
-            return new ArrayList<BluetoothDevice>();
-        }
-
-        public List<BluetoothDevice> getDevicesMatchingConnectionStates(int[] states) {
-            return new ArrayList<BluetoothDevice>();
-        }
-
-        public int getConnectionState(BluetoothDevice device) {
-            return BluetoothProfile.STATE_DISCONNECTED;
-        }
-
-        @Override
-        public void cleanup() {
-            mService = null;
-        }
-
-    };
 
     private void onBATStateChanged(int newState) {
         Log.d(TAG," onBATStateChanged ( " + newState + " )");
@@ -873,11 +992,11 @@ public class BATService extends ProfileService {
     }
 
     // make these states in sync with values in hal
-    final static int BA_STACK_STATE_IDLE = 0;
-    final static int BA_STACK_STATE_PENDING = 1;// transitioining between IDLE and non-idle state.
-    final static int BA_STACK_STATE_PAUSED = 2;
-    final static int BA_STACK_STATE_STREAMING = 3;
-    final static int BA_STACK_STATE_AUDIO_PENDING = 4;// transitioning between Pu and Str
+    private final int BA_STACK_STATE_IDLE = 0;
+    private final int BA_STACK_STATE_PENDING = 1;// transitioining between IDLE and non-idle state.
+    private final int BA_STACK_STATE_PAUSED = 2;
+    private final int BA_STACK_STATE_STREAMING = 3;
+    private final int BA_STACK_STATE_AUDIO_PENDING = 4;// transitioning between Pu and Str
 
     private native static void classInitNative();
     private native static void initNative();

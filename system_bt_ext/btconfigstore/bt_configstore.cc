@@ -49,12 +49,15 @@
 
 #include <hwbinder/ProcessState.h>
 #include <string.h>
+#include <hwbinder/IPCThreadState.h>
+#include <cutils/properties.h>
 
 /* max platform record must be equal to the predefined max num
    of platform in bt_configstore.conf */
 #define MAX_PLATFORM_PROP_RECORD 12
 #define BT_CONFIG_STORE_PATH "/etc/bluetooth/bt_configstore.conf"
 
+using android::hardware::IPCThreadState;
 using ::vendor::qti::hardware::btconfigstore::V1_0::IBTConfigStore;
 using ::vendor::qti::hardware::btconfigstore::V1_0::VendorProperty;
 using ::vendor::qti::hardware::btconfigstore::V1_0::AddOnFeaturesList;
@@ -79,6 +82,7 @@ static bool btConfigStoreLoadProperties(uint32_t vPropType,
 static bt_soc_type_t convertSocNameToBTSocType(const char * name);
 static const char * convertPropTypeToStringFormat(uint32_t propType);
 
+const bool IsLazyHalSupported(property_get_bool("ro.vendor.bt.enablelazyhal", false));
 
 EXPORT_SYMBOL bt_configstore_interface_t btConfigStoreInterface = {
     sizeof(btConfigStoreInterface),
@@ -88,6 +92,7 @@ EXPORT_SYMBOL bt_configstore_interface_t btConfigStoreInterface = {
     convertSocNameToBTSocType,
     convertPropTypeToStringFormat,
 };
+
 
 /*******************************************************************************
 **
@@ -104,6 +109,8 @@ EXPORT_SYMBOL bt_configstore_interface_t btConfigStoreInterface = {
 *******************************************************************************/
 static bool getVendorProperties(uint32_t vPropType, std::vector<vendor_property_t> &vPropList)
 {
+  bool status = false;
+
   LOG_INFO(LOG_TAG, "%s ", __func__);
 
   if (btConfigStore == nullptr)
@@ -131,18 +138,23 @@ static bool getVendorProperties(uint32_t vPropType, std::vector<vendor_property_
         LOG_INFO(LOG_TAG, "prop type: %s, prop_value: %s",
             convertPropTypeToStringFormat(vProp.type), vProp.value);
       }
-      return true;
+      status = true;
     }
   } else {
     LOG_WARN(LOG_TAG,"%s btConfigStore hal interface is null", __func__);
     if (btConfigStoreLoadProperties(vPropType, vPropList)){
       LOG_INFO(LOG_TAG, "Properties are successfully read from %s",
           BT_CONFIG_STORE_PATH);
-      return true;
+
+      status = true;
     }
   }
 
-  return false;
+  if (IsLazyHalSupported && btConfigStore != nullptr)
+    IPCThreadState::self()->flushCommands();
+
+  btConfigStore = nullptr;
+  return status;
 }
 
 /*******************************************************************************
@@ -160,6 +172,8 @@ static bool getVendorProperties(uint32_t vPropType, std::vector<vendor_property_
 *******************************************************************************/
 static bool setVendorProperty(uint32_t type, const char * value)
 {
+  bool status = false;
+
   LOG_INFO(LOG_TAG, "%s ", __func__);
 
   if (btConfigStore == nullptr)
@@ -173,12 +187,17 @@ static bool setVendorProperty(uint32_t type, const char * value)
     LOG_INFO(LOG_TAG, "%s:: halResult = %d", __func__, halResult);
 
     if (halResult == Result::SUCCESS){
-      return true;
+      status = true;
     }
   } else {
     LOG_WARN(LOG_TAG, "%s btConfigStore is null", __func__);
   }
-  return false;
+
+  if (IsLazyHalSupported && btConfigStore != nullptr)
+    IPCThreadState::self()->flushCommands();
+
+  btConfigStore = nullptr;
+  return status;
 }
 
 /*******************************************************************************
@@ -196,6 +215,8 @@ static bool setVendorProperty(uint32_t type, const char * value)
 *******************************************************************************/
 static bool getAddOnFeatures(add_on_features_list_t *features_list)
 {
+  bool status = false;
+
   LOG_INFO(LOG_TAG, "%s ", __func__);
 
   if (btConfigStore == nullptr)
@@ -232,13 +253,17 @@ static bool getAddOnFeatures(add_on_features_list_t *features_list)
           "%s:: product_id = %d, version = %d, feat_mask_len = %d features data: %s",
           __func__, features_list->product_id, features_list->rsp_version,
           features_list->feat_mask_len, features);
-      return true;
+      status = true;
     }
   } else {
     LOG_WARN(LOG_TAG, "%s add feature is not avaliable", __func__);
   }
 
-  return false;
+  if (IsLazyHalSupported && btConfigStore != nullptr)
+    IPCThreadState::self()->flushCommands();
+
+  btConfigStore = nullptr;
+  return status;
 }
 
 /*******************************************************************************
@@ -348,6 +373,22 @@ static bool btConfigStoreLoadProperties(uint32_t vPropType,
         LOG_INFO(LOG_TAG, "%s:: prop type: %s, prop value: %s", __func__,
                 convertPropTypeToStringFormat(vProp.type), vProp.value);
         vPropList.push_back(vProp);
+
+        vProp.type = BT_PROP_A2DP_MCAST_TEST;
+        strlcpy(vProp.value,
+                config_get_string(config, section_name, "a2dpMcastSupported", "null"),
+                sizeof(vProp.value));
+        LOG_INFO(LOG_TAG, "%s:: prop type: %s, prop value: %s", __func__,
+                convertPropTypeToStringFormat(vProp.type), vProp.value);
+        vPropList.push_back(vProp);
+
+        vProp.type = BT_PROP_TWSP_STATE;
+        strlcpy(vProp.value,
+                config_get_string(config, section_name, "twspStateSupported", "null"),
+                sizeof(vProp.value));
+        LOG_INFO(LOG_TAG, "%s:: prop type: %s, prop value: %s", __func__,
+                convertPropTypeToStringFormat(vProp.type), vProp.value);
+        vPropList.push_back(vProp);
         break;
 
       case BT_PROP_SOC_TYPE:
@@ -394,6 +435,25 @@ static bool btConfigStoreLoadProperties(uint32_t vPropType,
         vProp.type = BT_PROP_WIPOWER;
         strlcpy(vProp.value,
                 config_get_string(config, section_name, "wiPowerSupported", "null"),
+                sizeof(vProp.value));
+        LOG_INFO(LOG_TAG, "%s:: prop type: %s, prop value: %s", __func__,
+                convertPropTypeToStringFormat(vProp.type), vProp.value);
+        vPropList.push_back(vProp);
+        break;
+      case BT_PROP_A2DP_MCAST_TEST:
+        vProp.type = BT_PROP_A2DP_MCAST_TEST;
+        strlcpy(vProp.value,
+                config_get_string(config, section_name, "a2dpMcastSupported", "null"),
+                sizeof(vProp.value));
+        LOG_INFO(LOG_TAG, "%s:: prop type: %s, prop value: %s", __func__,
+                convertPropTypeToStringFormat(vProp.type), vProp.value);
+        vPropList.push_back(vProp);
+        break;
+
+      case BT_PROP_TWSP_STATE:
+        vProp.type = BT_PROP_TWSP_STATE;
+        strlcpy(vProp.value,
+                config_get_string(config, section_name, "twspStateSupported", "null"),
                 sizeof(vProp.value));
         LOG_INFO(LOG_TAG, "%s:: prop type: %s, prop value: %s", __func__,
                 convertPropTypeToStringFormat(vProp.type), vProp.value);
