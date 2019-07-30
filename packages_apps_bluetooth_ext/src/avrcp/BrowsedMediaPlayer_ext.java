@@ -129,8 +129,9 @@ class BrowsedMediaPlayer_ext {
                     break;
                 case MSG_DISCONNECT_PLAYER:
                     MediaBrowser mb = (MediaBrowser)msg.obj;
-                    mb.disconnect();
                     Log.w(TAG, "Trigger disconnect for MediaBrowser " + mb);
+                    if (mb != null)
+                        mb.disconnect();
                     break;
                 case MSG_TIMEOUT:
                     Log.w(TAG, "MSG_TIMEOUT");
@@ -157,8 +158,10 @@ class BrowsedMediaPlayer_ext {
 
         @Override
         public void onConnected() {
-            if ((mHandler != null) && !mBrowsablePlayerList.contains(mCallbackPackageName)) {
-                Log.d(TAG, "Add " + mCallbackPackageName + " to MBS List " + mBrowser);
+            Log.d(TAG, "Onconnected pkg " + mCallbackPackageName + " mb " + mBrowser);
+            if ((mHandler != null) && !mBrowsablePlayerList.contains(mCallbackPackageName)
+                    && mHandler.hasMessages(MSG_TIMEOUT, mCallbackPackageName)) {
+                Log.d(TAG, "Add " + mCallbackPackageName + " to MBS List " + mBrowsablePlayerList);
                 mBrowsablePlayerList.add(mCallbackPackageName);
                 mHandler.removeMessages(MSG_TIMEOUT, mCallbackPackageName);
                 Message msg = mHandler.obtainMessage(MSG_DISCONNECT_PLAYER, 0, 0, mBrowser);
@@ -175,7 +178,9 @@ class BrowsedMediaPlayer_ext {
 
         @Override
         public void onConnectionFailed() {
-            if ((mHandler != null) && !mBrowsablePlayerList.contains(mCallbackPackageName)) {
+            Log.d(TAG, "Onconnectedfail pkg " + mCallbackPackageName + " mb " + mBrowser);
+            if ((mHandler != null) && !mBrowsablePlayerList.contains(mCallbackPackageName)
+                    && mHandler.hasMessages(MSG_TIMEOUT, mCallbackPackageName)) {
                 mHandler.removeMessages(MSG_TIMEOUT, mCallbackPackageName);
             }
             mConnState = DISCONNECTED;
@@ -189,7 +194,9 @@ class BrowsedMediaPlayer_ext {
 
         @Override
         public void onConnectionSuspended() {
-            if ((mHandler != null) && !mBrowsablePlayerList.contains(mCallbackPackageName)) {
+            Log.d(TAG, "Onconnectedsuspend pkg " + mCallbackPackageName + " mb " + mBrowser);
+            if ((mHandler != null) && !mBrowsablePlayerList.contains(mCallbackPackageName)
+                    && mHandler.hasMessages(MSG_TIMEOUT, mCallbackPackageName)) {
                 mHandler.removeMessages(MSG_TIMEOUT, mCallbackPackageName);
             }
             mBrowser = null;
@@ -542,8 +549,21 @@ class BrowsedMediaPlayer_ext {
         Log.w(TAG, "Reconnected with Browser service");
     }
 
+    public void updateBrowsablePlayerList(String packageName) {
+        if (packageName == null || packageName.isEmpty())
+            return;
+        if (mBrowsablePlayerList.contains(packageName)) {
+            Log.w(TAG, "Remove pkg" + packageName + "from list" + mBrowsablePlayerList);
+            mBrowsablePlayerList.remove(packageName);
+        }
+    }
+
     public void CheckMBSConnection(String packageName, String cls) {
         Log.w(TAG, "TryconnectMBS with Browser service for package = " + packageName);
+        if (mBrowsablePlayerList.contains(packageName)) {
+            Log.w(TAG, "Already in MBS List don't reconnect" + mBrowsablePlayerList);
+            return;
+        }
         Message msg = mHandler.obtainMessage(MSG_CONNECT_PLAYER);
         Bundle data = new Bundle();
         data.putCharSequence("package", packageName);
@@ -698,7 +718,10 @@ class BrowsedMediaPlayer_ext {
                 mPathStack.push(newPath);
             }
         } else if (direction == AvrcpConstants_ext.DIR_UP) { /* move up */
-            if (!isBrowsableFolderUp()) {
+            if (mPathStack == null || mPathStack.isEmpty()) {
+                Log.w(TAG, "Path Stack not initialized send internal error!");
+                mMediaInterface.changePathRsp(mBDAddr, AvrcpConstants_ext.RSP_INTERNAL_ERR, 0);
+            } else if (!isBrowsableFolderUp()) {
                 /* Already on the root, cannot allow up: PTS: test case TC_TG_MCN_CB_BI_02_C
                  * This is required, otherwise some CT will keep on sending change path up
                  * until they receive error */
