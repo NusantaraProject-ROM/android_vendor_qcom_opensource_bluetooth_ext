@@ -1668,8 +1668,16 @@ public final class Avrcp_ext {
                 if (bt_device != null && bt_device.isTwsPlusDevice()) {
                     for (int i = 0; i < maxAvrcpConnections; i++) {
                         if (deviceFeatures[i].mCurrentDevice != null &&
-                                deviceFeatures[i].isActiveDevice &&
-                                deviceFeatures[i].mCurrentDevice.isTwsPlusDevice()) {
+                            deviceFeatures[i].mCurrentDevice.isTwsPlusDevice() &&
+                            ((!deviceFeatures[i].isActiveDevice &&
+                            !Objects.equals(bt_device, deviceFeatures[i].mCurrentDevice)) ||
+                            (deviceFeatures[i].isActiveDevice &&
+                             Objects.equals(bt_device, deviceFeatures[i].mCurrentDevice)))) {
+                            /* If bt_device is already active then it is active device swithc
+                            ** between TWS+ device.
+                            ** If bt_device is not active and other TWS+ pair is not active then
+                            ** it is a new connection
+                            */
                             tws_switch = true;
                         }
                     }
@@ -1703,8 +1711,15 @@ public final class Avrcp_ext {
                     }
                 }
                 if (bt_device.isTwsPlusDevice() && !tws_switch) {
-                    Log.d(TAG,"Restting mTwsPairDisconnected at index " + deviceIndex);
+                    Log.d(TAG,"Reseting mTwsPairDisconnected at index " + deviceIndex);
                     deviceFeatures[deviceIndex].mTwsPairDisconnected = false;
+                    for (int i = 0; i < maxAvrcpConnections; i++) {
+                        if (i != deviceIndex && deviceFeatures[i].mCurrentDevice != null &&
+                            deviceFeatures[i].mCurrentDevice.isTwsPlusDevice()) {
+                            deviceFeatures[i].mTwsPairDisconnected = false;
+                            break;
+                        }
+                    }
                 }
                 if (maxAvrcpConnections > 1) {
                     for (int i = 0; i < maxAvrcpConnections; i++) {
@@ -3459,9 +3474,10 @@ public final class Avrcp_ext {
         //validating device is connected
         int index = getIndexForDevice(device);
         if (index != INVALID_DEVICE_INDEX && mDevice != null &&
-            (mDevice.equals(deviceFeatures[index].mCurrentDevice) ||
+            (Objects.equals(mDevice, deviceFeatures[index].mCurrentDevice) ||
              (mDevice.isTwsPlusDevice() && device.isTwsPlusDevice()))) {
-            setActiveDevice(mDevice);
+            setActiveDevice(deviceFeatures[index].mCurrentDevice);
+            //setActiveDevice(mDevice);
             //below line to send setAbsolute volume if device is suporting absolute volume
             //When A2dp playing on DUT and Remote got connected, send proper playstatus
             if (isPlayingState(mCurrentPlayerState) &&
