@@ -2,7 +2,6 @@ cc_defaults {
     name: "libbluetoothqti_jni_default",
     header_libs: ["libbluetooth_headers"],
     include_dirs: [
-        "libnativehelper/include/nativehelper",
         "system/bt/types",
         "packages/apps/Bluetooth/jni",
         "vendor/qcom/opensource/commonsys/bluetooth_ext/vhal/include",
