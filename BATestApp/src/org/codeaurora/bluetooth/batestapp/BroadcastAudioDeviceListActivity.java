@@ -288,10 +288,7 @@ public class BroadcastAudioDeviceListActivity extends Activity
 
     private class GattBroadcastServiceClientHandler extends Handler {
         public static final int ASSOCIATE_BCA_RECEIVER = 3;
-        /**
-         * Create a GattBroadcastService proxy object for interacting with the local
-         * Bluetooth Service which handles the GattBroadcastService Profile
-         */
+
         private GattBroadcastServiceClientHandler(Looper looper) {
             super(looper);
         }
