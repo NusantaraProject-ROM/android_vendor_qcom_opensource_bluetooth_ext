@@ -1290,25 +1290,29 @@ public class GattBroadcastService  {
             addState(mBRADisabledStreamingActive);
             addState(mBRAEnabledStreamingPaused);
             addState(mBRAEnabledStreamingActive);
-
-            if (mBATService.getBATState() == BATService.STATE_PLAYING) {
-                setInitialState(mBRADisabledStreamingActive);
-                int div = mBATService.getDIV();
-                Log.d("GattBroadcastServiceStateMachine:", "div = " + div);
-                if (div != -1) {
-                    mBleAdvertiser.setDiv(div);
+            if (mBATService != null) {
+                if (mBATService.getBATState() == BATService.STATE_PLAYING) {
+                    setInitialState(mBRADisabledStreamingActive);
+                    int div = mBATService.getDIV();
+                    Log.d("GattBroadcastServiceStateMachine:", "div = " + div);
+                    if (div != -1 && mBleAdvertiser != null) {
+                        mBleAdvertiser.setDiv(div);
+                    }
+                    if (mBleAdvertiser != null) {
+                        mBleAdvertiser.stopAdvertising();
+                        Log.d("GattBroadcastServiceStateMachine:",
+                            " starting advertising");
+                        mBleAdvertiser.startAdvertising(false,
+                            BleAdvertiser.BRA_DISABLED_STREAMING_ACTIVE_ADV_INTERVAL);
+                    }
                 }
-                if (mBleAdvertiser != null) {
-                    mBleAdvertiser.stopAdvertising();
-                    Log.d("GattBroadcastServiceStateMachine:"," starting advertising");
-                    mBleAdvertiser.startAdvertising(false,
-                        BleAdvertiser.BRA_DISABLED_STREAMING_ACTIVE_ADV_INTERVAL);
-                }
+                else if (mBATService.getBATState() == BATService.STATE_PAUSED)
+                    setInitialState(mBRADisabledStreamingPaused);
+                else
+                    setInitialState(mBRADisabledStreamingDisabled);
             }
-            else if (mBATService.getBATState() == BATService.STATE_PAUSED)
-                setInitialState(mBRADisabledStreamingPaused);
             else
-                setInitialState(mBRADisabledStreamingDisabled);
+                Log.e(TAG, "BA Service is null");
 
         }
 
