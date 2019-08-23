@@ -1198,6 +1198,7 @@ public final class Avrcp_ext {
                 }
 
                 if (msg.arg2 == AVRC_RSP_INTERIM && areMultipleDevicesConnected() &&
+                    !(activeDevice != null && Objects.equals(deviceFeatures[deviceIndex].mCurrentDevice, activeDevice)) &&
                     deviceFeatures[deviceIndex].mInitialRemoteVolume == -1 &&
                     deviceFeatures[deviceIndex].mCurrentDevice.isTwsPlusDevice()) {
                     device = deviceFeatures[deviceIndex].mCurrentDevice;
