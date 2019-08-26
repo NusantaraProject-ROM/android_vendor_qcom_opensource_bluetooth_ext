@@ -62,10 +62,6 @@
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:screenOrientation="portrait"
             android:theme="@style/AppTheme" />
-
-        <service
-            android:name=".GattBroadcastService"
-            android:exported="true" />
     </application>
 
 </manifest>
