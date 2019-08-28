@@ -1348,11 +1348,11 @@ public final class Avrcp_ext {
                 if (DEBUG) Log.v(TAG, "MSG_SET_ABSOLUTE_VOLUME");
 
                 int avrcpVolume = convertToAvrcpVolume(msg.arg1);
-                BluetoothDevice activeDevice = null;
+                BluetoothDevice activeDevice = mA2dpService.getActiveDevice();
                 avrcpVolume = Math.min(AVRCP_MAX_VOL, Math.max(0, avrcpVolume));
                 for (int i = 0; i < maxAvrcpConnections; i++) {
                     if (deviceFeatures[i].mCurrentDevice != null && activeDevice != null &&
-                            Objects.equals(activeDevice, deviceFeatures[deviceIndex].mCurrentDevice) &&
+                            Objects.equals(activeDevice, deviceFeatures[i].mCurrentDevice) &&
                             deviceFeatures[i].isAbsoluteVolumeSupportingDevice) {
 
                           deviceIndex = i;
