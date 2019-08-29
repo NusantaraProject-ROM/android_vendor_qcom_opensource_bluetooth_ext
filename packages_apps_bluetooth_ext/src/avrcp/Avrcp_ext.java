@@ -3288,6 +3288,7 @@ public final class Avrcp_ext {
 
     private void SetBrowsePackage(String PackageName) {
         String browseService = (PackageName != null)?getBrowseServiceName(PackageName):null;
+        BrowsedMediaPlayer_ext player = mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
         Log.w(TAG, "SetBrowsePackage for pkg " + PackageName + "svc" + browseService);
         if (browseService != null && !browseService.isEmpty()) {
             BluetoothDevice active_device = null;
@@ -3306,6 +3307,10 @@ public final class Avrcp_ext {
                     Log.w(TAG, "Addr Player update to Browse " + PackageName);
                     mAvrcpBrowseManager.getBrowsedMediaPlayer(addr).
                             setCurrentPackage(PackageName, browseService);
+                    if (player != null) {
+                        Log.w(TAG,"checkMBSConnection try connect");
+                        player.CheckMBSConnection(PackageName, browseService);
+                    }
                 }
             } else {
                 Log.w(TAG, "SetBrowsePackage Active device not set yet cache " + PackageName +
