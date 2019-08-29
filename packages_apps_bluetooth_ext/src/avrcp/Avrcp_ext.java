@@ -2560,31 +2560,7 @@ public final class Avrcp_ext {
                    param = 1;
 
                 long update_interval = 0L;
-                // Split A2dp will be enabled by default
-                boolean isSplitA2dpEnabled = true;
-                AdapterService adapterService = AdapterService.getAdapterService();
-                if (adapterService != null) {
-                    //Todo, Once KS TAG is available, need to remove ReflectionUtils
-                    //isSplitA2dpEnabled= adapterService.isSplitA2dpEnabled();
-                    ReflectionUtils rUtils = new ReflectionUtils();
-                    if (rUtils.isMethodAvailable(adapterService,"isSplitA2dpEnabled", null)) {
-                      Object obj = rUtils.invokeMethod(adapterService,"isSplitA2dpEnabled", null);
-                      if (obj != null) {
-                          isSplitA2dpEnabled = (boolean)obj;
-                      } else {
-                          Log.v(TAG,"Obj is null");
-                      }
-                    } else {
-                      Log.v(TAG,"isSplitA2dpEnabled method is not available");
-                    }
-                    Log.v(TAG,"split enabled: " + isSplitA2dpEnabled);
-                }
-
-                if (isSplitA2dpEnabled) {
-                    update_interval = SystemProperties.getLong("persist.vendor.btstack.avrcp.pos_time", 3000L);
-                } else {
-                    update_interval = SystemProperties.getLong("persist.vendor.btstack.avrcp.pos_time", 1000L);
-                }
+                update_interval = SystemProperties.getLong("persist.vendor.btstack.avrcp.pos_time", 3000L);
                 deviceFeatures[deviceIndex].mPlayPosChangedNT =
                                              AvrcpConstants_ext.NOTIFICATION_TYPE_INTERIM;
                 update_interval = Math.max((long)param * 1000L, update_interval);
