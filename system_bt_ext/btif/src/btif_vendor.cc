@@ -91,6 +91,7 @@
 #define BTA_SERVICE_ID_TO_SERVICE_MASK(id)  ((tBTA_SERVICE_MASK)1 << (id))
 #define CALLBACK_TIMER_PERIOD_MS      (60000)
 #define BTIF_VENDOR_BREDR_CLEANUP 1
+#define BTIF_VENDOR_HCI_CLOSE 2
 
 typedef struct {
   RawAddress bd_addr; /* BD address peer device. */
@@ -173,6 +174,10 @@ static void btif_vendor_bredr_cleanup_event(uint16_t event, char *p_param)
     HAL_CBACK(bt_vendor_callbacks, bredr_cleanup_cb, true);
 }
 
+static void btif_vendor_hci_close_event(uint16_t event, char *p_param)
+{
+    btif_hci_close();
+}
 static void btif_vendor_send_iot_info_cb(uint16_t event, char *p_param)
 {
     broadcast_cb_data.is_valid = false;
@@ -354,7 +359,8 @@ static void bredrcleanup(void)
 static void hciclose(void)
 {
     LOG_INFO(LOG_TAG,"hciclose");
-    btif_hci_close();
+    btif_transfer_context(btif_vendor_hci_close_event,BTIF_VENDOR_HCI_CLOSE,
+                          NULL, 0, NULL);
 }
 
 
