@@ -35,6 +35,7 @@
 #define LOG_TAG "bluedroid"
 
 #include "btif_api.h"
+#include "btif_config.h"
 #include "bt_utils.h"
 #include "l2cdefs.h"
 #include "l2c_api.h"
@@ -237,6 +238,14 @@ static bt_status_t L2cap_LE_Register (uint16_t le_psm, bool ConnType, uint16_t S
 static uint16_t L2cap_LE_Connect (uint16_t le_psm , RawAddress address, tL2CAP_LE_CFG_INFO *p_cfg)
 {
     BTIF_TRACE_DEBUG("LE-L2CAP: %s:: %s", __FUNCTION__, address.ToString().c_str());
+
+    int addr_type = 0;
+    int device_type = 0;
+    if (btif_get_address_type(address, &addr_type) &&
+          btif_get_device_type(address, &device_type) &&
+          device_type != BT_DEVICE_TYPE_BREDR) {
+        BTA_DmAddBleDevice(address, addr_type, device_type);
+    }
 
     if (0 == (g_lcid = L2CA_CONNECT_COC_REQ (le_psm, address, p_cfg))) {
         BTIF_TRACE_ERROR("LE-L2CAP: L2CA_LE_CreditBasedConn_Req failed for le_psm ");
