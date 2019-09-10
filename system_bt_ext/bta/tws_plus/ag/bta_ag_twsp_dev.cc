@@ -673,7 +673,10 @@ void twsp_handle_vs_at_events(tBTA_AG_SCB* p_scb, uint16_t cmd,
            set_twsp_mic_quality(idx, int_arg);
         } break;
         case BTA_AG_TWSP_AT_QES_EVT: {
-           set_twsp_state(idx, int_arg);
+           if (set_twsp_state(idx, int_arg)) {
+                APPL_TRACE_DEBUG("%s: Update twsp state to BTIF", __func__);
+               (*bta_ag_cb.p_cback)((tBTA_AG_EVT)BTA_AG_TWSP_STATE_UPDATE, (tBTA_AG *)val);
+           }
         } break;
         case BTA_AG_TWSP_AT_QER_EVT: {
             set_twsp_role(idx, int_arg);
