@@ -269,6 +269,9 @@ public final class Avrcp_ext {
     private SortedMap<Integer, MediaPlayerInfo_ext> mMediaPlayerInfoList;
     private boolean mAvailablePlayerViewChanged;
 
+    private boolean mPlayerSwitching;
+    private List<String> mPkgRequestedMBSConnect;
+
     /* List of media players which supports browse */
     private List<BrowsePlayerInfo_ext> mBrowsePlayerInfoList;
 
@@ -553,6 +556,8 @@ public final class Avrcp_ext {
         mAvrcpPlayerAppSettingsRsp = new AvrcpPlayerAppSettingsRsp();
         mMediaPlayerInfoList = new TreeMap<Integer, MediaPlayerInfo_ext>();
         mAvailablePlayerViewChanged = false;
+        mPlayerSwitching = false;
+        mPkgRequestedMBSConnect = new ArrayList<String>();
         mBrowsePlayerInfoList = Collections.synchronizedList(new ArrayList<BrowsePlayerInfo_ext>());
         mPassthroughDispatched = 0;
         mPassthroughLogs = new EvictingQueue_ext<MediaKeyLog>(PASSTHROUGH_LOG_MAX_SIZE);
@@ -675,6 +680,7 @@ public final class Avrcp_ext {
         mContext.unregisterReceiver(mAvrcpReceiver);
         mContext.unregisterReceiver(mBootReceiver);
 
+        mPkgRequestedMBSConnect.clear();
         mAddressedMediaPlayer.cleanup();
         mAvrcpBrowseManager.cleanup();
         mCurrentBrowsingDevice = null;
@@ -2340,6 +2346,7 @@ public final class Avrcp_ext {
                     deviceFeatures[index].mReportedPlayerID != mCurrAddrPlayerID) {
                 Log.v(TAG, "Update player id: " + deviceFeatures[index].mReportedPlayerID +
                         "-> " + mCurrAddrPlayerID);
+                mPlayerSwitching = true;
                 if (deviceFeatures[index].mAvailablePlayersChangedNT ==
                         AvrcpConstants_ext.NOTIFICATION_TYPE_INTERIM) {
                     registerNotificationRspAvalPlayerChangedNative(
@@ -2666,10 +2673,9 @@ public final class Avrcp_ext {
         if (registering)
             deviceFeatures[deviceIndex].mTrackChangedNT = AvrcpConstants_ext.NOTIFICATION_TYPE_INTERIM;
 
-        MediaPlayerInfo_ext info = getAddressedPlayerInfo();
         byte[] byteAddr = getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice);
         // for non-browsable players or no player
-        if ((info != null && !info.isBrowseSupported()) ||
+        if (!isPlayerInBrowseList() ||
                 (deviceFeatures[deviceIndex].mFeatures & BTRC_FEAT_BROWSE) == 0) {
             byte[] track = AvrcpConstants_ext.TRACK_IS_SELECTED;
             if (!mMediaAttributes.exists) track = AvrcpConstants_ext.NO_TRACK_SELECTED;
@@ -2790,6 +2796,23 @@ public final class Avrcp_ext {
 
         }
         return playStatus;
+    }
+
+    private boolean isPlayerInBrowseList() {
+        MediaPlayerInfo_ext info = getAddressedPlayerInfo();
+        String pkgName = (info != null) ? info.getPackageName():"";
+        if (pkgName == null || pkgName.isEmpty())
+            return false;
+
+        BrowsedMediaPlayer_ext player =
+                mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
+        String browseService = (pkgName != null)?getBrowseServiceName(pkgName):null;
+        if (player == null || browseService == null || browseService.isEmpty())
+            return false;
+
+        boolean isBrowseSupported = player.isPackageInMBSList(pkgName);
+        Log.d(TAG, "Browse supported for pkg " + pkgName + " is " + isBrowseSupported);
+        return isBrowseSupported;
     }
 
     private boolean isPlayingState(@Nullable PlaybackState state) {
@@ -3284,12 +3307,14 @@ public final class Avrcp_ext {
                 byte[] addr = getByteAddress(active_device);
                 if (mAvrcpBrowseManager.getBrowsedMediaPlayer(addr) != null) {
                     mCurrentBrowsingDevice = active_device;
-                    Log.w(TAG, "Addr Player update to Browse " + PackageName);
+                    Log.w(TAG, "Addr Player update to Browse " + PackageName +
+                            " already req MBS list " + mPkgRequestedMBSConnect);
                     mAvrcpBrowseManager.getBrowsedMediaPlayer(addr).
                             setCurrentPackage(PackageName, browseService);
-                    if (player != null) {
+                    if (player != null && !mPkgRequestedMBSConnect.contains(PackageName)) {
                         Log.w(TAG,"checkMBSConnection try connect");
                         player.CheckMBSConnection(PackageName, browseService);
+                        mPkgRequestedMBSConnect.add(PackageName);
                     }
                 }
             } else {
@@ -5135,9 +5160,15 @@ public final class Avrcp_ext {
                 return;
             }
 
+            if (!isPlayerInBrowseList() && !mPlayerSwitching) {
+                Log.e(TAG,"Disallow sending changed response to non Browsable Players");
+                return;
+            }
+
             if (!registerNotificationRspNowPlayingChangedNative(type, addr)) {
                 Log.e(TAG, "registerNotificationRspNowPlayingChangedNative failed!");
             }
+            mPlayerSwitching = false;
             mNowPlayingListChangedNT = AvrcpConstants_ext.NOTIFICATION_TYPE_CHANGED;
         }
 
