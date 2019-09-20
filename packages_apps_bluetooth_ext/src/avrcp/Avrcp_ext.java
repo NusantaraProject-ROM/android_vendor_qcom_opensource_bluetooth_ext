@@ -76,6 +76,7 @@ import com.android.bluetooth.R;
 import com.android.bluetooth.Utils;
 import com.android.bluetooth.avrcpcontroller.AvrcpControllerService;
 import com.android.bluetooth.ReflectionUtils;
+import com.android.bluetooth.hearingaid.HearingAidService;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -5250,6 +5251,18 @@ public final class Avrcp_ext {
         int storeVolume =  mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         Log.i(TAG, "storeVolume: Storing stream volume level for device " + device
                 + " : " + storeVolume);
+
+        List<BluetoothDevice> HAActiveDevices = null;
+        HearingAidService mHaService = HearingAidService.getHearingAidService();
+        if (mHaService != null) {
+          HAActiveDevices = mHaService.getActiveDevices();
+        }
+        if (HAActiveDevices != null && (HAActiveDevices.get(0) != null
+                || HAActiveDevices.get(1) != null)) {
+          Log.d(TAG, "Do not store volume when Hearing Aid device is active");
+          return;
+        }
+
         if (index != INVALID_DEVICE_INDEX && deviceFeatures[index].isAbsoluteVolumeSupportingDevice &&
            (mAbsVolThreshold > 0 && mAbsVolThreshold < mAudioStreamMax &&
            storeVolume > mAbsVolThreshold)) {
