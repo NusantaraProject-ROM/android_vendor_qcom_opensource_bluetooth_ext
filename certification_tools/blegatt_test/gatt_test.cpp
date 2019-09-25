@@ -122,6 +122,7 @@ typedef struct {
 #define L2CAP_LE_DEFAULT_MPS 230
 #define L2CAP_LE_MAX_CREDIT 65535
 #define L2CAP_LE_DEFAULT_CREDIT 1
+#define LE_CHAR_MAX_LEN_VAL 512
 
 /************************************************************************************
 **  Local type definitions
@@ -278,7 +279,7 @@ static uint8_t attr_value[BTGATT_MAX_ATTR_LEN];//600
 uint8_t long_byte_value[] = {31, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
 uint8_t short_byte_value[] = {31, 2};
 
-int len_long_char = 512;
+int len_long_char = LE_CHAR_MAX_LEN_VAL;
 int len_short_char = 2;
 
 int curr_char_val_len =0;
@@ -1603,6 +1604,7 @@ void do_smp_passkey_reply(char *p);
 void do_smp_encrypt(char *p);
 void do_le_gap_conn_param_update(char *p);
 void do_le_gap_attr_init(char *p);
+void do_le_set_char_len(char *p);
 void do_pairing(char *p);
 void do_l2cap_send_data_cid(char *p);
 static void do_set_localname(char *p);
@@ -1664,6 +1666,7 @@ const t_cmd console_cmd_list[] =
     { "c_set_idle_timeout", do_le_set_idle_timeout, "bd_addr, time_out(int)", 0 },
     { "c_gap_attr_init", do_le_gap_attr_init, "::", 0 },
     { "c_gap_conn_param_update", do_le_gap_conn_param_update, "::", 0 },
+    { "c_set_char_len", do_le_set_char_len, ":: <Default value: 512>", 0},
 
     { "s_register", do_le_server_register, "::UUID: 1<1111..> 2<12323..> 3<321111..>", 0 },
     { "s_connect", do_le_server_connect, ":: transport, BdAddr<00112233445566>", 0 },
@@ -3586,6 +3589,19 @@ void do_le_gap_conn_param_update(char *p)
     printf("%s:: GAP connection parameter Update\n", __FUNCTION__);
 
 }
+
+void do_le_set_char_len(char *p)
+{
+    int len;
+    len = get_int(&p, -1); //arg1
+    if (len > LE_CHAR_MAX_LEN_VAL || len < 1) {
+      printf("Invalid length. Enter 1 to 512\n");
+    } else {
+      len_long_char = len;
+      printf("long characteristic length is %d\n", len_long_char);
+    }
+}
+
 void do_le_gap_attr_init(char *p)
 {
     sGapInterface->Gap_AttrInit();

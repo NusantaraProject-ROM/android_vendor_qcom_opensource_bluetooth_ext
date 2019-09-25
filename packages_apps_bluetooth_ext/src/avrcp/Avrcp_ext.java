@@ -1130,12 +1130,13 @@ public final class Avrcp_ext {
                     Log.e(TAG,"invalid index for device");
                     break;
                 }
+                device = deviceFeatures[deviceIndex].mCurrentDevice;
                 activeDevice = mA2dpService.getActiveDevice();
                 byte absVol = (byte) ((byte) msg.arg1 & 0x7f); // discard MSB as it is RFD
                 if (DEBUG) Log.v(TAG, "MSG_NATIVE_REQ_VOLUME_CHANGE addr: " + address);
 
-                if (((!(activeDevice != null
-                    && Objects.equals(deviceFeatures[deviceIndex].mCurrentDevice, activeDevice))) &&
+                if (((!(activeDevice != null && (isTwsPlusPair(activeDevice, device)
+                    || Objects.equals(device, activeDevice)))) &&
                     (deviceFeatures[deviceIndex].mInitialRemoteVolume != -1)) ||
                     (!deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice)) {
                         if (deviceFeatures[deviceIndex].isAbsoluteVolumeSupportingDevice) {
@@ -1246,7 +1247,7 @@ public final class Avrcp_ext {
                         deviceFeatures[deviceIndex].mBlackListVolume = -1;
                         break;
                     } else if (activeDevice != null &&
-                          Objects.equals(activeDevice, deviceFeatures[deviceIndex].mCurrentDevice)) {
+                          (Objects.equals(activeDevice, device) || isTwsPlusPair(activeDevice, device))) {
                         /*Avoid send set absolute volume for store volume untill volume registration
                         complete and making synchronization to send only one setAbsolute volume
                         during connection*/
@@ -1280,16 +1281,16 @@ public final class Avrcp_ext {
                         Log.d(TAG, "Don't show media UI when slide volume bar");
                         isShowUI = false;
                     }
-                    device = mA2dpService.getActiveDevice();
-                    if (deviceFeatures[deviceIndex].mCurrentDevice.isTwsPlusDevice() &&
-                        device != null && !device.isTwsPlusDevice()) {
+                    if (device.isTwsPlusDevice() &&
+                        activeDevice != null && !activeDevice.isTwsPlusDevice()) {
                         Log.d(TAG,"TWS+ device is not active, ignore volume change type: " + msg.arg2);
                         break;
                     }
                     /* If the volume has successfully changed */
-                    if (device != null && !(activeDevice != null &&
-                           Objects.equals(activeDevice, deviceFeatures[deviceIndex].mCurrentDevice)) &&
-                           (msg.arg2 == AVRC_RSP_CHANGED || msg.arg2 == AVRC_RSP_INTERIM)) {
+                    if (!(activeDevice != null &&
+                        (isTwsPlusPair(activeDevice, device) ||
+                        Objects.equals(activeDevice, device))) &&
+                        (msg.arg2 == AVRC_RSP_CHANGED || msg.arg2 == AVRC_RSP_INTERIM)) {
                         Log.d(TAG, "Do not change volume from an inactive device");
                         break;
                     }
@@ -1348,12 +1349,13 @@ public final class Avrcp_ext {
                 if (DEBUG) Log.v(TAG, "MSG_SET_ABSOLUTE_VOLUME");
 
                 int avrcpVolume = convertToAvrcpVolume(msg.arg1);
-                BluetoothDevice activeDevice = null;
+                BluetoothDevice activeDevice = mA2dpService.getActiveDevice();
                 avrcpVolume = Math.min(AVRCP_MAX_VOL, Math.max(0, avrcpVolume));
                 for (int i = 0; i < maxAvrcpConnections; i++) {
                     if (deviceFeatures[i].mCurrentDevice != null && activeDevice != null &&
-                            Objects.equals(activeDevice, deviceFeatures[deviceIndex].mCurrentDevice) &&
-                            deviceFeatures[i].isAbsoluteVolumeSupportingDevice) {
+                        (isTwsPlusPair(activeDevice, deviceFeatures[i].mCurrentDevice) ||
+                         Objects.equals(activeDevice, deviceFeatures[i].mCurrentDevice)) &&
+                         deviceFeatures[i].isAbsoluteVolumeSupportingDevice) {
 
                           deviceIndex = i;
 
@@ -2560,31 +2562,7 @@ public final class Avrcp_ext {
                    param = 1;
 
                 long update_interval = 0L;
-                // Split A2dp will be enabled by default
-                boolean isSplitA2dpEnabled = true;
-                AdapterService adapterService = AdapterService.getAdapterService();
-                if (adapterService != null) {
-                    //Todo, Once KS TAG is available, need to remove ReflectionUtils
-                    //isSplitA2dpEnabled= adapterService.isSplitA2dpEnabled();
-                    ReflectionUtils rUtils = new ReflectionUtils();
-                    if (rUtils.isMethodAvailable(adapterService,"isSplitA2dpEnabled", null)) {
-                      Object obj = rUtils.invokeMethod(adapterService,"isSplitA2dpEnabled", null);
-                      if (obj != null) {
-                          isSplitA2dpEnabled = (boolean)obj;
-                      } else {
-                          Log.v(TAG,"Obj is null");
-                      }
-                    } else {
-                      Log.v(TAG,"isSplitA2dpEnabled method is not available");
-                    }
-                    Log.v(TAG,"split enabled: " + isSplitA2dpEnabled);
-                }
-
-                if (isSplitA2dpEnabled) {
-                    update_interval = SystemProperties.getLong("persist.vendor.btstack.avrcp.pos_time", 3000L);
-                } else {
-                    update_interval = SystemProperties.getLong("persist.vendor.btstack.avrcp.pos_time", 1000L);
-                }
+                update_interval = SystemProperties.getLong("persist.vendor.btstack.avrcp.pos_time", 3000L);
                 deviceFeatures[deviceIndex].mPlayPosChangedNT =
                                              AvrcpConstants_ext.NOTIFICATION_TYPE_INTERIM;
                 update_interval = Math.max((long)param * 1000L, update_interval);
@@ -2919,7 +2897,8 @@ public final class Avrcp_ext {
         BluetoothDevice activeDevice = mA2dpService.getActiveDevice();
         for (int i = 0; i < maxAvrcpConnections; i++) {
             if (deviceFeatures[i].mCurrentDevice != null && activeDevice != null &&
-                    Objects.equals(deviceFeatures[i].mCurrentDevice, activeDevice)) {
+                (isTwsPlusPair(activeDevice, deviceFeatures[i].mCurrentDevice) ||
+                Objects.equals(deviceFeatures[i].mCurrentDevice, activeDevice))) {
                 if ((deviceFeatures[i].mFeatures &
                         BTRC_FEAT_ABSOLUTE_VOLUME) != 0) {
                     status = true;
@@ -3288,6 +3267,7 @@ public final class Avrcp_ext {
 
     private void SetBrowsePackage(String PackageName) {
         String browseService = (PackageName != null)?getBrowseServiceName(PackageName):null;
+        BrowsedMediaPlayer_ext player = mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
         Log.w(TAG, "SetBrowsePackage for pkg " + PackageName + "svc" + browseService);
         if (browseService != null && !browseService.isEmpty()) {
             BluetoothDevice active_device = null;
@@ -3306,6 +3286,10 @@ public final class Avrcp_ext {
                     Log.w(TAG, "Addr Player update to Browse " + PackageName);
                     mAvrcpBrowseManager.getBrowsedMediaPlayer(addr).
                             setCurrentPackage(PackageName, browseService);
+                    if (player != null) {
+                        Log.w(TAG,"checkMBSConnection try connect");
+                        player.CheckMBSConnection(PackageName, browseService);
+                    }
                 }
             } else {
                 Log.w(TAG, "SetBrowsePackage Active device not set yet cache " + PackageName +

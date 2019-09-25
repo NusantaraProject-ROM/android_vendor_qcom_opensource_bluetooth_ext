@@ -127,6 +127,7 @@ int local_snoop_socket_create(void) {
   if(socket_local_server_bind(listen_socket_local, LOCAL_SOCKET_NAME,
       ANDROID_SOCKET_NAMESPACE_ABSTRACT) < 0) {
     LOG_ERROR(LOG_TAG, "Failed to create Local Socket (%s)", strerror(errno));
+    close(listen_socket_local);
     return -1;
   }
 

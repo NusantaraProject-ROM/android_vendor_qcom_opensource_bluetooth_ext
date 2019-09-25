@@ -301,8 +301,10 @@ public class BATService extends ProfileService {
                         BluetoothAdapter.ERROR);
                 if (state == BluetoothAdapter.STATE_BLE_ON || state == BluetoothAdapter.STATE_ON) {
                     Log.d(TAG,"ACTION_BLE_STATE_CHANGED state: " + state);
-                    mGattBroadcastService = new GattBroadcastService();
-                    mGattBroadcastService.start(getApplicationContext());
+                    if (mGattBroadcastService == null) {
+                        mGattBroadcastService = new GattBroadcastService();
+                        mGattBroadcastService.start(getApplicationContext());
+                    }
                 }
             }
         }
@@ -420,6 +422,7 @@ public class BATService extends ProfileService {
 
         if(mGattBroadcastService != null) {
             mGattBroadcastService.stop();
+            mGattBroadcastService = null;
         }
         Log.d(TAG, "BATService :: stop - ");
         return true;
