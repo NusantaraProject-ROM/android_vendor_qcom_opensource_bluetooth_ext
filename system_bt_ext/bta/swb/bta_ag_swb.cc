@@ -34,6 +34,7 @@
 #include "utl.h"
 #include "device/include/interop.h"
 #include <hardware/vendor_hf.h>
+#include <cutils/properties.h>
 
 #if (SWB_ENABLED == TRUE)
 
@@ -138,15 +139,17 @@ void bta_ag_send_qcs(tBTA_AG_SCB* p_scb, tBTA_AG_DATA* p_data) {
  *
  ******************************************************************************/
 void bta_ag_send_qac(tBTA_AG_SCB* p_scb, tBTA_AG_DATA* p_data) {
-  /* send +BCS */
-  APPL_TRACE_DEBUG("send +QAC codecs suuported");
-  if (!get_swb_codec_status()) {
+  char value[PROPERTY_VALUE_MAX];
+  /* send +QAC */
+  APPL_TRACE_DEBUG("send +QAC codec response");
+
+  if (property_get("persist.vendor.qcom.bluetooth.enable.swb", value, "false")
+      && strncmp(value, "true", sizeof("true")) != 0) {
     bta_ag_send_result(p_scb, BTA_AG_LOCAL_RES_QAC, SWB_CODECS_UNSUPPORTD, 0);
     return;
-  } else{
-    bta_ag_send_result(p_scb, BTA_AG_LOCAL_RES_QAC, SWB_CODECS_SUPPORTED, 0);
   }
-  if (p_scb->sco_codec == BTA_AG_SCO_SWB_SETTINGS_Q0) {
+  bta_ag_send_result(p_scb, BTA_AG_LOCAL_RES_QAC, SWB_CODECS_SUPPORTED, 0);
+  if (get_swb_codec_status() && p_scb->sco_codec == BTA_AG_SCO_SWB_SETTINGS_Q0) {
       p_scb->is_swb_codec = true;
   }
 }

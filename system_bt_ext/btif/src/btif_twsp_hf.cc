@@ -33,8 +33,10 @@
  */
 
 #include <hardware/bluetooth.h>
+#include "btif_common.h"
 #include "btif_hf.h"
 #include "btif_tws_plus.h"
+#include "btif_twsp_hf.h"
 #include "vendor.h"
 #include <cutils/properties.h>
 
@@ -135,11 +137,30 @@ int btif_hf_get_other_connected_twsp_index(int current_index)
 
 void btif_hf_twsp_send_bvra_update(int current_index, tBTA_AG_RES_DATA* ag_res) {
     int peer_eb_idx = btif_hf_get_other_connected_twsp_index(current_index);
-    if ((peer_eb_idx >= 0) && (peer_eb_idx < BTA_AG_MAX_NUM_CLIENTS) &&
+    if ((peer_eb_idx >= 0) && (peer_eb_idx < btif_max_hf_clients) &&
         (btif_hf_cb[peer_eb_idx].peer_feat & BTA_AG_PEER_FEAT_VREC)) {
         BTIF_TRACE_DEBUG("%s: Send BVRA update for peer earbud, idx: %d", __func__, peer_eb_idx);
         BTA_AgResult(btif_hf_cb[peer_eb_idx].handle, BTA_AG_BVRA_RES, ag_res);
     }
+}
+
+bool btif_hf_check_twsp_state_for_sco(int idx) {
+    BTIF_TRACE_DEBUG("%s: Current earbud state: %d", __func__, btif_hf_cb[idx].twsp_state);
+    if (btif_hf_cb[idx].twsp_state == TWSPLUS_EB_STATE_OUT_OF_EAR ||
+        btif_hf_cb[idx].twsp_state == TWSPLUS_EB_STATE_INCASE) {
+        int peer_eb_idx = btif_hf_get_other_connected_twsp_index(idx);
+        if ((peer_eb_idx < 0) || (peer_eb_idx >= btif_max_hf_clients) ||
+            (btif_hf_cb[peer_eb_idx].twsp_state == TWSPLUS_EB_STATE_OUT_OF_EAR) ||
+            (btif_hf_cb[peer_eb_idx].twsp_state == TWSPLUS_EB_STATE_INCASE)) {
+            BTIF_TRACE_DEBUG("%s: No any connected earbud in ear", __func__);
+            btif_transfer_context(btif_in_hf_generic_evt, BTIF_HFP_CB_AUDIO_CONNECTING,
+                            (char*)(&btif_hf_cb[idx].connected_bda), sizeof(RawAddress), NULL);
+            btif_transfer_context(btif_in_hf_generic_evt, BTIF_HFP_CB_AUDIO_DISCONNECTED,
+                            (char*)(&btif_hf_cb[idx].connected_bda), sizeof(RawAddress), NULL);
+        }
+        return false;
+    }
+    return true;
 }
 
 }  // namespace headset

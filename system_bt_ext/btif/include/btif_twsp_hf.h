@@ -51,5 +51,7 @@ int btif_hf_get_other_connected_twsp_index(int idx);
 
 void btif_hf_twsp_send_bvra_update(int idx, tBTA_AG_RES_DATA* ag_res);
 
+bool btif_hf_check_twsp_state_for_sco(int idx);
+
 }  // namespace headset
 }  // namespace bluetooth
