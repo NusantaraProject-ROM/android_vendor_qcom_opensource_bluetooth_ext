@@ -2914,7 +2914,8 @@ public final class Avrcp_ext {
         mHandler.removeMessages(currMsgPlayIntervalTimeout);
         if ((deviceFeatures[i].mCurrentDevice != null) &&
             (deviceFeatures[i].mPlayPosChangedNT == AvrcpConstants_ext.NOTIFICATION_TYPE_INTERIM) &&
-                 (isPlayingState(deviceFeatures[i].mCurrentPlayState)) && !isPlayerPaused()) {
+            (isPlayingState(deviceFeatures[i].mCurrentPlayState)) &&
+             !isPlayerPaused() && deviceFeatures[i].isActiveDevice) {
             Message msg = mHandler.obtainMessage(currMsgPlayIntervalTimeout, 0, 0,
                                                  deviceFeatures[i].mCurrentDevice);
             long delay = deviceFeatures[i].mPlaybackIntervalMs;
@@ -3541,8 +3542,9 @@ public final class Avrcp_ext {
             //When A2dp playing on DUT and Remote got connected, send proper playstatus
             if (isPlayingState(mCurrentPlayerState) &&
                 mA2dpService.isA2dpPlaying(device)) {
+                deviceFeatures[index].mLastStateUpdate = mLastStateUpdate;
                 deviceFeatures[index].mCurrentPlayState = mCurrentPlayerState;
-                Log.i(TAG,"Send correct playstatus to remote when it gets connected: " +
+                Log.i(TAG,"Send correct playstatus and song position to remote when it gets connected: " +
                                                       deviceFeatures[index].mCurrentPlayState);
             }
         }
