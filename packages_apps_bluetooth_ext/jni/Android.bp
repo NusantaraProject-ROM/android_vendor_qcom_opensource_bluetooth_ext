@@ -1,6 +1,7 @@
 cc_defaults {
     name: "libbluetoothqti_jni_default",
-    header_libs: ["libbluetooth_headers"],
+    // KEYSTONE(I999cc7985b32bae2db80bcfcede22d37b8e62ff5,b/141267953)
+    header_libs: ["libbluetooth_headers", "libnativehelper_header_only"],
     include_dirs: [
         "system/bt/types",
         "packages/apps/Bluetooth/jni",
