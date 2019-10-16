@@ -5278,12 +5278,11 @@ public final class Avrcp_ext {
           return;
         }
 
-        if (index != INVALID_DEVICE_INDEX && deviceFeatures[index].isAbsoluteVolumeSupportingDevice &&
-           (mAbsVolThreshold > 0 && mAbsVolThreshold < mAudioStreamMax &&
-           storeVolume > mAbsVolThreshold)) {
+        if (mAbsVolThreshold > 0 && mAbsVolThreshold < mAudioStreamMax &&
+           storeVolume > mAbsVolThreshold) {
             if (DEBUG) Log.v(TAG, "remote store volume too high" + storeVolume + ">" +
                mAbsVolThreshold);
-                storeVolume = mAbsVolThreshold;
+            storeVolume = mAbsVolThreshold;
         }
         if (index == INVALID_DEVICE_INDEX && disconnectedActiveDevice != null &&
             disconnectedActiveDevice.equals(device)) {
