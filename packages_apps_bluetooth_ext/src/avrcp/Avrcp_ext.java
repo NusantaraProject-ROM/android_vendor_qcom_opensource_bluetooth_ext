@@ -5275,7 +5275,8 @@ public final class Avrcp_ext {
             storeVolume = mAbsVolThreshold;
         }
         if (index == INVALID_DEVICE_INDEX && disconnectedActiveDevice != null &&
-            disconnectedActiveDevice.equals(device)) {
+            (disconnectedActiveDevice.equals(device)
+            || isTwsPlusPair(disconnectedActiveDevice, device))) {
             Log.v(TAG, "No need to store volume again during avrcp disconnect volume is stored");
             disconnectedActiveDevice = null;
             return;
@@ -5286,9 +5287,9 @@ public final class Avrcp_ext {
             AdapterService mAdapterService = AdapterService.getAdapterService();
             BluetoothDevice peerDevice = mAdapterService.getTwsPlusPeerDevice(device);
             if (peerDevice != null && getIndexForDevice(peerDevice) != INVALID_DEVICE_INDEX)
-                Log.d(TAG,"storeVolume to TWS+ pair device " + device + " : " + storeVolume);
+                Log.d(TAG,"storeVolume to TWS+ pair device " + peerDevice + " : " + storeVolume);
                 mVolumeMap.put(peerDevice, storeVolume);
-                pref.putInt(device.getAddress(), storeVolume);
+                pref.putInt(peerDevice.getAddress(), storeVolume);
         }
         // Always use apply() since it is asynchronous, otherwise the call can hang waiting for
         // storage to be written.
