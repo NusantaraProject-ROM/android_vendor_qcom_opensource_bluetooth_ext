@@ -166,6 +166,8 @@ class BrowsedMediaPlayer_ext {
                 mHandler.removeMessages(MSG_TIMEOUT, mCallbackPackageName);
                 Message msg = mHandler.obtainMessage(MSG_DISCONNECT_PLAYER, 0, 0, mBrowser);
                 mHandler.sendMessage(msg);
+                mBrowser = null;
+                return;
             }
             mConnState = CONNECTED;
             Log.d(TAG, "mediaBrowser CONNECTED to " + mPackageName);
@@ -182,6 +184,8 @@ class BrowsedMediaPlayer_ext {
             if ((mHandler != null) && !mBrowsablePlayerList.contains(mCallbackPackageName)
                     && mHandler.hasMessages(MSG_TIMEOUT, mCallbackPackageName)) {
                 mHandler.removeMessages(MSG_TIMEOUT, mCallbackPackageName);
+                mBrowser = null;
+                return;
             }
             mConnState = DISCONNECTED;
             // Remove what could be a circular dependency causing GC to never happen on this object
@@ -198,6 +202,8 @@ class BrowsedMediaPlayer_ext {
             if ((mHandler != null) && !mBrowsablePlayerList.contains(mCallbackPackageName)
                     && mHandler.hasMessages(MSG_TIMEOUT, mCallbackPackageName)) {
                 mHandler.removeMessages(MSG_TIMEOUT, mCallbackPackageName);
+                mBrowser = null;
+                return;
             }
             mBrowser = null;
             mConnState = SUSPENDED;
