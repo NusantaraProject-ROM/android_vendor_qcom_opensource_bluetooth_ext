@@ -295,6 +295,24 @@ final class Vendor {
     public boolean isSwbPmEnabled() {
         return isSwbPmEnabled;
     }
+
+    public boolean setClockSyncConfig(boolean enable, int mode, int adv_interval,
+          int channel, int jitter, int offset) {
+        if (mode != 0 && mode != 1) {
+            Log.e(TAG, "invalid mode setting(0: GPIO, 1: VSC) " + mode);
+            return false;
+        }
+        Log.d(TAG, "enable: " + enable + "mode: " + mode + "adv_interval: " +
+                adv_interval + "channel: " + channel + "jitter: " + jitter +
+                "offset: " + offset);
+        return setClockSyncConfigNative(enable, mode, adv_interval, channel,
+                jitter, offset);
+    }
+
+    public boolean startClockSync() {
+        return startClockSyncNative();
+    }
+
     private native void bredrcleanupNative();
     private native void bredrstartupNative();
     private native void initNative();
@@ -311,4 +329,7 @@ final class Vendor {
     private native boolean isSplitA2dpEnabledNative();
     private native boolean isSwbEnabledNative();
     private native boolean isSwbPmEnabledNative();
+    private native boolean setClockSyncConfigNative(boolean enable, int mode, int adv_interval,
+        int channel, int jitter, int offset);
+    private native boolean startClockSyncNative();
 }
