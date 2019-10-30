@@ -91,6 +91,7 @@ import java.util.TreeMap;
 import java.util.Objects;
 import com.android.bluetooth.hfp.HeadsetService;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
 /******************************************************************************
  * support Bluetooth AVRCP profile. support metadata, play status, event
  * notifications, address player selection and browse feature implementation.
@@ -4834,7 +4835,7 @@ public final class Avrcp_ext {
     }
 
     public class AvrcpBrowseManager {
-        Map<String, BrowsedMediaPlayer_ext> connList = new HashMap<String, BrowsedMediaPlayer_ext>();
+        Map<String, BrowsedMediaPlayer_ext> connList = new ConcurrentHashMap<String, BrowsedMediaPlayer_ext>();
         private AvrcpMediaRspInterface_ext mMediaInterface;
         private Context mContext;
 
