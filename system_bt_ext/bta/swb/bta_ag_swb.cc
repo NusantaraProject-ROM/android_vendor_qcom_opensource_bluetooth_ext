@@ -143,7 +143,7 @@ void bta_ag_send_qac(tBTA_AG_SCB* p_scb, tBTA_AG_DATA* p_data) {
   /* send +QAC */
   APPL_TRACE_DEBUG("send +QAC codec response");
 
-  if (property_get("persist.vendor.qcom.bluetooth.enable.swb", value, "false")
+  if (property_get("persist.vendor.qcom.bluetooth.enable.swb", value, "true")
       && strncmp(value, "true", sizeof("true")) != 0) {
     bta_ag_send_result(p_scb, BTA_AG_LOCAL_RES_QAC, SWB_CODECS_UNSUPPORTD, 0);
     return;
