@@ -580,13 +580,15 @@ class BrowsedMediaPlayer_ext {
             Log.w(TAG, "Already in MBS List don't reconnect" + mBrowsablePlayerList);
             return;
         }
-        Message msg = mHandler.obtainMessage(MSG_CONNECT_PLAYER);
-        Bundle data = new Bundle();
-        data.putCharSequence("package", packageName);
-        data.putCharSequence("class", cls);
-        msg.setData(data);
-        mHandler.sendMessage(msg);
-        Log.w(TAG, "Exit MSG_CONNECT_PLAYER for package = " + packageName);
+        if (mHandler != null) {
+            Message msg = mHandler.obtainMessage(MSG_CONNECT_PLAYER);
+            Bundle data = new Bundle();
+            data.putCharSequence("package", packageName);
+            data.putCharSequence("class", cls);
+            msg.setData(data);
+            mHandler.sendMessage(msg);
+            Log.w(TAG, "Exit MSG_CONNECT_PLAYER for package = " + packageName);
+        }
     }
 
     public boolean isPackageInMBSList(String packageName) {

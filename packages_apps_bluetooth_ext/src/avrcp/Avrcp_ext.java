@@ -603,6 +603,11 @@ public final class Avrcp_ext {
 
         initMediaPlayersList();
 
+        BrowsedMediaPlayer_ext player =
+                mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
+        if (player != null)
+            player.start();
+
         UserManager manager = UserManager.get(mContext);
         if (manager == null || manager.isUserUnlocked()) {
             if (DEBUG) Log.d(TAG, "User already unlocked, initializing player lists");
@@ -3982,8 +3987,6 @@ public final class Avrcp_ext {
                 mBrowsePlayerInfoList.clear();
                 BrowsedMediaPlayer_ext player =
                         mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
-                if (player != null)
-                    player.start();
                 Log.d(TAG, "buildBrowsablePlayerList " + player);
                 Intent intent = new Intent(android.service.media.MediaBrowserService.SERVICE_INTERFACE);
                 List<ResolveInfo> playerList =
