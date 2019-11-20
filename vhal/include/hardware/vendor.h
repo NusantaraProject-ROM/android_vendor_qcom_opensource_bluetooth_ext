@@ -65,6 +65,7 @@ typedef enum {
   PBAP_ID,
   MAP_ID,
   MAX_POW_ID,
+  HEARING_AID_ID,
   END_OF_PROFILE_LIST
 } profile_t;
 
@@ -80,6 +81,7 @@ typedef enum {
  BR_MAX_POW_SUPPORT,
  EDR_MAX_POW_SUPPORT,
  BLE_MAX_POW_SUPPORT,
+ HEARING_AID_SUPPORT,
  END_OF_FEATURE_LIST
  } profile_info_t;
 
@@ -212,6 +214,12 @@ typedef struct {
                                            bthf_voip_call_network_type_t is_network_wifi);
     void (*hciclose)(void);
 
+    /** enable/disable clock sync protocol */
+    bool (*set_clock_sync_config)(bool enable, int mode, int adv_interval,
+        int channel, int jitter, int offset);
+
+    /** start clock sync protocol */
+    void (*start_clock_sync)(void);
 
 } btvendor_interface_t;
 

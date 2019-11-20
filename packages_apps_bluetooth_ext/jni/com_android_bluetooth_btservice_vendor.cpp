@@ -526,6 +526,21 @@ static jboolean isSwbPmEnabledNative(JNIEnv* env) {
     return swb_pm_supported;
 }
 
+static jboolean setClockSyncConfigNative(JNIEnv* env, jobject object, jboolean enable, jint mode,
+    jint adv_interval, jint channel, jint jitter, jint offset)
+{
+    if (!sBluetoothVendorInterface) return false;
+    return (jboolean)sBluetoothVendorInterface->set_clock_sync_config(enable, mode, adv_interval,
+        channel, jitter, offset);
+}
+
+static jboolean startClockSyncNative(JNIEnv* env)
+{
+    if (!sBluetoothVendorInterface) return false;
+    sBluetoothVendorInterface->start_clock_sync();
+    return true;
+}
+
 static JNINativeMethod sMethods[] = {
     {"classInitNative", "()V", (void *) classInitNative},
     {"initNative", "()V", (void *) initNative},
@@ -544,6 +559,8 @@ static JNINativeMethod sMethods[] = {
     {"isSplitA2dpEnabledNative", "()Z", (void*) isSplitA2dpEnabledNative},
     {"isSwbEnabledNative", "()Z", (void*) isSwbEnabledNative},
     {"isSwbPmEnabledNative", "()Z", (void*) isSwbPmEnabledNative},
+    {"setClockSyncConfigNative", "(ZIIIII)Z", (void*) setClockSyncConfigNative},
+    {"startClockSyncNative", "()Z", (void*) startClockSyncNative},
 };
 
 int load_bt_configstore_lib() {
