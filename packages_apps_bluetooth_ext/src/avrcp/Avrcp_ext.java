@@ -5920,9 +5920,12 @@ public final class Avrcp_ext {
     }
 
     public static String getImgHandleFromTitle(byte[] bdaddr, String title) {
+        String handle = null;
         if (DEBUG) Log.d(TAG, " getImgHandleFromTitle bdaddr:" + bdaddr + " title:" + title);
-        if (mAvrcpBipRsp != null && title != null)
-            return mAvrcpBipRsp.getImgHandleFromTitle(bdaddr, title);
-        return "";
+        if (mAvrcpBipRsp != null && title != null) {
+            handle = mAvrcpBipRsp.getImgHandleFromTitle(bdaddr, title);
+            return (handle != null && !handle.isEmpty()) ? handle:null;
+        }
+        return handle;
     }
 }
