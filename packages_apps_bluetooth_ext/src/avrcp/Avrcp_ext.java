@@ -200,6 +200,11 @@ public final class Avrcp_ext {
                "com.google.android.music"
     ));
 
+    private static final String nonMediaAppsBlacklistedNames[] = {
+       "telecom",
+       "skype"
+    };
+
     /* UID counter to be shared across different files. */
     static short sUIDCounter = AvrcpConstants_ext.DEFAULT_UID_COUNTER;
 
@@ -800,6 +805,18 @@ public final class Avrcp_ext {
             if (deviceName.toLowerCase().startsWith(name.toLowerCase()) ||
                 deviceName.toLowerCase().equals(name.toLowerCase())) {
                 Log.d(TAG, "AVRCP PlayerStateUpdateBlacklist Name Matched:" + deviceName);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    private boolean isAppBlackListedForMediaSessionUpdate(String appName) {
+        if (appName == null) return false;
+        for (int j = 0; j < nonMediaAppsBlacklistedNames.length; j++) {
+            String name = nonMediaAppsBlacklistedNames[j];
+            if (appName.toLowerCase().contains(name.toLowerCase())) {
+                Log.d(TAG, "AVRCP non Media app BL for media session update: " + appName);
                 return true;
             }
         }
@@ -3846,8 +3863,8 @@ public final class Avrcp_ext {
             updateCurrentController(0, mCurrBrowsePlayerID);
             return;
         }
-        if (packageName.equals("com.android.server.telecom")) {
-            Log.d(TAG, "Ignore addressed media session change to telecom");
+        if (isAppBlackListedForMediaSessionUpdate(packageName)) {
+            Log.d(TAG, "Ignore addressed media session change to " + packageName);
             return;
         }
         // No change.
@@ -3882,9 +3899,8 @@ public final class Avrcp_ext {
     private void setActiveMediaSession(MediaSession.Token token) {
         android.media.session.MediaController activeController =
                 new android.media.session.MediaController(mContext, token);
-        if ((activeController.getPackageName().contains("telecom")) ||
-           (activeController.getPackageName().contains("skype"))) {
-            Log.d(TAG, "Ignore active media session change to telecom/skype");
+        if (isAppBlackListedForMediaSessionUpdate(activeController.getPackageName())) {
+            Log.d(TAG, "Ignore active media session change to " + activeController.getPackageName());
             return;
         }
 
@@ -3910,7 +3926,7 @@ public final class Avrcp_ext {
 
     private void setActiveMediaSession(android.media.session.MediaController mController) {
         HeadsetService mService = HeadsetService.getHeadsetService();
-        if (mController.getPackageName().contains("telecom")) {
+        if (isAppBlackListedForMediaSessionUpdate(mController.getPackageName())) {
             if (mService != null && mService.isScoOrCallActive()) {
                 Log.w(TAG, "Ignore media session during call");
                 return;
@@ -4074,8 +4090,8 @@ public final class Avrcp_ext {
         int updateId = -1;
         boolean updated = false;
         boolean currentRemoved = false;
-        if (info.getPackageName().equals("com.android.server.telecom")) {
-            Log.d(TAG, "Skip adding telecom to the media player info list");
+        if (isAppBlackListedForMediaSessionUpdate(info.getPackageName())) {
+            Log.d(TAG, "Skip adding to the media player info list " + info.getPackageName());
             return updated;
         }
         synchronized (this) {
