@@ -739,7 +739,9 @@ static bool btif_ba_state_pending_audio_ns_handler(btif_sm_event_t event,
             // this command.
         case BTIF_BA_API_SET_VOL_LEVEL:
              btif_ba_cb.curr_vol_level = *((uint8_t*)p_data);
-             //memorize_msg(event, BTIF_BA_STATE_PENDING_AUDIO_NS);
+             BTIF_TRACE_DEBUG("%s: curr_vol_level: %d",
+                              __FUNCTION__, btif_ba_cb.curr_vol_level);
+             memorize_msg(event, BTIF_BA_STATE_PENDING_AUDIO_NS);
              break;
         case BTIF_BA_CMD_PAUSE_REQ_EVT:
             if (*((uint8_t*)p_data))
@@ -962,7 +964,12 @@ static bool btif_ba_state_streaming_audio_ns_handler(btif_sm_event_t event,
                                                NULL);
           break;
       case BTIF_BA_API_SET_VOL_LEVEL:
-           btif_ba_cb.curr_vol_level = *((uint8_t*)p_data);
+           if (p_data != NULL) {
+             btif_ba_cb.curr_vol_level = *((uint8_t*)p_data);
+           } else {
+             BTIF_TRACE_DEBUG("%s: p_data is null, curr_vol_level: %d",
+                              __FUNCTION__, btif_ba_cb.curr_vol_level);
+           }
            btif_sm_change_state(btif_ba_cb.sm_handle,
                                            BTIF_BA_STATE_PENDING_AUDIO_NS);
            btif_sm_dispatch(btif_ba_cb.sm_handle, BTIF_BA_CMD_SEND_VOL_UPDATE,
