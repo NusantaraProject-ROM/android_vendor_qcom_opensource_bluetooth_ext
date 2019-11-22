@@ -251,8 +251,6 @@ public final class Avrcp_ext {
     private final static int MESSAGE_START_SHO = 34;
     private static final int MSG_SET_ACTIVE_DEVICE = 35;
 
-    private static final int STACK_CLEANUP = 0;
-    private static final int APP_CLEANUP = 1;
     private static final int CMD_TIMEOUT_DELAY = 2000;
     private static final int MAX_ERROR_RETRY_TIMES = 6;
     private static final int AVRCP_MAX_VOL = 127;
@@ -642,7 +640,7 @@ public final class Avrcp_ext {
             mAudioManager.unregisterAudioPlaybackCallback(mAudioManagerPlaybackCb);
 
         if (mMediaController != null) mMediaController.unregisterCallback(mMediaControllerCb);
-        Message msg = mHandler.obtainMessage(MESSAGE_DEVICE_RC_CLEANUP, APP_CLEANUP,
+        Message msg = mHandler.obtainMessage(MESSAGE_DEVICE_RC_CLEANUP, 0,
                0, null);
         mHandler.sendMessage(msg);
         if (mMediaSessionManager != null) {
@@ -1459,27 +1457,11 @@ public final class Avrcp_ext {
 
             case MESSAGE_DEVICE_RC_CLEANUP:
                 if (DEBUG)
-                    Log.v(TAG,"MESSAGE_DEVICE_RC_CLEANUP: " + msg.arg1);
-                if (msg.arg1 == STACK_CLEANUP) {
-                    deviceIndex = getIndexForDevice((BluetoothDevice) msg.obj);
-                    if (deviceIndex == INVALID_DEVICE_INDEX) {
-                        Log.e(TAG,"invalid device index for cleanup");
-                        break;
+                    Log.v(TAG, "MESSAGE_DEVICE_RC_CLEANUP");
+                    clearDeviceDependentFeature();
+                    for (int i = 0; i < maxAvrcpConnections; i++) {
+                       cleanupDeviceFeaturesIndex(i);
                     }
-                    cleanupDeviceFeaturesIndex(deviceIndex);
-                } else if (msg.arg1 == APP_CLEANUP) {
-                    if (msg.obj == null) {
-                        clearDeviceDependentFeature();
-                        for (int i = 0; i < maxAvrcpConnections; i++) {
-                            cleanupDeviceFeaturesIndex(i);
-                        }
-                    } else {
-                        Log.v(TAG, "Invalid message params");
-                        break;
-                    }
-                } else {
-                    Log.v(TAG, "Invalid Arguments to MESSAGE_DEVICE_RC_CLEANUP");
-                }
                 break;
 
             case MSG_NATIVE_REQ_GET_FOLDER_ITEMS: {
@@ -3521,22 +3503,16 @@ public final class Avrcp_ext {
      */
     public void setAvrcpDisconnectedDevice(BluetoothDevice device) {
         Log.i(TAG,"Enter setAvrcpDisconnectedDevice");
+        int deviceIndex = INVALID_DEVICE_INDEX;
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
-            if (deviceFeatures[i].mCurrentDevice !=null && device != null &&
+            if (deviceFeatures[i].mCurrentDevice != null && device != null &&
                     Objects.equals(deviceFeatures[i].mCurrentDevice, device)) {
+                deviceIndex = i;
                 if (deviceFeatures[i].isActiveDevice &&
                       deviceFeatures[i].isAbsoluteVolumeSupportingDevice) {
                     storeVolumeForDevice(device);
                     disconnectedActiveDevice = device;
-                 }
-                // initiate cleanup for all variables;
-                Message msg = mHandler.obtainMessage(MESSAGE_DEVICE_RC_CLEANUP, STACK_CLEANUP,
-                       0, device);
-                mHandler.sendMessage(msg);
-                Log.i(TAG,"Device removed is " + device);
-                Log.i(TAG,"removed at " + i);
-                deviceFeatures[i].mRemoteVolume = -1;
-                deviceFeatures[i].mLocalVolume = -1;
+                }
             }
             if (deviceFeatures[i].mCurrentDevice != null && device != null &&
                     !(Objects.equals(deviceFeatures[i].mCurrentDevice, device))) {
@@ -3549,6 +3525,13 @@ public final class Avrcp_ext {
                     deviceFeatures[i].mTwsPairDisconnected = true;
                 }
             }
+        }
+
+        if (deviceIndex != INVALID_DEVICE_INDEX) {
+            // initiate cleanup for all variables;
+            cleanupDeviceFeaturesIndex(deviceIndex);
+            Log.i(TAG,"Device removed is " + device);
+            Log.i(TAG,"removed at " + deviceIndex);
         }
 
         BATService mBatService = BATService.getBATService();
@@ -4714,6 +4697,8 @@ public final class Avrcp_ext {
         deviceFeatures[index].mLastRemoteVolume = -1;
         deviceFeatures[index].mLastLocalVolume = -1;
         deviceFeatures[index].cache_play_cmd = false;
+        deviceFeatures[index].mRemoteVolume = -1;
+        deviceFeatures[index].mLocalVolume = -1;
     }
 
     private void onConnectionStateChanged(
