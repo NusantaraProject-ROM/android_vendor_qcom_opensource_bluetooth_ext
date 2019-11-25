@@ -1345,11 +1345,6 @@ public final class Avrcp_ext {
                      * retry a volume one step up/down */
                     if (DEBUG) Log.d(TAG, "Remote device didn't tune volume, let's try one more step.");
                     /* direction calculation for retry mechanism */
-                    if(convertToAudioStreamVolume(deviceFeatures[deviceIndex].mLastRemoteVolume)
-                        < deviceFeatures[deviceIndex].mLocalVolume)
-                        deviceFeatures[deviceIndex].mLastDirection = -1;
-                    else
-                        deviceFeatures[deviceIndex].mLastDirection = 1;
                     int retry_volume = Math.min(AVRCP_MAX_VOL,
                             Math.max(0, deviceFeatures[deviceIndex].mLastRemoteVolume +
                                         deviceFeatures[deviceIndex].mLastDirection));
@@ -1360,7 +1355,6 @@ public final class Avrcp_ext {
                             0, 0, deviceFeatures[deviceIndex].mCurrentDevice), CMD_TIMEOUT_DELAY);
                         deviceFeatures[deviceIndex].mVolCmdAdjustInProgress = true;
                     }
-                    deviceFeatures[deviceIndex].mLastDirection = 0;
                 } else if (msg.arg2 == AVRC_RSP_REJ) {
                     if (DEBUG)
                         Log.v(TAG, "setAbsoluteVolume call rejected");
@@ -1410,6 +1404,10 @@ public final class Avrcp_ext {
                                    CMD_TIMEOUT_DELAY);
                               deviceFeatures[deviceIndex].mVolCmdSetInProgress = true;
                               deviceFeatures[deviceIndex].mLastRemoteVolume = avrcpVolume;
+                              if(deviceFeatures[deviceIndex].mLastLocalVolume >  msg.arg1)
+                                  deviceFeatures[deviceIndex].mLastDirection = -1;
+                              else
+                                  deviceFeatures[deviceIndex].mLastDirection = 1;
                               deviceFeatures[deviceIndex].mLastLocalVolume = msg.arg1;
                               deviceFeatures[deviceIndex].mLastRequestedVolume = -1;
                          } else {
