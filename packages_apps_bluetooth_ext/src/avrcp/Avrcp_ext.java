@@ -3845,15 +3845,15 @@ public final class Avrcp_ext {
                             addMediaPlayerController(controller);
                             updatedPackages.add(packageName);
                         }
-                    }
 
-                    if (newControllers.size() > 0 && getAddressedPlayerInfo() == null) {
-                        if (DEBUG)
-                            Log.v(TAG, "No addressed player but active sessions, taking first.");
-                        Log.w(TAG,"Trigger setAddressedMediaSessionPkg frm onActiveSessionChanged");
-                        setAddressedMediaSessionPackage(newControllers.get(0).getPackageName());
+                        if (newControllers.size() > 0 && getAddressedPlayerInfo() == null) {
+                            if (DEBUG)
+                                Log.v(TAG, "No addressed player but active sessions, taking first.");
+                            Log.w(TAG,"Trigger setAddressedMediaSessionPkg frm onActiveSessionChanged");
+                            setAddressedMediaSessionPackage(newControllers.get(0).getPackageName());
+                        }
+                        updateCurrentMediaState(null);
                     }
-                    updateCurrentMediaState(null);
                 }
             };
 
