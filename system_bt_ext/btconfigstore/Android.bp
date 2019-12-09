@@ -24,7 +24,6 @@ cc_library_shared {
          "libhwbinder",
          "libutils",
          "liblog",
-         "android.hidl.base@1.0",
          "vendor.qti.hardware.btconfigstore@1.0"
     ],
     whole_static_libs: [
