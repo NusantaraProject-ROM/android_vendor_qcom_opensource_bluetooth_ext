@@ -294,6 +294,7 @@ public final class Avrcp_ext {
     /* Broadcast receiver for device connections intent broadcasts */
     private final BroadcastReceiver mAvrcpReceiver = new AvrcpServiceBroadcastReceiver();
     private final BroadcastReceiver mBootReceiver = new AvrcpServiceBootReceiver();
+    private final BroadcastReceiver mShutDownReceiver = new AvrcpServiceShutDownReceiver();
 
     /* Recording passthrough key dispatches */
     static private final int PASSTHROUGH_LOG_MAX_SIZE = DEBUG ? 50 : 10;
@@ -531,6 +532,10 @@ public final class Avrcp_ext {
         pts_test = SystemProperties.getBoolean("vendor.bluetooth.avrcpct-passthrough.pts", false);
         avrcp_playstatus_blacklist = SystemProperties.getBoolean("persist.vendor.btstack.avrcp-playstatus.blacklist", false);
 
+        IntentFilter shutdownFilter = new IntentFilter();
+        shutdownFilter.addAction(Intent.ACTION_SHUTDOWN);
+        context.registerReceiver(mShutDownReceiver, shutdownFilter);
+
         // create Notification channel.
         mNotificationManager = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -690,6 +695,7 @@ public final class Avrcp_ext {
         mAudioManagerPlaybackHandler = null;
         mContext.unregisterReceiver(mAvrcpReceiver);
         mContext.unregisterReceiver(mBootReceiver);
+        mContext.unregisterReceiver(mShutDownReceiver);
 
         mPkgRequestedMBSConnect.clear();
         mAddressedMediaPlayer.cleanup();
@@ -3632,6 +3638,26 @@ public final class Avrcp_ext {
                         + packageName);
                 if (packageName != null) {
                     handlePackageModified(packageName, false);
+                }
+            }
+        }
+    }
+
+    private class AvrcpServiceShutDownReceiver extends BroadcastReceiver {
+    @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            BluetoothDevice device = null;
+            if (DEBUG) Log.d(TAG, "AvrcpServiceShutdownReceiver-> Action: " + action);
+            if (action.equals(Intent.ACTION_SHUTDOWN)) {
+                int storeVolume =  mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                if (DEBUG) Log.d(TAG, "AvrcpServiceShutdownReceiver store volume " + storeVolume);
+                if (mA2dpService != null)
+                   device =  mA2dpService.getActiveDevice();
+                SharedPreferences.Editor pref = getVolumeMap().edit();
+                if (device != null) {
+                    pref.putInt(device.getAddress(), storeVolume);
+                    pref.apply();
                 }
             }
         }
