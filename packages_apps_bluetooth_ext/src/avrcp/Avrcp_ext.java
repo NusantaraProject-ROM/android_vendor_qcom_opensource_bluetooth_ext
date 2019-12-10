@@ -199,7 +199,9 @@ public final class Avrcp_ext {
 
     private static final ArrayList<String> playerBrowseWhiteListDB =
        new ArrayList<String>(Arrays.asList(
-               "com.google.android.music"
+               "com.google.android.music",
+               "com.nhn.android.music",
+               "com.gaana"
     ));
 
     private static final String nonMediaAppsBlacklistedNames[] = {
@@ -1711,8 +1713,10 @@ public final class Avrcp_ext {
                 if (mFastforward)  mFastforward = false;
                 if (mRewind)  mRewind = false;
 
-                Log.w(TAG, "Active device Calling SetBrowsePackage for " + mCachedBrowsePlayer);
-                if (mCachedBrowsePlayer != null && is_player_updated_for_browse == false) {
+                if (mCurrentBrowsingDevice == null && mCachedBrowsePlayer != null &&
+                        is_player_updated_for_browse == false) {
+                    Log.w(TAG, "Calling SetBrowsePackage as part of device switch for "
+                            + mCachedBrowsePlayer);
                     SetBrowsePackage(mCachedBrowsePlayer);
                 }
 
@@ -2339,6 +2343,7 @@ public final class Avrcp_ext {
                         playerBrowseWhiteListDB.contains(currPkg))
                         || (prevPkg != null && !prevPkg.isEmpty() &&
                         playerBrowseWhiteListDB.contains(prevPkg))) {
+                    Log.w(TAG, "Send change response as part of player switch");
                     if (deviceFeatures[index].mAvailablePlayersChangedNT ==
                                 AvrcpConstants_ext.NOTIFICATION_TYPE_INTERIM) {
                         registerNotificationRspAvalPlayerChangedNative(
@@ -3303,9 +3308,6 @@ public final class Avrcp_ext {
                 is_player_updated_for_browse = true;
                 byte[] addr = getByteAddress(browse_active_device);
                 if (mAvrcpBrowseManager.getBrowsedMediaPlayer(addr) != null) {
-                    Log.w(TAG, "Addr Player update to Browse " + PackageName +
-                            " already req MBS list " + mPkgRequestedMBSConnect);
-                    mCurrentBrowsingDevice = browse_active_device;
                     Log.w(TAG, "Addr Player update to Browse " + PackageName);
                     mAvrcpBrowseManager.getBrowsedMediaPlayer(addr).
                             setCurrentPackage(PackageName, browseService);
@@ -3791,10 +3793,12 @@ public final class Avrcp_ext {
 
         Log.d(TAG, "Enter setBrowsedPlayer");
         String address = Utils.getAddressStringFromByte(bdaddr);
+        BluetoothDevice prevBrowseDevice = mCurrentBrowsingDevice;
         mCurrentBrowsingDevice = mAdapter.getRemoteDevice(address);
         // checking for error cases
         BluetoothDevice device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(bdaddr);
         if (mBrowsingActiveDevice != null && !Objects.equals(mBrowsingActiveDevice, device)) {
+            mCurrentBrowsingDevice = prevBrowseDevice;
             status = AvrcpConstants_ext.RSP_INTERNAL_ERR;
             Log.w(TAG, "setBrowsedPlayer: Cmd from browse inactive device reject it");
         } else if (mMediaPlayerInfoList.isEmpty()) {
@@ -3889,8 +3893,10 @@ public final class Avrcp_ext {
             updateCurrentMediaState(null);
         }
 
-        Log.w(TAG, "Calling SetBrowsePackage for " + packageName);
-        SetBrowsePackage(packageName);
+        if (mCurrentBrowsingDevice == null) {
+            Log.w(TAG, "Calling SetBrowsePackage as part of player switch for " + packageName);
+            SetBrowsePackage(packageName);
+        }
 
         synchronized (this) {
             synchronized (mMediaPlayerInfoList) {
@@ -4743,6 +4749,11 @@ public final class Avrcp_ext {
         if (br_connected == true) {
             mBrowsingActiveDevice = device;
             Log.w(TAG, "onConnectionStateChanged Set Active browse device" + mBrowsingActiveDevice);
+            if (mCurrentBrowsingDevice == null && mCachedBrowsePlayer != null &&
+                    is_player_updated_for_browse == false) {
+                Log.w(TAG, "Calling SetBrowsePackage as part of connect for "+ mCachedBrowsePlayer);
+                SetBrowsePackage(mCachedBrowsePlayer);
+            }
             return;
         }
         int newState = (rc_connected ? BluetoothProfile.STATE_CONNECTED :
