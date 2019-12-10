@@ -20,8 +20,6 @@ cc_library_shared {
          "libcutils",
          "libbase",
          "libhidlbase",
-         "libhidltransport",
-         "libhwbinder",
          "libutils",
          "liblog",
          "vendor.qti.hardware.btconfigstore@1.0"
