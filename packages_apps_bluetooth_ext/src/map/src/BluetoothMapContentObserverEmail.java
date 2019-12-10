@@ -128,7 +128,7 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
     private boolean mObserverRegistered = false;
     private BluetoothMapAccountItem mAccount;
     private String mAuthority = null;
-
+    private String mEmailPackage = "";
     // Default supported feature bit mask is 0x1f
     private int mMapSupportedFeatures = BluetoothMapUtils.MAP_FEATURE_DEFAULT_BITMASK;
     // Default event report version is 1.0
@@ -231,6 +231,7 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
         }
         mEnableSmsMms = enableSmsMms;
         mMnsClient = mnsClient;
+        mEmailPackage = BluetoothMapCommonUtils.EMAIL_UI_PKG;
      }
 
     private Map<Long, Msg> getMsgListMsg() {
@@ -265,9 +266,10 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
                 | BluetoothMapUtils.MAP_FEATURE_PARTICIPANT_CHAT_STATE_CHANGE_BIT)
                 & mMapSupportedFeatures) != 0) {
             // Warning according to page 46/123 of MAP 1.3 spec
-            Log.w(TAG, "setObserverRemoteFeatureMask: Extended Event Reports 1.2 is not set even"
-                    + "though PARTICIPANT_PRESENCE_CHANGE_BIT or PARTICIPANT_CHAT_STATE_CHANGE_BIT"
-                    + " were set, mMapSupportedFeatures=" + mMapSupportedFeatures);
+            if (V) {
+                Log.w(TAG, "Event Reports 1.2 is not set even though PARTICIPANT_PRESENCE_"
+                        + "CHANGE_BIT or PARTICIPANT_CHAT_STATE_CHANGE_BIT were set");
+            }
         }
         if (D) {
             Log.d(TAG, "setObserverRemoteFeatureMask: mMapEventReportVersion="
@@ -562,8 +564,8 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
                             }
                             sendEvent(evt);
                         } else {
-                            if(V) Log.v(TAG, "handleMsgListChangesMsg id: " + id + "folderId: "
-                                    + folderId + " newFolder: " +newFolder + "oldFolder: "
+                            if(V) Log.v(TAG, "handleMsgListChangesMsg id: " + id + ", folderId: "
+                                    + folderId + ", newFolder: " +newFolder + ", oldFolder: "
                                     + msg.folderId);
                             /* Existing message */
                             if (folderId != msg.folderId && msg.folderId != -1) {
@@ -728,17 +730,17 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
      */
     public boolean setMessageStatusDeleted(long handle, TYPE type,
             BluetoothMapFolderElement mCurrentFolder, String uriStr, int statusValue) {
-           if (D) Log.d(TAG, "setMessageStatusDeleted: EMAIL handle " + handle
+           if (D) Log.d(TAG, "setMessageStatusDeleted: handle " + handle
                + " type " + type + " value " + statusValue + " URI: " +uriStr);
         boolean res = false;
         long accountId = mAccount.getAccountId();
         Uri uri = Uri.withAppendedPath(mMessageUri, Long.toString(handle));
-        Log.d(TAG,"URI print: " + uri.toString());
+        if (D) Log.d(TAG,"URI print: " + uri.toString());
         Cursor crEmail = mResolver.query(uri, null, null, null, null);
 
         if (crEmail != null && crEmail.moveToFirst()) {
-           if (V) Log.d(TAG, "setMessageStatusDeleted: EMAIL handle " + handle
-               + " type " + type + " value " + statusValue + "accountId: "+accountId);
+           if (V) Log.v(TAG, "setMessageStatusDeleted: handle " + handle
+               + " type " + type + " value " + statusValue + "accountId: " + accountId);
            Intent emailIn = new Intent();
            Msg msg = null;
            synchronized(getMsgListMsg()) {
@@ -748,15 +750,14 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
               emailIn.setAction(BluetoothMapEmailContract.ACTION_DELETE_MESSAGE);
            } else {
               emailIn.setAction(BluetoothMapEmailContract.ACTION_MOVE_MESSAGE);
-              //Undelete - Move the message to Inbox
-              long folderId = -1;
-              BluetoothMapFolderElement inboxFolder = mCurrentFolder
-                      .getFolderByName(BluetoothMapContract.FOLDER_NAME_INBOX);
+              int folderId = mCurrentFolder.getFolderType();
               if(folderId == -1) folderId = BluetoothMapEmailContract.TYPE_INBOX;
               emailIn.putExtra(BluetoothMapEmailContract.EXTRA_MESSAGE_INFO, folderId);
            }
            emailIn.putExtra(BluetoothMapEmailContract.EXTRA_ACCOUNT, accountId);
            emailIn.putExtra(BluetoothMapEmailContract.EXTRA_MESSAGE_ID, handle);
+           emailIn.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+           emailIn.setPackage(mEmailPackage);
            mContext.sendBroadcast(emailIn);
            res = true;
            //Mark local initiated message delete to avoid notification
@@ -767,8 +768,8 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
         if (crEmail != null) {
             crEmail.close();
         }
-        if(V) Log.d(TAG, " END setMessageStatusDeleted: EMAIL handle " + handle + " type " + type
-               + " value " + statusValue + "accountId: "+accountId);
+        if(V) Log.v(TAG, " END setMessageStatusDeleted: handle " + handle + " type " + type
+               + " value " + statusValue + "accountId: " + accountId);
         return res;
 
     }
@@ -797,6 +798,8 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
          emailIn.putExtra(BluetoothMapEmailContract.EXTRA_MESSAGE_INFO,statusValue);
          emailIn.putExtra(BluetoothMapEmailContract.EXTRA_ACCOUNT, accountId);
          emailIn.putExtra(BluetoothMapEmailContract.EXTRA_MESSAGE_ID, handle);
+         emailIn.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+         emailIn.setPackage(mEmailPackage);
          //Mark local initiage message status change to avoid notification
          if (msg != null ) msg.localInitiatedReadStatus = true;
          mContext.sendBroadcast(emailIn);
@@ -992,6 +995,8 @@ public class BluetoothMapContentObserverEmail extends BluetoothMapContentObserve
                    if(V) Log.d(TAG, "sendIntent SEND: " + handle + "accounId: " +accountId);
                    emailIn.setAction(BluetoothMapEmailContract.ACTION_SEND_PENDING_MAIL);
                    emailIn.putExtra(BluetoothMapEmailContract.EXTRA_ACCOUNT, accountId);
+                   emailIn.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+                   emailIn.setPackage(mEmailPackage);
                    mContext.sendBroadcast(emailIn);
                  }
                  getMsgListMsg().put(handle, newMsg);

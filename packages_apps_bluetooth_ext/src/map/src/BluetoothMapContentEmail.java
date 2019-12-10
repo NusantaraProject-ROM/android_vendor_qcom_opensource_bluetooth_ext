@@ -247,7 +247,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
             } else {
                 sent = "no";
             }
-            if (V) Log.d(TAG, "setSent: " + sent);
+            if (V) Log.v(TAG, "setSent: " + sent);
             e.setSent(sent);
         }
     }
@@ -261,7 +261,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
         }
         String setread = null;
 
-        if (V) Log.d(TAG, "setRead: " + setread);
+        if (V) Log.v(TAG, "setRead: " + setread);
         e.setRead((read==1?true:false), ((ap.getParameterMask() & MASK_READ) != 0));
     }
     /**
@@ -281,15 +281,15 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                 //ATTACHMENT DB
                 Uri attchmntUri = BluetoothMapEmailContract
                     .buildEmailAttachmentUri(BluetoothMapEmailContract.EMAIL_AUTHORITY);
-                Log.d(TAG, "attchURI: "+attchmntUri);
+                if (V) Log.v(TAG, "attchURI: "+attchmntUri);
                 String whereAttch = setWhereFilterMessagekey(
                     c.getLong(fi.mMessageColId));
-                Log.d(TAG, "whereAttch: "+whereAttch+" handle: "
+                if (V) Log.v(TAG, "whereAttch: "+whereAttch+" handle: "
                     + c.getLong(fi.mMessageColId));
                 Cursor emailAttachmentCursor = mResolver.query(attchmntUri,
                         BluetoothMapEmailContract.BT_EMAIL_ATTACHMENT_PROJECTION,
                                 whereAttch, null, null);
-                Log.d(TAG, "Found " + emailAttachmentCursor.getCount() + " size messages.");
+                if (V) Log.v(TAG, "Found " + emailAttachmentCursor.getCount() + " size messages.");
                 fi.setEmailAttachmentColumns(emailAttachmentCursor);
                 if(emailAttachmentCursor != null) {
                     if( emailAttachmentCursor.moveToNext()) {
@@ -297,7 +297,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                     }
                     emailAttachmentCursor.close();
                     emailAttachmentCursor = null;
-                    Log.d(TAG, "size: "+size);
+                    if (V) Log.v(TAG, "size: "+size);
                 }
                 if(attachment == 1 && size == 0) {
                     if (D) Log.d(TAG, "Error in message database, attachment size reported as: "
@@ -307,7 +307,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                                  report a size */
                 }
             }
-            if (V) Log.d(TAG, "setAttachmentSize: " + size + "\n" +
+            if (D) Log.d(TAG, "setAttachmentSize: " + size + "\n" +
                               "setAttachmentMimeTypes: " + attachmentMimeTypes );
             e.setAttachmentSize(size);
         }
@@ -320,7 +320,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
             if (fi.mMsgType == FilterInfo.TYPE_EMAIL ) {
                 hasText = "yes";
             }
-            if (V) Log.d(TAG, "setText: " + hasText);
+            if (V) Log.v(TAG, "setText: " + hasText);
             e.setText(hasText);
         }
     }
@@ -353,7 +353,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                                      BluetoothMapEmailContract.EmailBodyColumns.TEXT_CONTENT_URI));
                     if (textContentURI != null ) {
                         try {
-                           Log.v(TAG, " TRY EMAIL BODY textURI " + textContentURI);
+                           if(V) Log.v(TAG, " setSize textContentURI " + textContentURI);
                            fd = mResolver.openFileDescriptor(Uri.parse(textContentURI), "r");
                         } catch (FileNotFoundException ex) {
                            if(V) Log.w(TAG, ex);
@@ -365,7 +365,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                                                  .EmailBodyColumns.HTML_CONTENT_URI));
                         if (htmlContentURI != null ) {
                             try {
-                                Log.v(TAG, " TRY EMAIL BODY htmlURI " + htmlContentURI);
+                                if(V) Log.v(TAG, " setSize htmlContentURI " + htmlContentURI);
                                 fd = mResolver.openFileDescriptor(Uri.parse(htmlContentURI), "r");
                             } catch (FileNotFoundException ex) {
                                 if(V) Log.w(TAG, ex);
@@ -400,18 +400,17 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                         + " Changing size to 1");
                 size = 1;
             }
-            if (V) Log.d(TAG, "setSize: " + size);
+            if (V) Log.v(TAG, "setSize: " + size);
             e.setSize(size);
         }
     }
 
     private TYPE getType(Cursor c, FilterInfo fi) {
         TYPE type = null;
-        if (V) Log.d(TAG, "getType: for filterMsgType" + fi.mMsgType);
         if (fi.mMsgType == FilterInfo.TYPE_EMAIL) {
             type = TYPE.EMAIL;
         }
-        if (V) Log.d(TAG, "getType: " + type);
+        if (V) Log.v(TAG, "getType: " + type+", filterMsgType : " + fi.mMsgType);
         return type;
     }
 
@@ -423,7 +422,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
             if (fi.mMsgType == FilterInfo.TYPE_EMAIL) {
                 // TODO: need to find name from id and then set folder type
             }
-            if (V) Log.d(TAG, "setFolderType: " + folderType);
+            if (V) Log.v(TAG, "setFolderType: " + folderType);
             e.setFolderType(folderType);
         }
     }
@@ -564,7 +563,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
             FilterInfo fi, BluetoothMapAppParams ap) {
         if ((ap.getParameterMask() & MASK_PROTECTED) != 0) {
             String protect = "no";
-            if (V) Log.d(TAG, "setProtected: " + protect + "\n");
+            if (V) Log.v(TAG, "setProtected: " + protect);
             e.setProtect(protect);
         }
     }
@@ -710,7 +709,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
             } else if(subject == null ) {
                 subject = "";
             }
-            if (V) Log.d(TAG, "setSubject: " + subject);
+            if (V) Log.v(TAG, "setSubject: " + subject);
             e.setSubject(subject);
         }
     }
@@ -721,7 +720,7 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
         if (fi.mMsgType == FilterInfo.TYPE_EMAIL) {
             handle = c.getLong(fi.mMessageColId);
         }
-        if (V) Log.d(TAG, "setHandle: " + handle );
+        if (V) Log.v(TAG, "setHandle: " + handle );
         e.setHandle(handle);
     }
 
@@ -1034,7 +1033,8 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
                     long id = c.getLong(c.getColumnIndex(BluetoothMapContract.FolderColumns._ID));
                     int type = c.getInt(c.getColumnIndex(BluetoothMapEmailContract.MailBoxColumns
                             .FOLDER_TYPE));
-                    Log.d(TAG, "addEmailFolders(): id: "+id+ " Name: " + name + "Type: " + type);
+                    if (V) Log.v(TAG, "addEmailFolders id: " + id + " Name: " + name
+                            + "Type: " + type);
                     newFolder = parentFolder.addEmailFolder(name, id);
                     newFolder.setFolderType(type);
                     addEmailFolders(newFolder); // Use recursion to add any sub folders
@@ -1055,6 +1055,8 @@ public class BluetoothMapContentEmail extends BluetoothMapContent {
         Intent emailIn = new Intent();
         emailIn.setAction(BluetoothMapEmailContract.ACTION_CHECK_MAIL);
         emailIn.putExtra(BluetoothMapEmailContract.EXTRA_ACCOUNT, accountId);
+        emailIn.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        emailIn.setPackage(BluetoothMapCommonUtils.EMAIL_UI_PKG);
         mContext.sendBroadcast(emailIn);
     }
 

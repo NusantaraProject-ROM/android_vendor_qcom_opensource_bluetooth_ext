@@ -41,8 +41,6 @@ import android.content.res.Resources;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.media.AudioManager;
-import android.media.AudioDeviceCallback;
-import android.media.AudioDeviceInfo;
 import android.media.AudioAttributes;
 import android.media.AudioPlaybackConfiguration;
 import android.media.MediaDescription;
@@ -180,18 +178,18 @@ public final class Avrcp_ext {
     public static final String VOLUME_MAP = "bluetooth_volume_map";
     public static final String ABS_VOL_MAP = "bluetooth_ABS_VOL_map";
     private boolean isShoActive = false;
-    AudioManagerAudioDeviceCallback mAudioManagerAudioDeviceCallback;
     private boolean twsShoEnabled = false;
     byte[] dummyaddr = {(byte)0xFA, (byte)0xCE, (byte)0xFA,
                         (byte)0xCE, (byte)0xFA, (byte)0xCE};
-    private boolean cache_play_cmd = false;
     private static final String playerStateUpdateBlackListedAddr[] = {
          "BC:30:7E", //bc-30-7e-5e-f6-27, Name: Porsche BT 0310; bc-30-7e-8c-22-cb, Name: Audi MMI 1193
+         "2C:DC:AD", //2C-DC-AD-BB-2F-25, Name: PORSCHE
          "00:1E:43", //00-1e-43-14-f0-68, Name: Audi MMI 4365
          "9C:DF:03", //9C:DF:03:D3:C0:17, Name: Benz S600L
          "00:0A:08",  //00:0A:08:51:1E:E7, Name: BMW530
          "00:04:79", //00-04-79-00-06-bc, Name: radius HP-BTL01
          "28:A1:83", //28-A1-83-94-90-AE, Name: VW Radio
+         "30:c3:d9", //30-c3-d9-8d-5b-83, Name: VW RadioBin
      };
     private static final String playerStateUpdateBlackListedNames[] = {
        "Audi",
@@ -203,6 +201,11 @@ public final class Avrcp_ext {
        new ArrayList<String>(Arrays.asList(
                "com.google.android.music"
     ));
+
+    private static final String nonMediaAppsBlacklistedNames[] = {
+       "telecom",
+       "skype"
+    };
 
     /* UID counter to be shared across different files. */
     static short sUIDCounter = AvrcpConstants_ext.DEFAULT_UID_COUNTER;
@@ -383,6 +386,7 @@ public final class Avrcp_ext {
         private int mLastPassthroughcmd;
         private int mReportedPlayerID;
         private boolean mTwsPairDisconnected;
+        private boolean cache_play_cmd;
         public DeviceDependentFeature(Context context) {
             mContext = context;
             mCurrentDevice = null;
@@ -426,6 +430,7 @@ public final class Avrcp_ext {
             mLastPassthroughcmd = KeyEvent.KEYCODE_UNKNOWN;
             mReportedPlayerID = NO_PLAYER_ID;
             mTwsPairDisconnected = false;
+            cache_play_cmd = false;
         }
     };
     DeviceDependentFeature[] deviceFeatures;
@@ -621,8 +626,6 @@ public final class Avrcp_ext {
 
         mAudioManager.registerAudioPlaybackCallback(
                 mAudioManagerPlaybackCb, mAudioManagerPlaybackHandler);
-        mAudioManagerAudioDeviceCallback = new AudioManagerAudioDeviceCallback();
-        mAudioManager.registerAudioDeviceCallback(mAudioManagerAudioDeviceCallback, mHandler);
         changePathDepth = 0;
         changePathFolderType = 0;
         changePathDirection = 0;
@@ -815,6 +818,18 @@ public final class Avrcp_ext {
             if (deviceName.toLowerCase().startsWith(name.toLowerCase()) ||
                 deviceName.toLowerCase().equals(name.toLowerCase())) {
                 Log.d(TAG, "AVRCP PlayerStateUpdateBlacklist Name Matched:" + deviceName);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    private boolean isAppBlackListedForMediaSessionUpdate(String appName) {
+        if (appName == null) return false;
+        for (int j = 0; j < nonMediaAppsBlacklistedNames.length; j++) {
+            String name = nonMediaAppsBlacklistedNames[j];
+            if (appName.toLowerCase().contains(name.toLowerCase())) {
+                Log.d(TAG, "AVRCP non Media app BL for media session update: " + appName);
                 return true;
             }
         }
@@ -1332,11 +1347,6 @@ public final class Avrcp_ext {
                      * retry a volume one step up/down */
                     if (DEBUG) Log.d(TAG, "Remote device didn't tune volume, let's try one more step.");
                     /* direction calculation for retry mechanism */
-                    if(convertToAudioStreamVolume(deviceFeatures[deviceIndex].mLastRemoteVolume)
-                        < deviceFeatures[deviceIndex].mLocalVolume)
-                        deviceFeatures[deviceIndex].mLastDirection = -1;
-                    else
-                        deviceFeatures[deviceIndex].mLastDirection = 1;
                     int retry_volume = Math.min(AVRCP_MAX_VOL,
                             Math.max(0, deviceFeatures[deviceIndex].mLastRemoteVolume +
                                         deviceFeatures[deviceIndex].mLastDirection));
@@ -1347,7 +1357,6 @@ public final class Avrcp_ext {
                             0, 0, deviceFeatures[deviceIndex].mCurrentDevice), CMD_TIMEOUT_DELAY);
                         deviceFeatures[deviceIndex].mVolCmdAdjustInProgress = true;
                     }
-                    deviceFeatures[deviceIndex].mLastDirection = 0;
                 } else if (msg.arg2 == AVRC_RSP_REJ) {
                     if (DEBUG)
                         Log.v(TAG, "setAbsoluteVolume call rejected");
@@ -1397,6 +1406,10 @@ public final class Avrcp_ext {
                                    CMD_TIMEOUT_DELAY);
                               deviceFeatures[deviceIndex].mVolCmdSetInProgress = true;
                               deviceFeatures[deviceIndex].mLastRemoteVolume = avrcpVolume;
+                              if(deviceFeatures[deviceIndex].mLastLocalVolume >  msg.arg1)
+                                  deviceFeatures[deviceIndex].mLastDirection = -1;
+                              else
+                                  deviceFeatures[deviceIndex].mLastDirection = 1;
                               deviceFeatures[deviceIndex].mLastLocalVolume = msg.arg1;
                               deviceFeatures[deviceIndex].mLastRequestedVolume = -1;
                          } else {
@@ -1711,6 +1724,9 @@ public final class Avrcp_ext {
                     break;
                 }
                 deviceFeatures[deviceIndex].isActiveDevice = true;
+                if (deviceFeatures[deviceIndex].cache_play_cmd) {
+                  process_cached_play(deviceIndex);
+                }
 
                 if (mFastforward)  mFastforward = false;
                 if (mRewind)  mRewind = false;
@@ -1809,31 +1825,9 @@ public final class Avrcp_ext {
         }
     }
 
-    private class AudioManagerAudioDeviceCallback extends AudioDeviceCallback {
-        @Override
-        public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
-            Log.i(TAG,"onAudioDevicesAdded");
-            for (int i = 0; i < addedDevices.length; i++) {
-                if (addedDevices[i].getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP) {
-                    int index = getActiveDeviceIndex();
-                    String addr = null;
-                    if (index != INVALID_DEVICE_INDEX) {
-                        addr = deviceFeatures[index].mCurrentDevice.getAddress();
-                    }
-                    if (addr != null && cache_play_cmd &&
-                        Objects.equals(addr, addedDevices[i].getAddress())) {
-                        cache_play_cmd = false;
-                        process_cached_play();
-                    }
-                    //clear cache play cmd unconditionally
-                    cache_play_cmd = false;
-                }
-            }
-        }
-    }
-    private void process_cached_play() {
+    private void process_cached_play(int index) {
         Log.d(TAG,"process_cached_play");
-        int index = getActiveDeviceIndex();
+        deviceFeatures[index].cache_play_cmd = false;
         handlePassthroughCmd(getByteAddress(deviceFeatures[index].mCurrentDevice),
                              BluetoothAvrcp.PASSTHROUGH_ID_PLAY,
                              AvrcpConstants_ext.KEY_STATE_PRESS);
@@ -3880,8 +3874,8 @@ public final class Avrcp_ext {
             updateCurrentController(0, mCurrBrowsePlayerID);
             return;
         }
-        if (packageName.equals("com.android.server.telecom")) {
-            Log.d(TAG, "Ignore addressed media session change to telecom");
+        if (isAppBlackListedForMediaSessionUpdate(packageName)) {
+            Log.d(TAG, "Ignore addressed media session change to " + packageName);
             return;
         }
         // No change.
@@ -3916,9 +3910,8 @@ public final class Avrcp_ext {
     private void setActiveMediaSession(MediaSession.Token token) {
         android.media.session.MediaController activeController =
                 new android.media.session.MediaController(mContext, token);
-        if ((activeController.getPackageName().contains("telecom")) ||
-           (activeController.getPackageName().contains("skype"))) {
-            Log.d(TAG, "Ignore active media session change to telecom/skype");
+        if (isAppBlackListedForMediaSessionUpdate(activeController.getPackageName())) {
+            Log.d(TAG, "Ignore active media session change to " + activeController.getPackageName());
             return;
         }
 
@@ -3944,7 +3937,7 @@ public final class Avrcp_ext {
 
     private void setActiveMediaSession(android.media.session.MediaController mController) {
         HeadsetService mService = HeadsetService.getHeadsetService();
-        if (mController.getPackageName().contains("telecom")) {
+        if (isAppBlackListedForMediaSessionUpdate(mController.getPackageName())) {
             if (mService != null && mService.isScoOrCallActive()) {
                 Log.w(TAG, "Ignore media session during call");
                 return;
@@ -4108,8 +4101,8 @@ public final class Avrcp_ext {
         int updateId = -1;
         boolean updated = false;
         boolean currentRemoved = false;
-        if (info.getPackageName().equals("com.android.server.telecom")) {
-            Log.d(TAG, "Skip adding telecom to the media player info list");
+        if (isAppBlackListedForMediaSessionUpdate(info.getPackageName())) {
+            Log.d(TAG, "Skip adding to the media player info list " + info.getPackageName());
             return updated;
         }
         synchronized (this) {
@@ -4730,6 +4723,7 @@ public final class Avrcp_ext {
         deviceFeatures[index].mBlackListVolume = -1;
         deviceFeatures[index].mLastRemoteVolume = -1;
         deviceFeatures[index].mLastLocalVolume = -1;
+        deviceFeatures[index].cache_play_cmd = false;
     }
 
     private void onConnectionStateChanged(
@@ -5518,8 +5512,9 @@ public final class Avrcp_ext {
         if (a2dp_active_device == null &&
             code == KeyEvent.KEYCODE_MEDIA_PLAY) {
             if (action == KeyEvent.ACTION_DOWN) {
-                cache_play_cmd = true;
-            } else if (action == KeyEvent.ACTION_UP && cache_play_cmd) {
+                deviceFeatures[deviceIndex].cache_play_cmd = true;
+            } else if (action == KeyEvent.ACTION_UP &&
+                       deviceFeatures[deviceIndex].cache_play_cmd) {
                 Log.d(TAG,"play cmd cached, ignore release");
             }
         }
@@ -5530,7 +5525,7 @@ public final class Avrcp_ext {
                         mAudioManager.isMusicActive() &&
                         (mA2dpState == BluetoothA2dp.STATE_PLAYING)) {
                     ignore_play = true;
-                    cache_play_cmd = false;
+                    deviceFeatures[deviceIndex].cache_play_cmd = false;
                 }
                 if (action == KeyEvent.ACTION_DOWN) {
                     Log.d(TAG, "AVRCP Trigger Handoff");
@@ -5558,8 +5553,8 @@ public final class Avrcp_ext {
             Log.d(TAG, "ignore_play: " + ignore_play + " since another PT came before play release");
         }
 
-        if (cache_play_cmd) {
-            Log.d(TAG,"caching play cmd");
+        if (deviceFeatures[deviceIndex].cache_play_cmd) {
+            Log.d(TAG,"cached play cmd exist, process it when a2dp device become active");
             return;
         }
 

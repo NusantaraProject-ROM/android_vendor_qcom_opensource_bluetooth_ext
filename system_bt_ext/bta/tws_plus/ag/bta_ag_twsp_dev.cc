@@ -408,6 +408,21 @@ void process_twsp_state_change (int eb_idx, uint8_t state) {
               }
           }
         }
+    } else if (state == TWSPLUS_EB_STATE_INEAR) {
+        if (get_lat_selected_mic_eb_role() != twsp_devices[eb_idx].role) {
+            tBTA_AG_SCB *p_scb = twsp_devices[eb_idx].p_scb;
+            APPL_TRACE_DEBUG("%s: current earbud is not selected mic eb", __func__);
+            if (p_scb != NULL) {
+                tBTA_AG_SCB *peer_scb = get_other_twsp_scb(p_scb->peer_addr);
+                if (peer_scb == NULL ||
+                    get_twsp_state(peer_scb) != TWSPLUS_EB_STATE_INEAR) {
+                    //Trigger Microphone Switch while the other EB is not IN EAR
+                    select_microphone_path(p_scb);
+                } else {
+                    APPL_TRACE_DEBUG("%s: both earbuds are IN EAR, No mic switch", __func__);
+                }
+            }
+        }
     }
 }
 
