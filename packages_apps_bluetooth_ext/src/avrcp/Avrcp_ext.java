@@ -3233,12 +3233,13 @@ public final class Avrcp_ext {
     }
 
     private void SendPlayerSettingMsg(Integer cmd, byte[] address) {
+        long delay_interval = mAvrcpPlayerAppSettings.getPlayerAppSettingsCmdDelay();
         Message msg = mHandler.obtainMessage();
         msg.what = MESSAGE_PLAYERSETTINGS_TIMEOUT;
         msg.arg1 = cmd;
         msg.arg2 = 0;
         msg.obj = Utils.getAddressStringFromByte(address);
-        mHandler.sendMessageDelayed(msg, 500);
+        mHandler.sendMessageDelayed(msg, delay_interval);
     }
 
     private void CreateMusicSettingsAppCmdLookupOrUpdate(Integer cmd,
