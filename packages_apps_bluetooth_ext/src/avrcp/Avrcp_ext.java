@@ -190,6 +190,7 @@ public final class Avrcp_ext {
          "00:04:79", //00-04-79-00-06-bc, Name: radius HP-BTL01
          "28:A1:83", //28-A1-83-94-90-AE, Name: VW Radio
          "30:c3:d9", //30-c3-d9-8d-5b-83, Name: VW RadioBin
+         "24:df:6a", //24-df-6a-f4-0a-7e, Name: HUAWEI WATCH
      };
     private static final String playerStateUpdateBlackListedNames[] = {
        "Audi",
@@ -1657,6 +1658,12 @@ public final class Avrcp_ext {
                 boolean PlayReq = (msg.arg1 == 1);
                 boolean isRetry = (msg.arg2 == 1);
                 boolean ret;
+                BluetoothDevice prevActiveDevice = mA2dpService.getActiveDevice();
+                if(Objects.equals(dev, prevActiveDevice)) {
+                    isShoActive = false;
+                    Log.w(TAG, dev + " device is already active");
+                    break;
+                }
                 ret = mA2dpService.startSHO(dev);
                 if(!ret) {
                     isShoActive = false;
