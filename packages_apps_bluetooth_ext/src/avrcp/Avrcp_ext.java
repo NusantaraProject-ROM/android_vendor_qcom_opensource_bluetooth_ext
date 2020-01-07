@@ -3999,7 +3999,9 @@ public final class Avrcp_ext {
                         mPackageManager.queryIntentServices(intent, PackageManager.MATCH_ALL);
 
                 for (ResolveInfo info : playerList) {
+                    Log.d(TAG, "Fetch the displayName of package - start");
                     CharSequence displayName = info.loadLabel(mPackageManager);
+                    Log.d(TAG, "Fetch the displayName of package - end");
                     String displayableName =
                             (displayName != null) ? displayName.toString():new String();
                     String serviceName = info.serviceInfo.name;
@@ -4020,6 +4022,7 @@ public final class Avrcp_ext {
                     } else {
                         addMediaPlayerPackage(packageName);
                     }
+                    Log.d(TAG, "Added MediaPlayerController/MediaPlayerPackage");
                 }
                 updateCurrentMediaState(null);
             }
