@@ -18,8 +18,9 @@ LOCAL_C_INCLUDES += . \
     external/libchrome \
 
 LOCAL_CFLAGS += -DHAS_NO_BDROID_BUILDCFG
-LOCAL_MODULE_PATH := $(TARGET_OUT_EXECUTABLES)
+
 LOCAL_MODULE:= l2test_ertm
+LOCAL_SYSTEM_EXT_MODULE := true
 
 LOCAL_SHARED_LIBRARIES += libcutils   \
                           libchrome   \

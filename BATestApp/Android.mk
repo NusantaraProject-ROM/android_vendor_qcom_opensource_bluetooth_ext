@@ -11,6 +11,7 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_AIDL_INCLUDES += system/bt/binder
 
 LOCAL_PACKAGE_NAME := BATestApp
+LOCAL_SYSTEM_EXT_MODULE := true
 LOCAL_CERTIFICATE := platform
 
 LOCAL_MODULE_OWNER := qti

@@ -45,7 +45,7 @@
 #if defined(OS_GENERIC)
 static const char *PROFILE_CONF_FILE_PATH = "bt_profile.conf";
 #else  // !defined(OS_GENERIC)
-static const char *PROFILE_CONF_BASE_FILE_PATH = "/etc/bluetooth/bt_profile.conf";
+static const char *PROFILE_CONF_BASE_FILE_PATH = "/system_ext/etc/bluetooth/bt_profile.conf";
 static const char *PROFILE_CONF_FILE_PATH = "/data/misc/bluedroid/bt_profile.conf";
 #endif  // defined(OS_GENERIC)
 
