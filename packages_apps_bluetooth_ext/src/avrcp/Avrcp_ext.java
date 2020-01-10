@@ -1443,18 +1443,6 @@ public final class Avrcp_ext {
                 mA2dpState = msg.arg1;
                 BluetoothDevice playStateChangeDevice = (BluetoothDevice)msg.obj;
                 Log.v(TAG, "event for device address " + playStateChangeDevice.getAddress());
-                deviceIndex = getIndexForDevice(playStateChangeDevice);
-                if (deviceIndex == INVALID_DEVICE_INDEX) {
-                    Log.e(TAG,"Set A2DP state: invalid index for device");
-                    break;
-                }
-                // if BA streaming is ongoing, don't update AVRCP state based on A2DP State.
-                // This is for some remote devices, which send PLAY/PAUSE based on AVRCP State.
-                BATService mBatService = BATService.getBATService();
-                if ((mBatService == null) || !mBatService.isA2dpSuspendFromBA()) {
-                  // if this suspend was triggered by BA, then don't update AVRCP states
-                  updateCurrentMediaState((BluetoothDevice)msg.obj);
-                }
 
                 if (mA2dpState == BluetoothA2dp.STATE_PLAYING) {
                     boolean shoComplete = false;
@@ -1474,6 +1462,20 @@ public final class Avrcp_ext {
                         CompleteSHO();
                     }
                 }
+
+                deviceIndex = getIndexForDevice(playStateChangeDevice);
+                if (deviceIndex == INVALID_DEVICE_INDEX) {
+                    Log.e(TAG,"Set A2DP state: invalid index for device");
+                    break;
+                }
+                // if BA streaming is ongoing, don't update AVRCP state based on A2DP State.
+                // This is for some remote devices, which send PLAY/PAUSE based on AVRCP State.
+                BATService mBatService = BATService.getBATService();
+                if ((mBatService == null) || !mBatService.isA2dpSuspendFromBA()) {
+                  // if this suspend was triggered by BA, then don't update AVRCP states
+                  updateCurrentMediaState((BluetoothDevice)msg.obj);
+                }
+
               }
               break;
 
