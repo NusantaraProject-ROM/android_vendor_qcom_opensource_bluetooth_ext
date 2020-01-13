@@ -2794,23 +2794,6 @@ public final class Avrcp_ext {
         return playStatus;
     }
 
-    private boolean isPlayerInBrowseList() {
-        MediaPlayerInfo_ext info = getAddressedPlayerInfo();
-        String pkgName = (info != null) ? info.getPackageName():"";
-        if (pkgName == null || pkgName.isEmpty())
-            return false;
-
-        BrowsedMediaPlayer_ext player =
-                mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
-        String browseService = (pkgName != null)?getBrowseServiceName(pkgName):null;
-        if (player == null || browseService == null || browseService.isEmpty())
-            return false;
-
-        boolean isBrowseSupported = player.isPackageInMBSList(pkgName);
-        Log.d(TAG, "Browse supported for pkg " + pkgName + " is " + isBrowseSupported);
-        return isBrowseSupported;
-    }
-
     private boolean isPlayingState(@Nullable PlaybackState state) {
         if (state == null) return false;
         return (state != null) && (state.getState() == PlaybackState.STATE_PLAYING);
@@ -3289,7 +3272,6 @@ public final class Avrcp_ext {
 
     private void SetBrowsePackage(String PackageName) {
         String browseService = (PackageName != null)?getBrowseServiceName(PackageName):null;
-        BrowsedMediaPlayer_ext player = mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
         Log.w(TAG, "SetBrowsePackage for pkg " + PackageName + "svc" + browseService);
         if (browseService != null && !browseService.isEmpty()) {
             BluetoothDevice browse_active_device = mBrowsingActiveDevice;
@@ -3303,11 +3285,6 @@ public final class Avrcp_ext {
                     Log.w(TAG, "Addr Player update to Browse " + PackageName);
                     mAvrcpBrowseManager.getBrowsedMediaPlayer(addr).
                             setCurrentPackage(PackageName, browseService);
-                    if (player != null && !mPkgRequestedMBSConnect.contains(PackageName)) {
-                        Log.w(TAG,"checkMBSConnection try connect");
-                        player.CheckMBSConnection(PackageName, browseService);
-                        mPkgRequestedMBSConnect.add(PackageName);
-                    }
                 }
             } else {
                 Log.w(TAG, "SetBrowsePackage Active device not set yet cache " + PackageName +
@@ -3987,9 +3964,7 @@ public final class Avrcp_ext {
         synchronized (this) {
             synchronized (mBrowsePlayerInfoList) {
                 mBrowsePlayerInfoList.clear();
-                BrowsedMediaPlayer_ext player =
-                        mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
-                Log.d(TAG, "buildBrowsablePlayerList " + player);
+                Log.d(TAG, "buildBrowsablePlayerList ");
                 Intent intent = new Intent(android.service.media.MediaBrowserService.SERVICE_INTERFACE);
                 List<ResolveInfo> playerList =
                         mPackageManager.queryIntentServices(intent, PackageManager.MATCH_ALL);
@@ -4003,9 +3978,6 @@ public final class Avrcp_ext {
                     String serviceName = info.serviceInfo.name;
                     String packageName = info.serviceInfo.packageName;
                     Log.d(TAG, "svc " + serviceName + " and pkg = " + packageName);
-                    if ((player != null) && (serviceName != null)) {
-                        player.CheckMBSConnection(packageName, serviceName);
-                    }
                     BrowsePlayerInfo_ext currentPlayer =
                             new BrowsePlayerInfo_ext(packageName, displayableName, serviceName);
                     mBrowsePlayerInfoList.add(currentPlayer);
