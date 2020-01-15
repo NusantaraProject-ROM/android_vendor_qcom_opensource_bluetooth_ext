@@ -39,12 +39,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.Iterator;
+import android.os.SystemProperties;
 
 public class AvrcpPlayerAppSettings {
     private static final boolean DEBUG = true;
     private static final String TAG = "AvrcpPlayerAppSettings";
 
     private boolean mIsRegisterd;
+    private long mPlayerAppSettingsCmdDelay;
     private ArrayList <Integer> mPendingCmds;
     private ArrayList <Integer> mPendingSetAttributes;
     private ArrayList <Byte> mPlayerSettingCmds;
@@ -107,6 +109,10 @@ public class AvrcpPlayerAppSettings {
     private final String UPDATE_ATTRIB_TEXT = "UpdateAttributesText";
     private final String UPDATE_VALUE_TEXT = "UpdateValuesText";
 
+    // Property for response delay for Player App Settings commands
+    private static final String AVRCP_PLAYERAPP_SETTINGS_PROPERTY =
+            "persist.vendor.btstack.avrcp.playerappsettings_time";
+
     //Intents for PlayerApplication Settings
     private static final String PLAYERSETTINGS_REQUEST =
             "org.codeaurora.music.playersettingsrequest";
@@ -119,6 +125,8 @@ public class AvrcpPlayerAppSettings {
         mPendingCmds = null;
         mPendingSetAttributes = null;
         mPlayerSettingCmds = null;
+        mPlayerAppSettingsCmdDelay =
+                SystemProperties.getLong(AVRCP_PLAYERAPP_SETTINGS_PROPERTY, 100L);
         mContext = context;
         mAvrcpPlayerAppSettingsRspInterface = playerAppSettings;
     }
@@ -521,6 +529,10 @@ public class AvrcpPlayerAppSettings {
             }
         }
         return ret;
+    }
+
+    public long getPlayerAppSettingsCmdDelay() {
+        return mPlayerAppSettingsCmdDelay;
     }
 
     private byte[] getByteAddress(BluetoothDevice device) {

@@ -89,10 +89,6 @@ typedef struct {
 } map_feature_t;
 
 typedef struct {
-   char hap_support[VALUE_MAX_LENGTH];
-} hearing_aid_feature_t;
-
-typedef struct {
   profile_t profile_id;
   char *version;
 
@@ -101,7 +97,6 @@ typedef struct {
     pbap_feature_t pbap_feature_entry;
     map_feature_t map_feature_entry;
     max_pow_feature_t max_pow_feature_entry;
-    hearing_aid_feature_t hearing_aid_support_entry;
   } profile_feature_type;
 
 } profile_db_entry_t;
@@ -126,7 +121,6 @@ static const char* profile_name_string_(const profile_t profile_name)
     CASE_RETURN_STR(PBAP_ID)
     CASE_RETURN_STR(MAP_ID)
     CASE_RETURN_STR(MAX_POW_ID)
-    CASE_RETURN_STR(HEARING_AID_ID)
     CASE_RETURN_STR(END_OF_PROFILE_LIST)
   }
   return "UNKNOWN";
@@ -145,7 +139,6 @@ static const char* profile_feature_string_(const profile_info_t feature)
     CASE_RETURN_STR(BR_MAX_POW_SUPPORT)
     CASE_RETURN_STR(EDR_MAX_POW_SUPPORT)
     CASE_RETURN_STR(BLE_MAX_POW_SUPPORT)
-    CASE_RETURN_STR(HEARING_AID_SUPPORT)
     CASE_RETURN_STR(END_OF_FEATURE_LIST)
   }
   return "UNKNOWN";
@@ -429,26 +422,6 @@ bool profile_feature_fetch(const profile_t profile, profile_info_t feature_name)
       }
     }
     break;
-    case HEARING_AID_ID:
-    {
-      switch(feature_name) {
-        case  HEARING_AID_SUPPORT:
-        {
-          if (strncasecmp("true",
-                  db_entry->profile_feature_type.hearing_aid_support_entry.hap_support,
-                  strlen("true")) == 0)
-            feature_set = true;
-          LOG_WARN(LOG_TAG, "profile_feature_fetch:HEARING_AID_SUPPORT found = %d" , feature_set);
-        }
-        break;
-        default:
-        {
-          LOG_WARN(LOG_TAG, "profile_feature_fetch:profile = %d , feature %d not found" ,
-              profile, feature_name);
-        }
-      }
-    }
-    break;
     default:
     {
       LOG_WARN(LOG_TAG,"%s() profile %d not found",__func__, profile);
@@ -629,32 +602,6 @@ static bool load_to_database(int profile_id, char *key, char *value)
           LOG_WARN(LOG_TAG,"%s is invalid key %s", __func__, key);
         }
         break;
-      }
-      profile_database_add_(entry);
-    }
-    break;
-    case HEARING_AID_ID:
-    {
-      LOG_WARN(LOG_TAG, "HEARING_AID_ID: key :: %s, value :: %s",
-                key, value);
-      entry = profile_entry_fetch(HEARING_AID_ID);
-      if (entry == NULL) {
-        entry = (profile_db_entry_t *)osi_calloc(sizeof(profile_db_entry_t));
-        entry->profile_id = (profile_t)profile_id;
-      }
-      switch (get_feature(key)) {
-        case HEARING_AID_SUPPORT:
-        {
-          memset(&entry->profile_feature_type.hearing_aid_support_entry.hap_support,
-              '\0', VALUE_MAX_LENGTH);
-          memcpy(&entry->profile_feature_type.hearing_aid_support_entry.hap_support,
-              value, strlen(value));
-        }
-        break;
-        default:
-        {
-          LOG_WARN(LOG_TAG,"%s is invalid key %s", __func__, key);
-        }
       }
       profile_database_add_(entry);
     }

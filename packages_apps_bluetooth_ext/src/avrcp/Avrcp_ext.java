@@ -142,7 +142,6 @@ public final class Avrcp_ext {
     /* Local volume in audio index 0-15 */
     private int mLocalVolume;
     private int mLastLocalVolume;
-    private int mAbsVolThreshold;
 
     private boolean mFastforward;
     private boolean mRewind;
@@ -277,7 +276,6 @@ public final class Avrcp_ext {
     private SortedMap<Integer, MediaPlayerInfo_ext> mMediaPlayerInfoList;
     private boolean mAvailablePlayerViewChanged;
 
-    private boolean mPlayerSwitching;
     private List<String> mPkgRequestedMBSConnect;
 
     /* List of media players which supports browse */
@@ -476,7 +474,6 @@ public final class Avrcp_ext {
         mLastDirection = 0;
         mLocalVolume = -1;
         mLastLocalVolume = -1;
-        mAbsVolThreshold = 0;
         mCurrAddrPlayerID = NO_PLAYER_ID;
         mCurrBrowsePlayerID = 0;
         mContext = context;
@@ -505,18 +502,6 @@ public final class Avrcp_ext {
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         mAudioStreamMax = mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         mVolumeStep = Math.max(AVRCP_BASE_VOLUME_STEP, AVRCP_MAX_VOL/mAudioStreamMax);
-
-        Resources resources = context.getResources();
-        if (resources != null) {
-            mAbsVolThreshold = resources.getInteger(R.integer.a2dp_absolute_volume_initial_threshold);
-
-            // Update the threshold if the threshold_percent is valid
-            int threshold_percent =
-                    resources.getInteger(R.integer.a2dp_absolute_volume_initial_threshold_percent);
-            if (threshold_percent >= 0 && threshold_percent <= 100) {
-                mAbsVolThreshold = (threshold_percent * mAudioStreamMax) / 100;
-            }
-        }
 
         // Register for package removal intent broadcasts for media button receiver persistence
         IntentFilter pkgFilter = new IntentFilter();
@@ -570,7 +555,6 @@ public final class Avrcp_ext {
         mAvrcpPlayerAppSettingsRsp = new AvrcpPlayerAppSettingsRsp();
         mMediaPlayerInfoList = new TreeMap<Integer, MediaPlayerInfo_ext>();
         mAvailablePlayerViewChanged = false;
-        mPlayerSwitching = false;
         mPkgRequestedMBSConnect = new ArrayList<String>();
         mBrowsePlayerInfoList = Collections.synchronizedList(new ArrayList<BrowsePlayerInfo_ext>());
         mPassthroughDispatched = 0;
@@ -878,15 +862,9 @@ public final class Avrcp_ext {
                 deviceIndex = msg.arg1;
                 int vol = msg.arg2;
                 BluetoothDevice device = mA2dpService.getActiveDevice();
-                if(device == null)
+                if (device == null)
                     break;
-                if (mAbsVolThreshold > 0 && mAbsVolThreshold < mAudioStreamMax &&
-                    vol > mAbsVolThreshold) {
-                    if (DEBUG) Log.v(TAG, "remote inital volume too high " + vol + ">" +
-                       mAbsVolThreshold);
-                    vol = mAbsVolThreshold;
-                    notifyVolumeChanged(vol, false);
-                }
+
                 if (vol >= 0) {
                     int volume = convertToAvrcpVolume(vol);
                     int remVol = deviceFeatures[deviceIndex].mRemoteVolume;
@@ -3265,12 +3243,13 @@ public final class Avrcp_ext {
     }
 
     private void SendPlayerSettingMsg(Integer cmd, byte[] address) {
+        long delay_interval = mAvrcpPlayerAppSettings.getPlayerAppSettingsCmdDelay();
         Message msg = mHandler.obtainMessage();
         msg.what = MESSAGE_PLAYERSETTINGS_TIMEOUT;
         msg.arg1 = cmd;
         msg.arg2 = 0;
         msg.obj = Utils.getAddressStringFromByte(address);
-        mHandler.sendMessageDelayed(msg, 500);
+        mHandler.sendMessageDelayed(msg, delay_interval);
     }
 
     private void CreateMusicSettingsAppCmdLookupOrUpdate(Integer cmd,
@@ -4020,7 +3999,9 @@ public final class Avrcp_ext {
                         mPackageManager.queryIntentServices(intent, PackageManager.MATCH_ALL);
 
                 for (ResolveInfo info : playerList) {
+                    Log.d(TAG, "Fetch the displayName of package - start");
                     CharSequence displayName = info.loadLabel(mPackageManager);
+                    Log.d(TAG, "Fetch the displayName of package - end");
                     String displayableName =
                             (displayName != null) ? displayName.toString():new String();
                     String serviceName = info.serviceInfo.name;
@@ -4041,6 +4022,7 @@ public final class Avrcp_ext {
                     } else {
                         addMediaPlayerPackage(packageName);
                     }
+                    Log.d(TAG, "Added MediaPlayerController/MediaPlayerPackage");
                 }
                 updateCurrentMediaState(null);
             }
@@ -5288,12 +5270,6 @@ public final class Avrcp_ext {
           return;
         }
 
-        if (mAbsVolThreshold > 0 && mAbsVolThreshold < mAudioStreamMax &&
-           storeVolume > mAbsVolThreshold) {
-            if (DEBUG) Log.v(TAG, "remote store volume too high" + storeVolume + ">" +
-               mAbsVolThreshold);
-            storeVolume = mAbsVolThreshold;
-        }
         if (index == INVALID_DEVICE_INDEX && disconnectedActiveDevice != null &&
             (disconnectedActiveDevice.equals(device)
             || isTwsPlusPair(disconnectedActiveDevice, device))) {
