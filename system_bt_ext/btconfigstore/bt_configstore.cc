@@ -55,7 +55,7 @@
 /* max platform record must be equal to the predefined max num
    of platform in bt_configstore.conf */
 #define MAX_PLATFORM_PROP_RECORD 12
-#define BT_CONFIG_STORE_PATH "/etc/bluetooth/bt_configstore.conf"
+#define BT_CONFIG_STORE_PATH "/system_ext/etc/bluetooth/bt_configstore.conf"
 
 using android::hardware::IPCThreadState;
 using ::vendor::qti::hardware::btconfigstore::V1_0::IBTConfigStore;

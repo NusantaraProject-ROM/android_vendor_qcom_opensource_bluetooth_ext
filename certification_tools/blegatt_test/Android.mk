@@ -19,9 +19,9 @@ LOCAL_C_INCLUDES += . \
     external/libchrome \
 
 LOCAL_CFLAGS += -DHAS_NO_BDROID_BUILDCFG
-LOCAL_MODULE_PATH := $(TARGET_OUT_EXECUTABLES)
 
 LOCAL_MODULE:= gatt_tool_qti_internal
+LOCAL_SYSTEM_EXT_MODULE := true
 
 LOCAL_SHARED_LIBRARIES += libcutils   \
                           libchrome   \

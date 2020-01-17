@@ -1,3 +1,9 @@
+prebuilt_etc {
+    name: "bt_configstore.conf",
+    system_ext_specific: true,
+    src: "bt_configstore.conf",
+    sub_dir: "bluetooth",
+}
 
 // btconfigstore shared library
 // ========================================================
@@ -6,6 +12,7 @@ cc_library_shared {
     defaults: ["fluoride_defaults_qti"],
     header_libs: ["libbluetooth_headers"],
     export_header_lib_headers: ["libbluetooth_headers"],
+    system_ext_specific: true,
     srcs: [
         "bt_configstore.cc"
     ],
