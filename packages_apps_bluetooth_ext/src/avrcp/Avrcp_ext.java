@@ -56,6 +56,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.os.Message;
 import android.os.SystemClock;
 import android.os.SystemProperties;
@@ -144,17 +145,17 @@ public final class Avrcp_ext {
     /* Local volume in audio index 0-15 */
     private int mLocalVolume;
     private int mLastLocalVolume;
-
+    private static final int NO_PLAYER_ID = 0;
     private boolean mFastforward;
     private boolean mRewind;
 
     private String mAddress;
-
+    private Map<String, Integer> mMediaPlayerIds =
+            Collections.synchronizedMap(new HashMap<String, Integer>());
     private int mLastDirection;
     private final int mVolumeStep;
     private final int mAudioStreamMax;
     private boolean updateAbsVolume = false;
-    private static final int NO_PLAYER_ID = 0;
 
     private boolean is_player_updated_for_browse;
     private String mCachedBrowsePlayer;
@@ -566,7 +567,8 @@ public final class Avrcp_ext {
         if (mMediaSessionManager != null) {
             mMediaSessionManager.addOnActiveSessionsChangedListener(mActiveSessionListener, null,
                     mHandler);
-//            mMediaSessionManager.setCallback(mButtonDispatchCallback, null);
+            mMediaSessionManager.addOnMediaKeyEventSessionChangedListener(
+                    mContext.getMainExecutor(), mMediaKeyEventSessionChangedListener);
         }
         mPackageManager = mContext.getApplicationContext().getPackageManager();
 
@@ -659,7 +661,8 @@ public final class Avrcp_ext {
                0, null);
         mHandler.sendMessage(msg);
         if (mMediaSessionManager != null) {
-          //  mMediaSessionManager.setCallback(null, null);
+            mMediaSessionManager.removeOnMediaKeyEventSessionChangedListener(
+                    mMediaKeyEventSessionChangedListener);
             mMediaSessionManager.removeOnActiveSessionsChangedListener(mActiveSessionListener);
         }
 
@@ -4034,7 +4037,7 @@ public final class Avrcp_ext {
             synchronized (mMediaPlayerInfoList) {
                 // Clearing old browsable player's list
                 mMediaPlayerInfoList.clear();
-
+                mMediaPlayerIds.clear();
                 if (mMediaSessionManager == null) {
                     if (DEBUG) Log.w(TAG, "initMediaPlayersList: no media session manager!");
                     return;
@@ -4100,8 +4103,9 @@ public final class Avrcp_ext {
     private boolean addMediaPlayerInfo(MediaPlayerInfo_ext info) {
         int updateId = -1;
         boolean updated = false;
+        String packageName = info.getPackageName();
         boolean currentRemoved = false;
-        if (isAppBlackListedForMediaSessionUpdate(info.getPackageName())) {
+        if (isAppBlackListedForMediaSessionUpdate(packageName)) {
             Log.d(TAG, "Skip adding to the media player info list " + info.getPackageName());
             return updated;
         }
@@ -4115,6 +4119,7 @@ public final class Avrcp_ext {
                             // If we would present a different player, make it a new player
                             // so that controllers know whether a player is browsable or not.
                             mMediaPlayerInfoList.remove(id);
+                            mMediaPlayerIds.remove(packageName);
                             currentRemoved = (mCurrAddrPlayerID == id);
                             break;
                         }
@@ -4130,6 +4135,9 @@ public final class Avrcp_ext {
                     mAvailablePlayerViewChanged = true;
                 }
                 mMediaPlayerInfoList.put(updateId, info);
+                mMediaPlayerIds.put(packageName, updateId);
+                Log.d(TAG, "Adding media player info for " + packageName + " with id "
+                                    + mMediaPlayerIds.get(packageName));
             }
         }
         if (DEBUG) Log.d(TAG, (updated ? "update #" : "add #") + updateId + ":" + info.toString());
@@ -4154,6 +4162,9 @@ public final class Avrcp_ext {
                     if (DEBUG)
                         Log.d(TAG, "remove #" + removeKey + ":" + mMediaPlayerInfoList.get(removeKey));
                     mAvailablePlayerViewChanged = true;
+                    Log.d(TAG, "Removing media player Wrapper for " + packageName + " with id "
+                                    + mMediaPlayerIds.get(packageName));
+                    mMediaPlayerIds.remove(packageName);
                     return mMediaPlayerInfoList.remove(removeKey);
                 }
 
@@ -5804,44 +5815,47 @@ public final class Avrcp_ext {
         }
     }
 
-    /*private final MediaSessionManager.Callback mButtonDispatchCallback =
-            new MediaSessionManager.Callback() {
+    private final MediaSessionManager.OnMediaKeyEventSessionChangedListener
+            mMediaKeyEventSessionChangedListener =
+            new MediaSessionManager.OnMediaKeyEventSessionChangedListener() {
                 @Override
-                public void onMediaKeyEventDispatched(KeyEvent event, MediaSession.Token token) {
-                    if (token != null) {
-                        // Get the package name
-                        android.media.session.MediaController controller =
-                                new android.media.session.MediaController(mContext, token);
-                        String targetPackage = controller.getPackageName();
-                        recordKeyDispatched(event, targetPackage);
-                    }
-                }
-
-                @Override
-                public void onMediaKeyEventDispatched(KeyEvent event, ComponentName receiver) {
-                    recordKeyDispatched(event, receiver.getPackageName());
-                }
-
-                @Override
-                public void onAddressedPlayerChanged(MediaSession.Token token) {
-                    setActiveMediaSession(token);
-                }
-
-                @Override
-                public void onAddressedPlayerChanged(ComponentName receiver) {
-                    if (receiver == null) {
-                        // No active sessions, and no session to revive, give up.
-                        setAddressedMediaSessionPackage(null);
+                public void onMediaKeyEventSessionChanged(String packageName,
+                        MediaSession.Token token) {
+                    if (mMediaSessionManager == null) {
+                        Log.w(TAG, "onMediaKeyEventSessionChanged(): Unexpected callback "
+                                + "from the MediaSessionManager, pkg" + packageName + ", token="
+                                + token);
                         return;
                     }
-                    // We can still get a passthrough which will revive this player.
-                    setAddressedMediaSessionPackage(receiver.getPackageName());
-                    mCachedBrowsePlayer = receiver.getPackageName();
-                    Log.w(TAG,"Trigger setAddressedMediaSessionPackage from onAddrPlayerChanged" +
-                            mCachedBrowsePlayer);
+                    if (TextUtils.isEmpty(packageName)) {
+                        return;
+                    }
+                    if (token != null) {
+                        android.media.session.MediaController controller =
+                                new android.media.session.MediaController(mContext, token);
+                        if (!mMediaPlayerIds.containsKey(controller.getPackageName())) {
+                            // Since we have a controller, we can try to to recover by adding the
+                            // player and then setting it as active.
+                            Log.w(TAG, "onMediaKeyEventSessionChanged(Token): Addressed Player "
+                                    + "changed to a player we didn't have a session for");
+                            addMediaPlayerController(controller);
+                        }
+
+                        Log.i(TAG, "onMediaKeyEventSessionChanged: token="
+                                + controller.getPackageName());
+                        setAddressedMediaSessionPackage((controller.getPackageName()));
+                    } else {
+                        if (!mMediaPlayerIds.containsKey(packageName)) {
+                            Log.w(TAG, "onMediaKeyEventSessionChanged(PackageName): Media keyevent "
+                                    + "session changed to a player we don't have a session for");
+                            return;
+                        }
+
+                        Log.i(TAG, "onMediaKeyEventSessionChanged: packageName = " + packageName);
+                        setAddressedMediaSessionPackage((packageName));
+                    }
                 }
             };
-*/
     // Do not modify without updating the HAL bt_rc.h files.
 
     // match up with btrc_play_status_t enum of bt_rc.h
