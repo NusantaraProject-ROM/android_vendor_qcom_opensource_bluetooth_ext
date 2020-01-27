@@ -564,7 +564,7 @@ public final class Avrcp_ext {
         if (mMediaSessionManager != null) {
             mMediaSessionManager.addOnActiveSessionsChangedListener(mActiveSessionListener, null,
                     mHandler);
-            mMediaSessionManager.setCallback(mButtonDispatchCallback, null);
+//            mMediaSessionManager.setCallback(mButtonDispatchCallback, null);
         }
         mPackageManager = mContext.getApplicationContext().getPackageManager();
 
@@ -657,7 +657,7 @@ public final class Avrcp_ext {
                0, null);
         mHandler.sendMessage(msg);
         if (mMediaSessionManager != null) {
-            mMediaSessionManager.setCallback(null, null);
+          //  mMediaSessionManager.setCallback(null, null);
             mMediaSessionManager.removeOnActiveSessionsChangedListener(mActiveSessionListener);
         }
 
@@ -746,8 +746,7 @@ public final class Avrcp_ext {
             for (AudioPlaybackConfiguration config : configs) {
                 if (DEBUG) {
                     Log.d(TAG,
-                            "AudioManager Player: "
-                                    + AudioPlaybackConfiguration.toLogFriendlyString(config));
+                            "AudioManager Player: " + config);
                 }
                 if (config.getPlayerState() == AudioPlaybackConfiguration.PLAYER_STATE_STARTED) {
                     isPlaying = true;
@@ -5785,7 +5784,7 @@ public final class Avrcp_ext {
         }
     }
 
-    private final MediaSessionManager.Callback mButtonDispatchCallback =
+    /*private final MediaSessionManager.Callback mButtonDispatchCallback =
             new MediaSessionManager.Callback() {
                 @Override
                 public void onMediaKeyEventDispatched(KeyEvent event, MediaSession.Token token) {
@@ -5822,7 +5821,7 @@ public final class Avrcp_ext {
                             mCachedBrowsePlayer);
                 }
             };
-
+*/
     // Do not modify without updating the HAL bt_rc.h files.
 
     // match up with btrc_play_status_t enum of bt_rc.h
