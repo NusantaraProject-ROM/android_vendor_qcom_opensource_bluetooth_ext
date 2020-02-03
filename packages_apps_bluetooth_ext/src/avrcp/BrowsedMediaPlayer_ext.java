@@ -462,6 +462,8 @@ class BrowsedMediaPlayer_ext {
             mPackageName = packageName;
             mClassName = cls;
 
+            mCurrentBrowsePackage = packageName;
+            mCurrentBrowseClass = cls;
            /* cleanup variables from previous browsed calls */
            mFolderItems = null;
            mMediaId = null;
