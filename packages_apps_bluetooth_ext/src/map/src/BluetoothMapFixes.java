@@ -39,6 +39,7 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseArray;
+import com.android.bluetooth.R;
 import com.android.bluetooth.Utils;
 import com.android.bluetooth.btservice.AdapterService;
 import com.android.bluetooth.btservice.AbstractionLayer;
@@ -207,10 +208,12 @@ public class BluetoothMapFixes {
         }
 
         // create notification
-        String title = isUpgrade ? "Message access Advance Feature Supported" :
-                            "Remote Message access Feature Downgrade";
-        String contentText = isUpgrade ? "Re-pair for Advance Message access Feature.":
-                "Re-pair for Message access Version Compatibility";
+        String title = isUpgrade ?
+                context.getString(R.string.bluetooth_map_remote_advance_feature_support):
+                context.getString(R.string.bluetooth_map_remote_message_access_feature_downgrade);
+        String contentText = isUpgrade ?
+                context.getString(R.string.bluetooth_map_repair_for_adv_message_access_feature):
+                context.getString(R.string.bluetooth_map_repair_for_message_access_version_comp);
         Notification notification = new Notification.Builder(context,MAP_NOTIFICATION_ID)
             .setContentTitle(title)
             .setContentText(contentText)
