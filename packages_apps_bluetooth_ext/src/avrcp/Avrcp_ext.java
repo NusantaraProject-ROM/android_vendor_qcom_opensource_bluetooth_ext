@@ -2243,16 +2243,14 @@ public final class Avrcp_ext {
                 Log.v(TAG,"updateCurrentMediaState: isPlaying = " + isPlaying);
                 // Use A2DP state if we don't have a MediaControlller
                 PlaybackState.Builder builder = new PlaybackState.Builder();
-                if (mMediaController == null || mMediaController.getPlaybackState() == null) {
-                    Log.v(TAG,"updateCurrentMediaState: mMediaController or getPlaybackState() null");
-                    if (isPlaying) {
-                        builder.setState(PlaybackState.STATE_PLAYING,
-                                PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
-                    } else {
-                        builder.setState(PlaybackState.STATE_PAUSED,
-                                PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0.0f);
-                    }
+                if (isPlaying) {
+                    builder.setState(PlaybackState.STATE_PLAYING,
+                            PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
                 } else {
+                    builder.setState(PlaybackState.STATE_PAUSED,
+                            PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0.0f);
+                }
+                if (mMediaController != null && mMediaController.getPlaybackState() != null) {
                     int mMediaPlayState = mMediaController.getPlaybackState().getState();
                     if (isPlaying) {
                         builder.setState(PlaybackState.STATE_PLAYING,
