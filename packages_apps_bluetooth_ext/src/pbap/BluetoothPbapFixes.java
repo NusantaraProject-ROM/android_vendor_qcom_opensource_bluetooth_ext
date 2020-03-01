@@ -255,11 +255,6 @@ public class BluetoothPbapFixes {
         }
     }
 
-    protected static void updateMtu(ServerSession serverSession, boolean isSrmSupported,
-            int rfcommMaxMTU) {
-        // TODO: TO Remove this API from here and its invocation (startObexServerSession)
-    }
-
     public static MatrixCursor filterOutSimContacts(Cursor contactCursor) {
         if (contactCursor == null)
             return null;
@@ -472,14 +467,13 @@ public class BluetoothPbapFixes {
                 context.getSystemService(Context.NOTIFICATION_SERVICE);
         NotificationChannel mChannel = new NotificationChannel(PBAP_NOTIFICATION_ID,
                 PBAP_NOTIFICATION_NAME, NotificationManager.IMPORTANCE_DEFAULT);
-        mChannel.setDescription("Remote Phonebook Profile Version Change");
         mNotificationManager.createNotificationChannel(mChannel);
-
         // create notification
-        String title = isUpgrade ? "Phonebook Advance Feature Supported" :
-                            "Remote Phonebook Feature Downgrade";
-        String contentText = isUpgrade ? "Re-pair for Advance Phonebook Feature.":
-                "Re-pair for Phonebook Access Version Compatibility";
+        String title = isUpgrade ? context.getString(R.string.phonebook_advance_feature_support) :
+                context.getString(R.string.remote_phonebook_feature_downgrade);
+        String contentText = isUpgrade ? context.getString
+                (R.string.repair_for_adv_phonebook_feature):
+                context.getString(R.string.repair_for_phonebook_access_version_comp);
         int NOTIFICATION_ID = android.R.drawable.stat_sys_data_bluetooth;
         Notification notification = new Notification.Builder(context,PBAP_NOTIFICATION_ID)
             .setContentTitle(title)

@@ -82,8 +82,6 @@ static bool btConfigStoreLoadProperties(uint32_t vPropType,
 static bt_soc_type_t convertSocNameToBTSocType(const char * name);
 static const char * convertPropTypeToStringFormat(uint32_t propType);
 
-const bool IsLazyHalSupported(property_get_bool("ro.vendor.bt.enablelazyhal", false));
-
 EXPORT_SYMBOL bt_configstore_interface_t btConfigStoreInterface = {
     sizeof(btConfigStoreInterface),
     getVendorProperties,
@@ -93,6 +91,37 @@ EXPORT_SYMBOL bt_configstore_interface_t btConfigStoreInterface = {
     convertPropTypeToStringFormat,
 };
 
+#ifdef ARCH_ARM_32
+bool IsLazyHalSupported()
+{
+  static bool isPropertyRead = false;
+  static bool isLazyHalEnabled = false;
+
+  /* MSM8937 target supports both lazy and non lazy hal
+   * which is differentiated by a property.
+   * isLazyHalPropStatus holds the property status.
+   */
+  ALOGD("%s isPropertyRead: %d isLazyHalEnabled: %d", __func__, isPropertyRead,
+         isLazyHalEnabled);
+
+  if (!isPropertyRead) {
+    char device[PROPERTY_VALUE_MAX]= {'\0'};
+    int len = property_get("ro.board.platform", device, "");
+    if (len) {
+      isPropertyRead = true;
+      isLazyHalEnabled = (!strcmp(device, "bengal") ? true : false);
+      if (!isLazyHalEnabled && !strcmp(device, "msm8937")) {
+        isLazyHalEnabled = property_get_bool("ro.vendor.bt.enablelazyhal", false);
+      }
+      ALOGD("%s isLazyHalEnabled: %d", __func__, isLazyHalEnabled);
+    } else {
+      ALOGE("%s: Failed to read property", __func__);
+    }
+  }
+
+  return isLazyHalEnabled;
+}
+#endif
 
 /*******************************************************************************
 **
@@ -150,8 +179,12 @@ static bool getVendorProperties(uint32_t vPropType, std::vector<vendor_property_
     }
   }
 
-  if (IsLazyHalSupported && btConfigStore != nullptr)
+#ifdef ARCH_ARM_32
+  if (btConfigStore != nullptr && IsLazyHalSupported()) {
+    LOG_DEBUG(LOG_TAG, "%s: decrementing HIDL usage counter", __func__);
     IPCThreadState::self()->flushCommands();
+  }
+#endif
 
   btConfigStore = nullptr;
   return status;
@@ -193,8 +226,12 @@ static bool setVendorProperty(uint32_t type, const char * value)
     LOG_WARN(LOG_TAG, "%s btConfigStore is null", __func__);
   }
 
-  if (IsLazyHalSupported && btConfigStore != nullptr)
+#ifdef ARCH_ARM_32
+  if (btConfigStore != nullptr && IsLazyHalSupported()) {
+    LOG_DEBUG(LOG_TAG, "%s: decrementing HIDL usage counter", __func__);
     IPCThreadState::self()->flushCommands();
+  }
+#endif
 
   btConfigStore = nullptr;
   return status;
@@ -259,8 +296,12 @@ static bool getAddOnFeatures(add_on_features_list_t *features_list)
     LOG_WARN(LOG_TAG, "%s add feature is not avaliable", __func__);
   }
 
-  if (IsLazyHalSupported && btConfigStore != nullptr)
+#ifdef ARCH_ARM_32
+  if (btConfigStore != nullptr && IsLazyHalSupported()) {
+    LOG_DEBUG(LOG_TAG, "%s: decrementing HIDL usage counter", __func__);
     IPCThreadState::self()->flushCommands();
+  }
+#endif
 
   btConfigStore = nullptr;
   return status;
