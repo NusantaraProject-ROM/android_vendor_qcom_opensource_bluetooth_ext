@@ -3980,16 +3980,15 @@ public final class Avrcp_ext {
                         mPackageManager.queryIntentServices(intent, PackageManager.MATCH_ALL);
 
                 for (ResolveInfo info : playerList) {
-                    Log.d(TAG, "Fetch the displayName of package - start");
-                    CharSequence displayName = info.loadLabel(mPackageManager);
-                    Log.d(TAG, "Fetch the displayName of package - end");
-                    String displayableName =
-                            (displayName != null) ? displayName.toString():new String();
                     String serviceName = info.serviceInfo.name;
                     String packageName = info.serviceInfo.packageName;
-                    Log.d(TAG, "svc " + serviceName + " and pkg = " + packageName);
+                    Log.d(TAG, "Fetch the displayName of package - start");
+                    String displayName = getAppLabel(packageName);
+                    if (displayName == null) displayName = new String();
+                    Log.d(TAG, "Fetch the displayName of package -" + displayName + " end");
+                    Log.d(TAG, "svc " + serviceName + " pkg " + packageName);
                     BrowsePlayerInfo_ext currentPlayer =
-                            new BrowsePlayerInfo_ext(packageName, displayableName, serviceName);
+                            new BrowsePlayerInfo_ext(packageName, displayName, serviceName);
                     mBrowsePlayerInfoList.add(currentPlayer);
                     MediaPlayerInfo_ext playerInfo = getMediaPlayerInfo(packageName);
                     MediaController controller =

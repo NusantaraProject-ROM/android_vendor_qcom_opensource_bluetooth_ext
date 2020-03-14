@@ -264,8 +264,13 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                     twsp_select_microphone(get_other_twsp_scb(p_scb->peer_addr), p_scb);
                 }
                 /* create sco connection to peer */
-                bta_ag_create_sco(p_scb, true);
-                p_sco->state = BTA_AG_SCO_OPENING_ST;
+                if (bta_ag_create_sco(p_scb, true)) {
+                    p_sco->state = BTA_AG_SCO_OPENING_ST;
+                } else {
+                    APPL_TRACE_WARNING("%s: create sco connection failed", __func__);
+                    p_sco->state = BTA_AG_SCO_LISTEN_ST;
+                    bta_ag_cback_sco(p_scb, BTA_AG_AUDIO_CLOSE_EVT);
+                }
             break;
             case BTA_AG_SCO_CONN_CLOSE_E:
                 //SCO failed back to LISTEN
