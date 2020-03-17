@@ -5283,6 +5283,7 @@ public final class Avrcp_ext {
         HeadsetService headsetService = HeadsetService.getHeadsetService();
         boolean isInCall = headsetService != null && headsetService.isScoOrCallActive();
         boolean isFMActive = mAudioManager.getParameters("fm_status").contains("1");
+        boolean resetShoFlag = false;
         Log.d(TAG, "0: SHO Init: isInCall = " + isInCall + " isFMActive = " + isFMActive);
         synchronized (Avrcp_ext.this) {
             if (isShoActive) {
@@ -5299,10 +5300,16 @@ public final class Avrcp_ext {
                 Log.d(TAG, "5: SHO started: PlayReq = " + PlayReq);
             }
         }
+        if (device != null && device.isTwsPlusDevice() &&
+            mA2dpService.isA2dpPlaying(device)) {
+            Log.d(TAG,"startSHO: TWS+ switch, reset isShoActive");
+            resetShoFlag = true;
+        }
         boolean ret = mA2dpService.startSHO(device);
         if(!ret) {
             isShoActive = false;
             if (device.isTwsPlusDevice()) {
+                resetShoFlag = false;
                 BluetoothDevice activeDevice = mA2dpService.getActiveDevice();
                 if (activeDevice != null &&
                     isTwsPlusPair(device, activeDevice)) {
@@ -5316,10 +5323,11 @@ public final class Avrcp_ext {
             return ret;
         }
         synchronized (Avrcp_ext.this) {
-            if (!PlayReq || isInCall || isFMActive) {
+            if (!PlayReq || isInCall || isFMActive || resetShoFlag) {
                 isShoActive = false;
                 Log.d(TAG, "6: SHO complete");
-
+                if (resetShoFlag)
+                    resetShoFlag = false;
                 if (mHandler.hasMessages(MESSAGE_START_SHO)) {
                     mHandler.removeMessages(MESSAGE_START_SHO);
                     triggerSHO(SHOQueue.device, SHOQueue.PlayReq, false);
