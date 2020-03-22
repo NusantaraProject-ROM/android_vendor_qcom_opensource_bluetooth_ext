@@ -2710,6 +2710,8 @@ public final class Avrcp_ext {
                 (deviceFeatures[deviceIndex].mFeatures & BTRC_FEAT_BROWSE) == 0) {
             byte[] track = AvrcpConstants_ext.TRACK_IS_SELECTED;
             if (!mMediaAttributes.exists) track = AvrcpConstants_ext.NO_TRACK_SELECTED;
+            Log.w(TAG, "sendTrackChangedRsp track " + Arrays.toString(track) +
+                    " rsptype " + deviceFeatures[deviceIndex].mTrackChangedNT);
             registerNotificationRspTrackChangeNative(
                               deviceFeatures[deviceIndex].mTrackChangedNT,
                               track,
