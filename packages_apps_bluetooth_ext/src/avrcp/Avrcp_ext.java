@@ -1156,7 +1156,7 @@ public final class Avrcp_ext {
                 byte[] bdaddr = data.getByteArray("BdAddress");
                 String address = Utils.getAddressStringFromByte(bdaddr);
                 BluetoothDevice device, activeDevice = null;
-                Log.v(TAG, "event for device address " + address);
+                Log.v(TAG, "event for device address " + address );
                 deviceIndex = getIndexForDevice(mAdapter.getRemoteDevice(address));
                 if (deviceIndex == INVALID_DEVICE_INDEX) {
                     Log.e(TAG,"invalid index for device");
@@ -1203,6 +1203,8 @@ public final class Avrcp_ext {
                         sendMessageDelayed(obtainMessage(MSG_ABS_VOL_TIMEOUT,
                                  0, 0, deviceFeatures[deviceIndex].mCurrentDevice),
                                  CMD_TIMEOUT_DELAY);
+                        deviceFeatures[deviceIndex].mLastLocalVolume = convertToAudioStreamVolume
+                                                  (deviceFeatures[deviceIndex].mLastRequestedVolume);
                         deviceFeatures[deviceIndex].mLastRequestedVolume = -1;
                         deviceFeatures[deviceIndex].mLocalVolume = convertToAudioStreamVolume(absVol);
                         Log.v(TAG, "Reset cached lastreq vol = " +
@@ -1316,6 +1318,15 @@ public final class Avrcp_ext {
 
                     deviceFeatures[deviceIndex].mLocalVolume = volIndex;
                     deviceFeatures[deviceIndex].mLastRequestedVolume = -1;
+                    /*Audio volume update to MM audio if message type is accept and setAbsoluteVolume
+                     and accept response volume matched*/
+                    if ((msg.arg2 != AVRC_RSP_ACCEPT) || (msg.arg2 == AVRC_RSP_ACCEPT &&
+                        deviceFeatures[deviceIndex].mLastLocalVolume != -1 &&
+                        deviceFeatures[deviceIndex].mLastLocalVolume != volIndex)) {
+                        notifyVolumeChanged(deviceFeatures[deviceIndex].mLocalVolume, isShowUI);
+                        long pecentVolChanged = ((long)absVol * 100) / 0x7f;
+                        Log.e(TAG, "percent volume changed: " + pecentVolChanged + "%");
+                    }
                     if (deviceFeatures[deviceIndex].mLastLocalVolume != -1
                         && msg.arg2 == AVRC_RSP_ACCEPT) {
                         if (deviceFeatures[deviceIndex].mLastLocalVolume != volIndex) {
@@ -1328,10 +1339,7 @@ public final class Avrcp_ext {
                                 deviceFeatures[deviceIndex].mLocalVolume;
                         }
                     }
-                    notifyVolumeChanged(deviceFeatures[deviceIndex].mLocalVolume, isShowUI);
                     deviceFeatures[deviceIndex].mRemoteVolume = absVol;
-                    long pecentVolChanged = ((long)absVol * 100) / 0x7f;
-                    Log.e(TAG, "percent volume changed: " + pecentVolChanged + "%");
                 } else if (deviceFeatures[deviceIndex].mLastRemoteVolume > 0
                             && deviceFeatures[deviceIndex].mLastRemoteVolume < AVRCP_MAX_VOL &&
                             deviceFeatures[deviceIndex].mLocalVolume == volIndex &&
@@ -1375,7 +1383,9 @@ public final class Avrcp_ext {
                         (isTwsPlusPair(activeDevice, deviceFeatures[i].mCurrentDevice) ||
                          Objects.equals(activeDevice, deviceFeatures[i].mCurrentDevice)) &&
                          deviceFeatures[i].isAbsoluteVolumeSupportingDevice &&
-                         deviceFeatures[i].mLocalVolume != msg.arg1) {
+                         ((deviceFeatures[i].mVolCmdSetInProgress ||
+                         deviceFeatures[i].mVolCmdAdjustInProgress) ||
+                         deviceFeatures[i].mLocalVolume != msg.arg1)) {
 
                           deviceIndex = i;
 
@@ -2976,9 +2986,10 @@ public final class Avrcp_ext {
     }
 
     public void setAbsoluteVolume(int volume) {
-        Log.v(TAG, "Enter setAbsoluteVolume");
+        int streamVolume =  mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+        Log.v(TAG, "Enter setAbsoluteVolume" + streamVolume);
         if (volume == mLocalVolume) {
-            if (DEBUG) Log.v(TAG, "setAbsoluteVolume is setting same index, ignore " + volume);
+            if (DEBUG) Log.v(TAG, "setAbsoluteVolume is setting same index, ignore " + volume + " stream volume ");
             return;
         }
         Log.d(TAG, "pts_test = " + pts_test + " volume = " + volume +
