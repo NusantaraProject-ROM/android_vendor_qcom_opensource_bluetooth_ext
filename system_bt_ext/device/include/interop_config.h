@@ -53,4 +53,7 @@ bool interop_database_match_vndr_prdt(const interop_feature_t feature, uint16_t 
 bool interop_database_match_addr_get_max_lat(const interop_feature_t feature,
           const RawAddress *addr, uint16_t *max_lat);
 bool interop_database_match_version(const interop_feature_t feature, uint16_t version);
+bool interop_get_whitelisted_media_players_list(list_t** p_bl_devices);
+bool interop_database_get_whitelisted_media_players_list( const interop_feature_t feature, list_t** p_bl_devices);
+
 

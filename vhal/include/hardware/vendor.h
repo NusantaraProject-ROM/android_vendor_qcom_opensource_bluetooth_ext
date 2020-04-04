@@ -94,7 +94,8 @@ typedef enum {
     BT_VENDOR_PROPERTY_TWS_PLUS_PEER_ADDR,
     BT_VENDOR_PROPERTY_TWS_PLUS_AUTO_CONNECT,
     BT_VENDOR_PROPERTY_HOST_ADD_ON_FEATURES,
-    BT_VENDOR_PROPERTY_SOC_ADD_ON_FEATURES
+    BT_VENDOR_PROPERTY_SOC_ADD_ON_FEATURES,
+    BT_VENDOR_PROPERTY_WL_MEDIA_PLAYERS_LIST
 } bt_vendor_property_type_t;
 
 typedef enum {
@@ -144,6 +145,12 @@ typedef void (* adapter_vendor_prop_callback)(bt_status_t status,
                           int num_properties,
                           bt_vendor_property_t *properties);
 
+/** Callback to notify the whitelisted media players vendor properties.
+ */
+typedef void (* whitelisted_players_vendor_prop_callback)(bt_status_t status,
+                          int num_properties,
+                          bt_vendor_property_t *properties);
+
 /** BT-Vendor callback structure. */
 typedef struct {
     /** set to sizeof(BtVendorCallbacks) */
@@ -155,6 +162,7 @@ typedef struct {
     hci_event_recv_callback  hci_event_recv_cb;
     adapter_vendor_prop_callback     adapter_vendor_prop_cb;
     ssr_vendor_callback         ssr_vendor_cb;
+    whitelisted_players_vendor_prop_callback    wl_players_prop_cb;
 } btvendor_callbacks_t;
 
 typedef int (*property_set_callout)(const char* key, const char* value);
