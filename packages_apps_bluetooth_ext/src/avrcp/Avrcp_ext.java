@@ -1365,7 +1365,7 @@ public final class Avrcp_ext {
             case MSG_SET_ABSOLUTE_VOLUME:
             {
 
-                if (DEBUG) Log.v(TAG, "MSG_SET_ABSOLUTE_VOLUME");
+                if (DEBUG) Log.v(TAG, "MSG_SET_ABSOLUTE_VOLUME" + msg.arg1);
 
                 int avrcpVolume = convertToAvrcpVolume(msg.arg1);
                 BluetoothDevice activeDevice = mA2dpService.getActiveDevice();
@@ -1374,7 +1374,8 @@ public final class Avrcp_ext {
                     if (deviceFeatures[i].mCurrentDevice != null && activeDevice != null &&
                         (isTwsPlusPair(activeDevice, deviceFeatures[i].mCurrentDevice) ||
                          Objects.equals(activeDevice, deviceFeatures[i].mCurrentDevice)) &&
-                         deviceFeatures[i].isAbsoluteVolumeSupportingDevice) {
+                         deviceFeatures[i].isAbsoluteVolumeSupportingDevice &&
+                         deviceFeatures[i].mLocalVolume != msg.arg1) {
 
                           deviceIndex = i;
 
@@ -2709,6 +2710,8 @@ public final class Avrcp_ext {
                 (deviceFeatures[deviceIndex].mFeatures & BTRC_FEAT_BROWSE) == 0) {
             byte[] track = AvrcpConstants_ext.TRACK_IS_SELECTED;
             if (!mMediaAttributes.exists) track = AvrcpConstants_ext.NO_TRACK_SELECTED;
+            Log.w(TAG, "sendTrackChangedRsp track " + Arrays.toString(track) +
+                    " rsptype " + deviceFeatures[deviceIndex].mTrackChangedNT);
             registerNotificationRspTrackChangeNative(
                               deviceFeatures[deviceIndex].mTrackChangedNT,
                               track,
@@ -5316,6 +5319,7 @@ public final class Avrcp_ext {
         HeadsetService headsetService = HeadsetService.getHeadsetService();
         boolean isInCall = headsetService != null && headsetService.isScoOrCallActive();
         boolean isFMActive = mAudioManager.getParameters("fm_status").contains("1");
+        boolean resetShoFlag = false;
         Log.d(TAG, "0: SHO Init: isInCall = " + isInCall + " isFMActive = " + isFMActive);
         synchronized (Avrcp_ext.this) {
             if (isShoActive) {
@@ -5332,10 +5336,16 @@ public final class Avrcp_ext {
                 Log.d(TAG, "5: SHO started: PlayReq = " + PlayReq);
             }
         }
+        if (device != null && device.isTwsPlusDevice() &&
+            mA2dpService.isA2dpPlaying(device)) {
+            Log.d(TAG,"startSHO: TWS+ switch, reset isShoActive");
+            resetShoFlag = true;
+        }
         boolean ret = mA2dpService.startSHO(device);
         if(!ret) {
             isShoActive = false;
             if (device.isTwsPlusDevice()) {
+                resetShoFlag = false;
                 BluetoothDevice activeDevice = mA2dpService.getActiveDevice();
                 if (activeDevice != null &&
                     isTwsPlusPair(device, activeDevice)) {
@@ -5349,10 +5359,11 @@ public final class Avrcp_ext {
             return ret;
         }
         synchronized (Avrcp_ext.this) {
-            if (!PlayReq || isInCall || isFMActive) {
+            if (!PlayReq || isInCall || isFMActive || resetShoFlag) {
                 isShoActive = false;
                 Log.d(TAG, "6: SHO complete");
-
+                if (resetShoFlag)
+                    resetShoFlag = false;
                 if (mHandler.hasMessages(MESSAGE_START_SHO)) {
                     mHandler.removeMessages(MESSAGE_START_SHO);
                     triggerSHO(SHOQueue.device, SHOQueue.PlayReq, false);
