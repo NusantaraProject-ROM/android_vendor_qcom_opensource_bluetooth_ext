@@ -30,7 +30,8 @@ cc_library_shared {
          "libhidlbase",
          "libutils",
          "liblog",
-         "vendor.qti.hardware.btconfigstore@1.0"
+         "vendor.qti.hardware.btconfigstore@1.0",
+         "vendor.qti.hardware.btconfigstore@2.0",
     ],
     whole_static_libs: [
         "libosi_qti",
