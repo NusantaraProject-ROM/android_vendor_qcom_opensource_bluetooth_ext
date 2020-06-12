@@ -65,6 +65,7 @@ typedef enum {
   PBAP_ID,
   MAP_ID,
   MAX_POW_ID,
+  OPP_ID,
   END_OF_PROFILE_LIST
 } profile_t;
 
@@ -80,6 +81,7 @@ typedef enum {
  BR_MAX_POW_SUPPORT,
  EDR_MAX_POW_SUPPORT,
  BLE_MAX_POW_SUPPORT,
+ OPP_0100_SUPPORT,
  END_OF_FEATURE_LIST
  } profile_info_t;
 
