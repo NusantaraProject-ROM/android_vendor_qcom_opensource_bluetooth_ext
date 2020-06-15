@@ -44,6 +44,7 @@ bool interop_database_remove_vndr_prdt(const interop_feature_t feature, uint16_t
 bool interop_database_remove_addr_max_lat(const interop_feature_t feature,
           const RawAddress *addr, size_t length, uint16_t max_lat);
 bool interop_database_remove_version(const interop_feature_t feature, uint16_t version);
+bool interop_database_remove_feature(const interop_feature_t feature);
 
 // API's to match entries with in dynamic interop database
 bool interop_database_match_addr(const interop_feature_t feature, const RawAddress *addr);

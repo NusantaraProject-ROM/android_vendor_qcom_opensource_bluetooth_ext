@@ -388,6 +388,18 @@ static bool interop_config_remove(const char *section, const char *key)
   return ret;
 }
 
+static bool interop_config_remove_section(const char *section)
+{
+  assert(config_dynamic != NULL);
+  assert(section != NULL);
+
+  pthread_mutex_lock(&file_lock);
+  bool ret = config_remove_section(config_dynamic, section);
+  pthread_mutex_unlock(&file_lock);
+
+  return ret;
+}
+
 static bool interop_config_set_str(const char *section, const char *key,
                           const char *value)
 {
@@ -1355,6 +1367,30 @@ bool interop_database_remove_addr(const interop_feature_t feature,
     return true;
   }
 
+  return false;
+}
+
+bool interop_database_remove_feature(const interop_feature_t feature)
+{
+  for (const list_node_t *node = list_begin(config_dynamic->sections);
+       node != list_end(config_dynamic->sections); node = list_next(node)) {
+    interop_section_t *sec = (interop_section_t *)list_node(node);
+    if ( feature == get_feature(sec->name)) {
+      LOG_DEBUG(LOG_TAG,"%s(): found feature - %s",__func__, interop_feature_string_(feature));
+      for (const list_node_t *node_entry = list_begin(sec->entries);
+           node_entry != list_end(sec->entries);
+           node_entry = list_next(node_entry)) {
+        interop_entry_t *entry = (interop_entry_t *)list_node(node_entry);
+
+        // first remove all entries from linked list
+        pthread_mutex_lock(&interop_list_lock);
+        list_remove(interop_list, (void*)entry);
+        pthread_mutex_unlock(&interop_list_lock);
+      }
+      interop_config_remove_section(sec->name);
+      return true;
+    }
+  }
   return false;
 }
 
