@@ -5820,9 +5820,20 @@ public final class Avrcp_ext {
                         return;
                     }
                     if (token != null) {
+                        boolean updateController = true;
                         android.media.session.MediaController controller =
                                 new android.media.session.MediaController(mContext, token);
-                        if (!mMediaPlayerIds.containsKey(controller.getPackageName())) {
+
+                        if (mMediaPlayerIds.containsKey(controller.getPackageName())) {
+                            int id = mMediaPlayerIds.get(controller.getPackageName());
+                            MediaPlayerInfo_ext info = mMediaPlayerInfoList.get(id);
+                            if (info != null && info.getMediaController() != null)
+                                updateController = false;
+                            Log.d(TAG, "onMediaKeyEventSessionChanged: player = " + info
+                                    + ", id = " + id + ", updateController = " + updateController);
+                        }
+
+                        if (updateController) {
                             // Since we have a controller, we can try to to recover by adding the
                             // player and then setting it as active.
                             Log.w(TAG, "onMediaKeyEventSessionChanged(Token): Addressed Player "
