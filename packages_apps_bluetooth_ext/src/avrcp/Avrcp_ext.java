@@ -1685,12 +1685,6 @@ public final class Avrcp_ext {
                 boolean tws_switch = false;
                 Log.d(TAG, "MSG_SET_ACTIVE_DEVICE");
                 BluetoothDevice bt_device = (BluetoothDevice) msg.obj;
-                if (bt_device == null) {
-                    for (int i = 0; i < maxAvrcpConnections; i++) {
-                        deviceFeatures[i].isActiveDevice = false;
-                    }
-                    break;
-                }
                 if (bt_device != null && bt_device.isTwsPlusDevice()) {
                     for (int i = 0; i < maxAvrcpConnections; i++) {
                         if (deviceFeatures[i].mCurrentDevice != null &&
@@ -5370,8 +5364,15 @@ public final class Avrcp_ext {
 
     public void setActiveDevice(BluetoothDevice device) {
         Log.w(TAG, "setActiveDevice call for device " + device);
-        Message msg = mHandler.obtainMessage(MSG_SET_ACTIVE_DEVICE, 0, 0, device);
-        mHandler.sendMessage(msg);
+        if (device == null) {
+            for (int i = 0; i < maxAvrcpConnections; i++) {
+                deviceFeatures[i].isActiveDevice = false;
+            }
+        }
+        else {
+            Message msg = mHandler.obtainMessage(MSG_SET_ACTIVE_DEVICE, 0, 0, device);
+            mHandler.sendMessage(msg);
+        }
     }
 
     private SharedPreferences getVolumeMap() {
