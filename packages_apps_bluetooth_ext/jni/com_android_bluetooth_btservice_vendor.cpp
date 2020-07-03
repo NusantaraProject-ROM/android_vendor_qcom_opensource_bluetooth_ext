@@ -446,6 +446,22 @@ static void cleanupNative(JNIEnv *env, jobject object) {
 
 }
 
+static bool informTimeoutToHidlNative(JNIEnv *env, jobject obj) {
+
+    ALOGI("%s", __FUNCTION__);
+
+    if ((bt_configstore_lib_handle && bt_configstore_intf) ||
+        !load_bt_configstore_lib()) {
+      bt_configstore_intf->set_vendor_property(BT_PROP_STACK_TIMEOUT, "true");
+      dlclose(bt_configstore_lib_handle);
+      bt_configstore_lib_handle = NULL;
+      bt_configstore_intf = NULL;
+    } else {
+      ALOGE("%s: Failed to inform to HIDL about timeout", __FUNCTION__);
+    }
+
+    return JNI_TRUE;
+}
 
 static bool bredrcleanupNative(JNIEnv *env, jobject obj) {
 
@@ -608,6 +624,7 @@ static JNINativeMethod sMethods[] = {
     {"isSwbPmEnabledNative", "()Z", (void*) isSwbPmEnabledNative},
     {"setClockSyncConfigNative", "(ZIIIII)Z", (void*) setClockSyncConfigNative},
     {"startClockSyncNative", "()Z", (void*) startClockSyncNative},
+    {"informTimeoutToHidlNative", "()V", (void*) informTimeoutToHidlNative},
 };
 
 int load_bt_configstore_lib() {

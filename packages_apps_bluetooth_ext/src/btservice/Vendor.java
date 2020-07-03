@@ -346,6 +346,10 @@ final class Vendor {
         return startClockSyncNative();
     }
 
+    public void informTimeoutToHidl() {
+        informTimeoutToHidlNative();
+    }
+
     private native void bredrcleanupNative();
     private native void bredrstartupNative();
     private native void initNative();
@@ -365,4 +369,5 @@ final class Vendor {
     private native boolean setClockSyncConfigNative(boolean enable, int mode, int adv_interval,
         int channel, int jitter, int offset);
     private native boolean startClockSyncNative();
+    private native void informTimeoutToHidlNative();
 }
