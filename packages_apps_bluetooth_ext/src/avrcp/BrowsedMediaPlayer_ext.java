@@ -161,18 +161,21 @@ class BrowsedMediaPlayer_ext {
                      */
                     if (mFolderItems == null) {
                         Log.w(TAG, "sending setbrowsed player rsp");
-                        mFolderItems = children;
                         if (children.size() > 0) {
+                            mFolderItems = children;
                             mMediaInterface.setBrowsedPlayerRsp(mBDAddr,
                                     AvrcpConstants_ext.RSP_NO_ERROR,
                                     (byte) 0x00, children.size(), ROOT_FOLDER);
+                            RespondPendingGetFolderItemsVFS();
                         } else {
-                            Log.w(TAG, "No Children Loaded for folder items return error");
+                            Log.w(TAG, "No Children Loaded, disconnect MBS and return error");
                             mMediaInterface.setBrowsedPlayerRsp(mBDAddr,
                                     AvrcpConstants_ext.RSP_PLAY_NOT_BROW,
                                     (byte) 0x00, 0, null);
+                            RespondPendingGetFolderItemsVFS();
+                            mMediaBrowser.disconnect();
+                            return;
                         }
-                        RespondPendingGetFolderItemsVFS();
                     } else {
                         mFolderItems = children;
                         mCurrFolderNumItems = mFolderItems.size();
