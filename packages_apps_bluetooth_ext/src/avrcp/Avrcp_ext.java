@@ -1681,12 +1681,6 @@ public final class Avrcp_ext {
                 boolean tws_switch = false;
                 Log.d(TAG, "MSG_SET_ACTIVE_DEVICE");
                 BluetoothDevice bt_device = (BluetoothDevice) msg.obj;
-                if (bt_device == null) {
-                    for (int i = 0; i < maxAvrcpConnections; i++) {
-                        deviceFeatures[i].isActiveDevice = false;
-                    }
-                    break;
-                }
                 if (bt_device != null && bt_device.isTwsPlusDevice()) {
                     for (int i = 0; i < maxAvrcpConnections; i++) {
                         if (deviceFeatures[i].mCurrentDevice != null &&
@@ -2255,6 +2249,8 @@ public final class Avrcp_ext {
         boolean isPlaying = false;
         PlaybackState newState = new PlaybackState.Builder().setState(PlaybackState.STATE_NONE,
                                                PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0.0f).build();
+        PlaybackState playbackState = new PlaybackState.Builder().setState(PlaybackState.STATE_NONE,
+                                               PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0.0f).build();
         boolean updateA2dpPlayState = false;
         Log.v(TAG,"updateCurrentMediaState: mMediaController: " + mMediaController);
         Log.v(TAG,"isMusicActive: " + mAudioManager.isMusicActive() + " getBluetoothPlayState: " + getBluetoothPlayState(mCurrentPlayerState));
@@ -2267,6 +2263,9 @@ public final class Avrcp_ext {
                 } else {
                     isPlaying = (mA2dpState == BluetoothA2dp.STATE_PLAYING) && mAudioManager.isMusicActive();
                 }
+                if (mMediaController != null) {
+                    playbackState = mMediaController.getPlaybackState();
+                }
                 Log.v(TAG,"updateCurrentMediaState: isPlaying = " + isPlaying);
                 // Use A2DP state if we don't have a MediaControlller
                 PlaybackState.Builder builder = new PlaybackState.Builder();
@@ -2277,14 +2276,14 @@ public final class Avrcp_ext {
                     builder.setState(PlaybackState.STATE_PAUSED,
                             PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0.0f);
                 }
-                if (mMediaController != null && mMediaController.getPlaybackState() != null) {
-                    int mMediaPlayState = mMediaController.getPlaybackState().getState();
+                if (playbackState != null) {
+                    int mMediaPlayState = playbackState.getState();
                     if (isPlaying) {
                         builder.setState(PlaybackState.STATE_PLAYING,
-                                mMediaController.getPlaybackState().getPosition(), 1.0f);
+                                playbackState.getPosition(), 1.0f);
                     } else {
                         builder.setState(PlaybackState.STATE_PAUSED,
-                                mMediaController.getPlaybackState().getPosition(), 0.0f);
+                                playbackState.getPosition(), 0.0f);
                     }
                 }
                 newState = builder.build();
@@ -5366,8 +5365,15 @@ public final class Avrcp_ext {
 
     public void setActiveDevice(BluetoothDevice device) {
         Log.w(TAG, "setActiveDevice call for device " + device);
-        Message msg = mHandler.obtainMessage(MSG_SET_ACTIVE_DEVICE, 0, 0, device);
-        mHandler.sendMessage(msg);
+        if (device == null) {
+            for (int i = 0; i < maxAvrcpConnections; i++) {
+                deviceFeatures[i].isActiveDevice = false;
+            }
+        }
+        else {
+            Message msg = mHandler.obtainMessage(MSG_SET_ACTIVE_DEVICE, 0, 0, device);
+            mHandler.sendMessage(msg);
+        }
     }
 
     private SharedPreferences getVolumeMap() {
