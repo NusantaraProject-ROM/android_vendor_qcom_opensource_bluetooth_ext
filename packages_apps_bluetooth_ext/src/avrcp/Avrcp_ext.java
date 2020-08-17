@@ -178,8 +178,6 @@ public final class Avrcp_ext {
     public static final String ABS_VOL_MAP = "bluetooth_ABS_VOL_map";
     private boolean isShoActive = false;
     private boolean twsShoEnabled = false;
-    byte[] dummyaddr = {(byte)0xFA, (byte)0xCE, (byte)0xFA,
-                        (byte)0xCE, (byte)0xFA, (byte)0xCE};
     private static final String playerStateUpdateBlackListedAddr[] = {
          "BC:30:7E", //bc-30-7e-5e-f6-27, Name: Porsche BT 0310; bc-30-7e-8c-22-cb, Name: Audi MMI 1193
          "2C:DC:AD", //2C-DC-AD-BB-2F-25, Name: PORSCHE
@@ -195,7 +193,6 @@ public final class Avrcp_ext {
        "Audi",
        "Porsche"
     };
-
 
     private static final ArrayList<String> playerBrowseWhiteListDB =
        new ArrayList<String>(Arrays.asList(
@@ -268,17 +265,12 @@ public final class Avrcp_ext {
     public static final int AVRC_ID_VOL_DOWN = 0x42;
     private static final int SET_MEDIA_SESSION_DELAY = 300;
 
-    /* Communicates with MediaPlayer to fetch media content */
-    private BrowsedMediaPlayer_ext mBrowsedMediaPlayer;
-
     /* Addressed player handling */
     private AddressedMediaPlayer_ext mAddressedMediaPlayer;
 
     /* List of Media player instances, useful for retrieving MediaPlayerList or MediaPlayerInfo */
     private SortedMap<Integer, MediaPlayerInfo_ext> mMediaPlayerInfoList;
     private boolean mAvailablePlayerViewChanged;
-
-    private List<String> mPkgRequestedMBSConnect;
 
     /* List of media players which supports browse */
     private List<BrowsePlayerInfo_ext> mBrowsePlayerInfoList;
@@ -390,7 +382,7 @@ public final class Avrcp_ext {
         public DeviceDependentFeature(Context context) {
             mContext = context;
             mCurrentDevice = null;
-            mCurrentPlayState = new PlaybackState.Builder().setState(PlaybackState.STATE_NONE, -1L, 0.0f).build();;
+            mCurrentPlayState = new PlaybackState.Builder().setState(PlaybackState.STATE_NONE, -1L, 0.0f).build();
             mPlayStatusChangedNT = AvrcpConstants_ext.NOTIFICATION_TYPE_CHANGED;
             mNowPlayingListChangedNT = AvrcpConstants_ext.NOTIFICATION_TYPE_CHANGED;
             mAddrPlayerChangedNT = AvrcpConstants_ext.NOTIFICATION_TYPE_CHANGED;
@@ -557,7 +549,6 @@ public final class Avrcp_ext {
         mAvrcpPlayerAppSettingsRsp = new AvrcpPlayerAppSettingsRsp();
         mMediaPlayerInfoList = new TreeMap<Integer, MediaPlayerInfo_ext>();
         mAvailablePlayerViewChanged = false;
-        mPkgRequestedMBSConnect = new ArrayList<String>();
         mBrowsePlayerInfoList = Collections.synchronizedList(new ArrayList<BrowsePlayerInfo_ext>());
         mPassthroughDispatched = 0;
         mPassthroughLogs = new EvictingQueue_ext<MediaKeyLog>(PASSTHROUGH_LOG_MAX_SIZE);
@@ -606,11 +597,6 @@ public final class Avrcp_ext {
         mAvrcpBrowseManager = new AvrcpBrowseManager(mContext, mAvrcpMediaRsp);
 
         initMediaPlayersList();
-
-        BrowsedMediaPlayer_ext player =
-                mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
-        if (player != null)
-            player.start();
 
         UserManager manager = UserManager.get(mContext);
         if (manager == null || manager.isUserUnlocked()) {
@@ -684,7 +670,6 @@ public final class Avrcp_ext {
         mContext.unregisterReceiver(mBootReceiver);
         mContext.unregisterReceiver(mShutDownReceiver);
 
-        mPkgRequestedMBSConnect.clear();
         mAddressedMediaPlayer.cleanup();
         mAvrcpBrowseManager.cleanup();
         mCurrentBrowsingDevice = null;
@@ -2932,8 +2917,6 @@ public final class Avrcp_ext {
         return status;
  }
 
-
-
  public boolean isAbsoluteVolumeSupported(int index) {
         boolean status = false;
         Log.v(TAG, "Enter isAbsoluteVolumeSupported with index " + index);
@@ -3566,11 +3549,7 @@ public final class Avrcp_ext {
         if ((mCurrentBrowsingDevice != null) &&
             (mCurrentBrowsingDevice.equals(device))) {
             Log.v(TAG,"BT device is matched with browsing device:");
-            BrowsedMediaPlayer_ext player =
-                    mAvrcpBrowseManager.getBrowsedMediaPlayer(getByteAddress(device));
-            if (player != null)
-               player.disconnect();
-            mAvrcpBrowseManager.clearBrowsedMediaPlayer(getByteAddress(device));
+            mAvrcpBrowseManager.cleanup();
             mCurrentBrowsingDevice = null;
             changePathDepth = 0;
             changePathFolderType = 0;
@@ -3689,10 +3668,6 @@ public final class Avrcp_ext {
                 int browseInfoID = getBrowseId(packageName);
                 if (browseInfoID != -1) {
                     mBrowsePlayerInfoList.remove(browseInfoID);
-                    BrowsedMediaPlayer_ext player =
-                            mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
-                    if (player != null)
-                        player.updateBrowsablePlayerList(packageName);
                 }
             }
         }
@@ -3991,16 +3966,18 @@ public final class Avrcp_ext {
                         mPackageManager.queryIntentServices(intent, PackageManager.MATCH_ALL);
 
                 for (ResolveInfo info : playerList) {
-                    String serviceName = info.serviceInfo.name;
                     String packageName = info.serviceInfo.packageName;
-                    Log.d(TAG, "Fetch the displayName of package - start");
-                    String displayName = getAppLabel(packageName);
-                    if (displayName == null) displayName = new String();
-                    Log.d(TAG, "Fetch the displayName of package -" + displayName + " end");
-                    Log.d(TAG, "svc " + serviceName + " pkg " + packageName);
-                    BrowsePlayerInfo_ext currentPlayer =
-                            new BrowsePlayerInfo_ext(packageName, displayName, serviceName);
-                    mBrowsePlayerInfoList.add(currentPlayer);
+                    if (playerBrowseWhiteListDB.contains(packageName)) {
+                        Log.d(TAG, "Fetching the displayName of package - start");
+                        String serviceName = info.serviceInfo.name;
+                        String displayName = getAppLabel(packageName);
+                        if (displayName == null) displayName = new String();
+                        Log.d(TAG, "Fetching the displayName of package -" + displayName + " end");
+                        Log.d(TAG, "svc " + serviceName + " pkg " + packageName);
+                        BrowsePlayerInfo_ext currentPlayer =
+                                new BrowsePlayerInfo_ext(packageName, displayName, serviceName);
+                        mBrowsePlayerInfoList.add(currentPlayer);
+                    }
                     MediaPlayerInfo_ext playerInfo = getMediaPlayerInfo(packageName);
                     MediaController controller =
                             (playerInfo == null) ? null : playerInfo.getMediaController();
@@ -4339,13 +4316,7 @@ public final class Avrcp_ext {
     private MediaPlayerListRsp_ext prepareMediaPlayerRspObj() {
         synchronized (this) {
             synchronized (mMediaPlayerInfoList) {
-                // TODO(apanicke): This hack will go away as soon as a developer
-                // option to enable or disable player selection is created. Right
-                // now this is needed to fix BMW i3 carkits and any other carkits
-                // that might try to connect to a player that isnt the current
-                // player based on this list
                 int numPlayers = 1;
-
                 int[] playerIds = new int[numPlayers];
                 byte[] playerTypes = new byte[numPlayers];
                 int[] playerSubTypes = new int[numPlayers];
@@ -4362,7 +4333,7 @@ public final class Avrcp_ext {
                     if (entry.getKey() == mCurrAddrPlayerID)
                         idx = 0;
                     else
-                        continue; // TODO(apanicke): Remove, see above note
+                        continue;
                     MediaPlayerInfo_ext info = entry.getValue();
                     playerIds[idx] = entry.getKey();
                     playerTypes[idx] = info.getMajorType();
@@ -4371,25 +4342,13 @@ public final class Avrcp_ext {
                     playStatusValues[idx] = info.getPlayStatus();
 
                     short[] featureBits = info.getFeatureBitMask();
-                    short[] featureBitsArray = {0x00, 0x00, 0x00, 0x00, 0x00, 0xb7, 0x01, 0x04,
-                                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-                    String browsedPackage = getPackageName(mCurrAddrPlayerID);
-                    BrowsedMediaPlayer_ext player =
-                            mAvrcpBrowseManager.getBrowsedMediaPlayer(dummyaddr);
-                    String currPkg = (info != null) ? info.getPackageName():"";
-                    if (playerBrowseWhiteListDB.contains(currPkg)) {
-                        for (int numBit = 0; numBit < featureBits.length; numBit++) {
-                            /* gives which octet this belongs to */
-                            byte octet = (byte) (featureBits[numBit] / 8);
-                            /* gives the bit position within the octet */
-                            byte bit = (byte) (featureBits[numBit] % 8);
-                            featureBitMaskValues[(idx * AvrcpConstants_ext.AVRC_FEATURE_MASK_SIZE) + octet] |=
-                                    (1 << bit);
-                        }
-                    } else {
-                         featureBitMaskValues =
-                                 Arrays.copyOf(featureBitsArray, featureBitsArray.length);
-                         Log.w(TAG, "sending bit mask for non Browsable Player");
+                    for (int numBit = 0; numBit < featureBits.length; numBit++) {
+                        /* gives which octet this belongs to */
+                        byte octet = (byte) (featureBits[numBit] / 8);
+                        /* gives the bit position within the octet */
+                        byte bit = (byte) (featureBits[numBit] % 8);
+                        featureBitMaskValues[(idx*AvrcpConstants_ext.AVRC_FEATURE_MASK_SIZE)+octet] 
+                                |= (1 << bit);
                     }
 
                     /* printLogs */
