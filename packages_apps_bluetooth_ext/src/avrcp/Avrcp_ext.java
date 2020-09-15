@@ -3538,15 +3538,18 @@ public final class Avrcp_ext {
         Log.i(TAG,"Enter setAvrcpDisconnectedDevice");
         int deviceIndex = INVALID_DEVICE_INDEX;
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
-            if (deviceFeatures[i].mCurrentDevice != null && device != null &&
-                    !(Objects.equals(deviceFeatures[i].mCurrentDevice, device))) {
-                Log.i(TAG,"setAvrcpDisconnectedDevice : Active device changed to index = " + i);
-                if (device.isTwsPlusDevice() &&
-                    isTwsPlusPair(device,deviceFeatures[i].mCurrentDevice)) {
-                    Log.i(TAG,"TWS+ pair got disconnected,update absVolume");
-                    updateAbsVolume = true;
-                    Log.i(TAG,"TWS+ pair disconnected, set mTwsPairDisconnected for index " + i);
-                    deviceFeatures[i].mTwsPairDisconnected = true;
+            if (deviceFeatures[i].mCurrentDevice != null && device != null) {
+                if (Objects.equals(deviceFeatures[i].mCurrentDevice, device)) {
+                    deviceIndex = i;
+                } else {
+                    Log.i(TAG,"setAvrcpDisconnectedDevice : Active device changed to index = " + i);
+                    if (device.isTwsPlusDevice() &&
+                        isTwsPlusPair(device,deviceFeatures[i].mCurrentDevice)) {
+                        Log.i(TAG,"TWS+ pair got disconnected,update absVolume");
+                        updateAbsVolume = true;
+                        Log.i(TAG,"TWS+ pair disconnected, set mTwsPairDisconnected for index " + i);
+                        deviceFeatures[i].mTwsPairDisconnected = true;
+                    }
                 }
             }
         }
