@@ -268,6 +268,7 @@ void bta_ag_twsp_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                     p_sco->state = BTA_AG_SCO_OPENING_ST;
                 } else {
                     APPL_TRACE_WARNING("%s: create sco connection failed", __func__);
+                    p_sco->p_curr_scb = NULL;
                     p_sco->state = BTA_AG_SCO_LISTEN_ST;
                     bta_ag_cback_sco(p_scb, BTA_AG_AUDIO_CLOSE_EVT);
                 }
