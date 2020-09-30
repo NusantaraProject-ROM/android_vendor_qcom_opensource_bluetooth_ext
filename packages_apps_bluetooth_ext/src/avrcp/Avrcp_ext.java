@@ -3291,7 +3291,8 @@ public final class Avrcp_ext {
             if (browse_active_device != null) {
                 is_player_updated_for_browse = true;
                 byte[] addr = getByteAddress(browse_active_device);
-                if (mAvrcpBrowseManager.getBrowsedMediaPlayer(addr) != null) {
+                if (isBrowseSupported(PackageName) &&
+                        mAvrcpBrowseManager.getBrowsedMediaPlayer(addr) != null) {
                     Log.w(TAG, "Addr Player update to Browse " + PackageName);
                     mAvrcpBrowseManager.getBrowsedMediaPlayer(addr).
                             setCurrentPackage(PackageName, browseService);
@@ -3805,6 +3806,7 @@ public final class Avrcp_ext {
             } else if (!isBrowseSupported(browsedPackage)) {
                 Log.w(TAG, "Browse unsupported for id:" + mCurrBrowsePlayerID
                         + ", packagename : " + browsedPackage);
+                mAvrcpBrowseManager.getBrowsedMediaPlayer(bdaddr).setBrowseRoot();
                 status = AvrcpConstants_ext.RSP_PLAY_NOT_BROW;
             } else if (!startBrowseService(bdaddr, browsedPackage)) {
                 Log.e(TAG, "service cannot be started for browse player id:" + mCurrBrowsePlayerID
