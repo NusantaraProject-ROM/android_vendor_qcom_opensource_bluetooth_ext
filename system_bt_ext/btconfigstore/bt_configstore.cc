@@ -51,6 +51,7 @@
 
 
 #include <hwbinder/ProcessState.h>
+#include <fcntl.h>
 #include <string.h>
 #include <hwbinder/IPCThreadState.h>
 #include <cutils/properties.h>
