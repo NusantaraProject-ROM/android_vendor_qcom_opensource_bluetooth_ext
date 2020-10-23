@@ -2436,7 +2436,7 @@ void do_le_client_register(char *p)
     }
     if(Btif_gatt_layer)
     {
-        Ret = sGattIfaceScan->client->register_client(bt_uuid);
+        Ret = sGattIfaceScan->client->register_client(bt_uuid, false);
         printf("%s:: ret value %d\n", __FUNCTION__,Ret);
     }
     else
@@ -2967,7 +2967,7 @@ void do_le_server_register(char *p)
 
     if(Btif_gatt_layer)
     {
-        Ret = sGattIfaceScan->server->register_server(bt_uuid);
+        Ret = sGattIfaceScan->server->register_server(bt_uuid, false);
         printf("%s:: Ret=%d \n", __FUNCTION__, Ret);
     }
     else
