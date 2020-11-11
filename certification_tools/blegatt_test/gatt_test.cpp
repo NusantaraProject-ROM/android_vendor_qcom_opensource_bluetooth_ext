@@ -2744,7 +2744,7 @@ void do_start_adv_set(char *p)
     uint8_t arr[] ={10,9,'G','A','T','T','-','T','O','O','L'};
     std::vector<uint8_t> adv_data(arr, arr + (sizeof(arr)/sizeof(arr[0])));
 
-    sGattIfaceScan->advertiser->StartAdvertisingSet(base::Bind(&StartAdvertisingSetCb),
+    sGattIfaceScan->advertiser->StartAdvertisingSet(reg_inst_id, base::Bind(&StartAdvertisingSetCb),
             params, adv_data, scan_resp, periodic_params, periodic_data,
             0 , 0 ,  base::Bind(DoNothing2));
 }
