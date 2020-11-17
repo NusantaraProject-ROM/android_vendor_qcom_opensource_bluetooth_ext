@@ -2541,9 +2541,9 @@ public final class Avrcp_ext {
                     (deviceFeatures[deviceIndex].mLastRspPlayStatus == -1)) {
                     registerNotificationRspPlayStatusNative(
                                 deviceFeatures[deviceIndex].mPlayStatusChangedNT,
-                                PLAYSTATUS_STOPPED,
+                                PLAYSTATUS_PAUSED,
                                 getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
-                    Log.v(TAG, "Sending Stopped in INTERIM response when current_play_status is playing and device just got connected");
+                    Log.v(TAG, "Sending Paused  in INTERIM response when current_play_status is playing and device just got connected");
                     deviceFeatures[deviceIndex].mPlayStatusChangedNT =
                                         AvrcpConstants_ext.NOTIFICATION_TYPE_CHANGED;
                     if (!deviceFeatures[deviceIndex].isPlayStatusTimeOut) {
