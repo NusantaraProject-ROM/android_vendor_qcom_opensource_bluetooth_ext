@@ -4421,7 +4421,7 @@ public final class Avrcp_ext {
                     mMediaController.registerCallback(mMediaControllerCb, mHandler);
                 } else {
                     registerRsp = false;
-                    updateNewIds(preAddrId, preBrowseId);
+                    updateNewIds((addrId == preAddrId) ? NO_PLAYER_ID : preAddrId, preBrowseId);
                 }
             }
         }

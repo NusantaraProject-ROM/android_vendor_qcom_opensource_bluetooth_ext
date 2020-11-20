@@ -143,6 +143,7 @@ class BrowsedMediaPlayer_ext {
             mTempMediaBrowser = null;
             mConnState = SUSPENDED;
             Log.e(TAG, "mediaBrowser SUSPENDED connection with " + mPackageName);
+            resetBrowse();
         }
     }
 
