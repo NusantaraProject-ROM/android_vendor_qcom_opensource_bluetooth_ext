@@ -2221,7 +2221,7 @@ static tL2CAP_APPL_INFO l2test_l2c_appl = {
 void bdt_init(void)
 {
     bdt_log("INIT BT ");
-    status = sBtInterface->init(&bt_callbacks, false, false, 0, nullptr);
+    status = sBtInterface->init(&bt_callbacks, false, false, 0, nullptr, false);
     if (status == BT_STATUS_SUCCESS) {
         // Get Vendor Interface
         btvendorInterface = (btvendor_interface_t *)sBtInterface->get_profile_interface(BT_PROFILE_VENDOR_ID);
@@ -2744,7 +2744,7 @@ void do_start_adv_set(char *p)
     uint8_t arr[] ={10,9,'G','A','T','T','-','T','O','O','L'};
     std::vector<uint8_t> adv_data(arr, arr + (sizeof(arr)/sizeof(arr[0])));
 
-    sGattIfaceScan->advertiser->StartAdvertisingSet(base::Bind(&StartAdvertisingSetCb),
+    sGattIfaceScan->advertiser->StartAdvertisingSet(reg_inst_id, base::Bind(&StartAdvertisingSetCb),
             params, adv_data, scan_resp, periodic_params, periodic_data,
             0 , 0 ,  base::Bind(DoNothing2));
 }
