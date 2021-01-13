@@ -69,6 +69,7 @@ import android.app.NotificationManager;
 import android.app.NotificationChannel;
 
 import com.android.bluetooth.btservice.AdapterService;
+import com.android.bluetooth.btservice.InteropUtil;
 import com.android.bluetooth.btservice.ProfileService;
 import com.android.bluetooth.btservice.AbstractionLayer;
 import com.android.bluetooth.ba.BATService;
@@ -180,20 +181,6 @@ public final class Avrcp_ext {
     public static final String ABS_VOL_MAP = "bluetooth_ABS_VOL_map";
     private boolean isShoActive = false;
     private boolean twsShoEnabled = false;
-    private static final String playerStateUpdateBlackListedAddr[] = {
-         "BC:30:7E", //bc-30-7e-5e-f6-27, Name: Porsche BT 0310; bc-30-7e-8c-22-cb, Name: Audi MMI 1193
-         "2C:DC:AD", //2C-DC-AD-BB-2F-25, Name: PORSCHE
-         "00:1E:43", //00-1e-43-14-f0-68, Name: Audi MMI 4365
-         "9C:DF:03", //9C:DF:03:D3:C0:17, Name: Benz S600L
-         "00:0A:08",  //00:0A:08:51:1E:E7, Name: BMW530
-         "00:04:79", //00-04-79-00-06-bc, Name: radius HP-BTL01
-         "28:A1:83", //28-A1-83-94-90-AE, Name: VW Radio
-         "24:df:6a", //24-df-6a-f4-0a-7e, Name: HUAWEI WATCH
-     };
-    private static final String playerStateUpdateBlackListedNames[] = {
-       "Audi",
-       "Porsche"
-    };
 
     private static final String nonMediaAppsBlacklistedNames[] = {
        "telecom",
@@ -779,25 +766,16 @@ public final class Avrcp_ext {
             Log.d(TAG, "Exit onQueueChanged");
         }
     }
-    private boolean isPlayerStateUpdateBlackListed(String address, String deviceName) {
+
+    private boolean isPlayerStateUpdateBlackListed(String address) {
         if (address == null) return false;
-        for (int i = 0; i < playerStateUpdateBlackListedAddr.length; i++) {
-            String addr = playerStateUpdateBlackListedAddr[i];
-            if (address.toLowerCase().startsWith(addr.toLowerCase())) {
-                Log.d(TAG, "AVRCP PlayerStateUpdateBlacklist Addr Matched:" + address);
-                return true;
-            }
-        }
-        if (deviceName == null) return false;
-        for (int j = 0; j < playerStateUpdateBlackListedNames.length; j++) {
-            String name = playerStateUpdateBlackListedNames[j];
-            if (deviceName.toLowerCase().startsWith(name.toLowerCase()) ||
-                deviceName.toLowerCase().equals(name.toLowerCase())) {
-                Log.d(TAG, "AVRCP PlayerStateUpdateBlacklist Name Matched:" + deviceName);
-                return true;
-            }
-        }
-        return false;
+
+        boolean matched = InteropUtil.interopMatchAddrOrName(
+            InteropUtil.InteropFeature.INTEROP_NOT_UPDATE_AVRCP_PAUSED_TO_REMOTE,
+            address);
+        Log.d(TAG, "isPlayerStateUpdateBlackListed: matched=" + matched);
+
+        return matched;
     }
 
     private boolean isAppBlackListedForMediaSessionUpdate(String appName) {
@@ -999,8 +977,7 @@ public final class Avrcp_ext {
                 {
                     if ((deviceFeatures[deviceIndex].mCurrentDevice != null) &&
                         isPlayerStateUpdateBlackListed(
-                            deviceFeatures[deviceIndex].mCurrentDevice.getAddress(),
-                            deviceFeatures[deviceIndex].mCurrentDevice.getName()) &&
+                            deviceFeatures[deviceIndex].mCurrentDevice.getAddress()) &&
                             ((playState == PLAYSTATUS_PAUSED) ||
                             (playState == PLAYSTATUS_STOPPED))) {
                         if (mA2dpService.getConnectedDevices().size() > 0) {
@@ -1837,8 +1814,7 @@ public final class Avrcp_ext {
         {
             if ((deviceFeatures[deviceIndex].mCurrentDevice != null) &&
                 isPlayerStateUpdateBlackListed(
-                    deviceFeatures[deviceIndex].mCurrentDevice.getAddress(),
-                    deviceFeatures[deviceIndex].mCurrentDevice.getName()) &&
+                    deviceFeatures[deviceIndex].mCurrentDevice.getAddress()) &&
                ((newPlayStatus == PLAYSTATUS_PAUSED) ||
                (newPlayStatus == PLAYSTATUS_STOPPED))) {
 
@@ -2498,8 +2474,7 @@ public final class Avrcp_ext {
                 mHandler.removeMessages(MSG_PLAY_STATUS_CMD_TIMEOUT);
                 deviceFeatures[deviceIndex].isPlayStatusTimeOut = false;
                 if(avrcp_playstatus_blacklist && isPlayerStateUpdateBlackListed(
-                    deviceFeatures[deviceIndex].mCurrentDevice.getAddress(),
-                    deviceFeatures[deviceIndex].mCurrentDevice.getName()) &&
+                    deviceFeatures[deviceIndex].mCurrentDevice.getAddress()) &&
                     ((currPlayState == PLAYSTATUS_PAUSED) ||
                      (currPlayState == PLAYSTATUS_STOPPED))) {
                     if (mA2dpService.getConnectedDevices().size() > 0) {
@@ -2732,8 +2707,7 @@ public final class Avrcp_ext {
             } else {
                 if (isPlayingState(deviceFeatures[deviceIndex].mCurrentPlayState) &&
                     (avrcp_playstatus_blacklist && isPlayerStateUpdateBlackListed(
-                     deviceFeatures[deviceIndex].mCurrentDevice.getAddress(),
-                     deviceFeatures[deviceIndex].mCurrentDevice.getName()))) {
+                     deviceFeatures[deviceIndex].mCurrentDevice.getAddress()))) {
                  currPosition = mCurrentPlayerState.getPosition();
                  Log.d(TAG, "Remote is BLed for playstatus, So send playposition by fetching from "+
                                    "mCurrentPlayerState." + currPosition);
@@ -3407,7 +3381,7 @@ public final class Avrcp_ext {
                 }
             }
         }
-        if(avrcp_playstatus_blacklist && isPlayerStateUpdateBlackListed(device.getAddress(),device.getName()))
+        if(avrcp_playstatus_blacklist && isPlayerStateUpdateBlackListed(device.getAddress()))
            NeedCheckMusicActive = false;
         for (int i = 0; i < maxAvrcpConnections; i++ ) {
             if (deviceFeatures[i].mCurrentDevice == null) {
@@ -4421,7 +4395,7 @@ public final class Avrcp_ext {
                     mMediaController.registerCallback(mMediaControllerCb, mHandler);
                 } else {
                     registerRsp = false;
-                    updateNewIds(preAddrId, preBrowseId);
+                    updateNewIds((addrId == preAddrId) ? NO_PLAYER_ID : preAddrId, preBrowseId);
                 }
             }
         }
