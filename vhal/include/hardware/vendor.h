@@ -229,6 +229,8 @@ typedef struct {
     /** start clock sync protocol */
     void (*start_clock_sync)(void);
 
+    void (*register_uuid_srvc_disc)(bluetooth::Uuid);
+
     /** interop match address */
     bool (*interop_match_addr)(const char* feature_name,
             const RawAddress* addr);

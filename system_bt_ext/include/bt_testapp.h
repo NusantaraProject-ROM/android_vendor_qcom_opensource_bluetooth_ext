@@ -127,18 +127,28 @@ typedef struct {
     bt_status_t (*RegisterLePsm) (uint16_t le_psm, bool ConnType, uint16_t SecLevel,
                                     uint8_t enc_key_size);
     bt_status_t (*LeDeregister)(uint16_t psm);
-    uint16_t    (*LeConnect) (uint16_t le_psm , RawAddress address, tL2CAP_LE_CFG_INFO *p_cfg);
+    uint16_t    (*LeConnect) (uint16_t le_psm , RawAddress address, tL2CAP_COC_CFG_INFO *p_cfg);
     bool        (*LeConnectRsp) (RawAddress p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result,
-                             uint16_t status, tL2CAP_LE_CFG_INFO *p_cfg);
+                             uint16_t status, tL2CAP_COC_CFG_INFO *p_cfg);
     bool        (*LeFlowControl) (uint16_t lcid, uint16_t credits);
     void        (*LeFreeBuf)(BT_HDR *p_buf);
+    bt_status_t (*RegisterCocPsm)(uint16_t psm, tL2CAP_COC_APPL_INFO *p_coc_cb_info,
+                uint16_t secLevel, uint8_t enc_key_size, bool orignator);
+    int8_t      (*ConnectCocReq)(tL2CAP_COC_CONN_REQ* conn_req);
+    bool        (*ConnectCocRsp)(tL2CAP_COC_CONN_REQ *p_conn_req,
+                        uint16_t l2cap_id,
+                        uint16_t result,
+                        uint16_t status);
+    bool        (*ReconfigCocReq)(tL2CAP_COC_CHMAP_INFO* chmap_info, uint16_t mtu);
+    bool        (*ReconfigCocRsp)(tL2CAP_COC_CHMAP_INFO* chmap_info, uint16_t result);
+    BT_HDR*     (*ReadData)(uint16_t cid);
 } btl2cap_interface_t;
 
 typedef struct
 {
     size_t    size;
     //GATT common APIs (Both client and server)
-    tGATT_IF (*Register) (bluetooth::Uuid& p_app_uuid128, tGATT_CBACK *p_cb_info);
+    tGATT_IF (*Register) (bluetooth::Uuid& p_app_uuid128, tGATT_CBACK *p_cb_info, bool eatt_support);
     void (*Deregister) (tGATT_IF gatt_if);
     void (*StartIf) (tGATT_IF gatt_if);
     bool (*Connect) (tGATT_IF gatt_if, RawAddress bd_addr, bool is_direct,tBT_TRANSPORT transport);
@@ -159,6 +169,8 @@ typedef struct
 
     //GATT Server APIs
     //TODO - Add api on the need basis
+    tGATT_STATUS (*sSendMultiNotification) (uint16_t conn_id, uint8_t num_attr, uint16_t handles[],
+                                    uint16_t lens[], std::vector<std::vector<uint8_t>> values);
 
 }btgatt_test_interface_t;
 

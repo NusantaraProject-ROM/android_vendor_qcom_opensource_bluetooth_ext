@@ -47,10 +47,10 @@ using bluetooth::Uuid;
 
 uint16_t    g_conn_id = 0;
 
-tGATT_IF Gatt_Register (Uuid& p_app_uuid128, tGATT_CBACK *p_cb_info)
+tGATT_IF Gatt_Register (Uuid& p_app_uuid128, tGATT_CBACK *p_cb_info, bool eatt_support)
 {
     tGATT_IF    Gatt_if = 0;
-    Gatt_if = GATT_Register (p_app_uuid128, p_cb_info);
+    Gatt_if = GATT_Register (p_app_uuid128, p_cb_info, eatt_support);
     printf("%s:: Gatt_if=%d\n", __FUNCTION__, Gatt_if);
     if (!BTM_SetSecurityLevel (TRUE, "gatt_tool", /*BTM_SEC_SERVICE_SDP_SERVER*/ BTM_SEC_PROTO_L2CAP,
                     0, 0x1f, 0, 0))
@@ -139,14 +139,14 @@ bool Gatt_Listen (tGATT_IF gatt_if, bool start, RawAddress& bd_addr)
     tGATT_STATUS Gatt_SendHandleValueConfirm (uint16_t conn_id, uint16_t handle)
     {
         tGATT_STATUS Ret = 0;
-        Ret = GATTC_SendHandleValueConfirm(conn_id, handle);
+        Ret = GATTC_SendHandleValueConfirm(conn_id, handle, 0);
         printf("%s::Ret=%d, conn_id=%d, handle=%d \n", __FUNCTION__, Ret, conn_id, handle);
         return Ret;
     }
 
     void Gatt_SetIdleTimeout (RawAddress bd_addr, uint16_t idle_tout)
     {
-        GATT_SetIdleTimeout (bd_addr, idle_tout,BT_TRANSPORT_LE);
+        GATT_SetIdleTimeout (bd_addr, idle_tout,BT_TRANSPORT_LE, L2CAP_ATT_CID);
         printf("%s::\n", __FUNCTION__);
     }
 
@@ -154,6 +154,16 @@ bool Gatt_Listen (tGATT_IF gatt_if, bool start, RawAddress& bd_addr)
     {
         printf("%s::call set Visibility\n", __FUNCTION__);
         BTA_DmSetVisibility(disc_mode, conn_mode, BTA_DM_IGNORE, BTA_DM_IGNORE);
+    }
+
+    tGATT_STATUS Gatt_SendMultiNotification (uint16_t conn_id, uint8_t num_attr, uint16_t handles[],
+                                     uint16_t lens[], std::vector<std::vector<uint8_t>> values)
+    {
+        printf("%s::call Gatt_SendMultiNotification \n", __FUNCTION__);
+        tGATT_STATUS Ret = 0;
+        Ret = GATTS_MultiHandleValueNotifications(conn_id, num_attr, handles,
+                                            lens, values);
+        return Ret;
     }
 
 static const btgatt_test_interface_t    btgatt_testInterface =
@@ -172,8 +182,8 @@ static const btgatt_test_interface_t    btgatt_testInterface =
     Gatt_ExecuteWrite,
     Gatt_SendHandleValueConfirm,
     Gatt_SetIdleTimeout,
-    Gatt_SetLeAdvMode
-
+    Gatt_SetLeAdvMode,
+    Gatt_SendMultiNotification
 };
 
 
