@@ -768,7 +768,11 @@ static const btvendor_interface_t btvendorInterface = {
     hciclose,
     set_clock_sync_config,
     start_clock_sync,
+#ifdef ADV_AUDIO_FEATURE
     btif_register_uuid_srvc_disc,
+#else
+    nullptr,
+#endif
     vendor_interop_match_addr,
     vendor_interop_match_name,
     vendor_interop_match_addr_or_name,
