@@ -51,6 +51,7 @@ cc_library_static {
     cflags: [
         "-DBUILDCFG",
         "-DHAS_NO_BDROID_BUILDCFG",
+        "-DADV_AUDIO_FEATURE=1",
     ],
 
 }
