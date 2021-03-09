@@ -860,7 +860,7 @@ static void register_server_cb(int status, int server_if, const Uuid& app_uuid)
     char2.uuid = Uuid::FromString(AUTHENTICATION_LEVEL_UUID4, &is_valid);
     char2.type = BTGATT_DB_CHARACTERISTIC;
     char2.properties = 58;
-    char2.permissions = 0x2007;
+    char2.permissions = 0x2077;
     //use shortByteValue byte array for this char
     service3.push_back(char2);
 
