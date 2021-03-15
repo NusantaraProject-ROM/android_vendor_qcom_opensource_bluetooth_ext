@@ -31,6 +31,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <errno.h>
 #include <string.h>
+#include <array>
+#include <iostream>
 #include <dlfcn.h>
 #include <sys/socket.h>
 #include <cutils/sockets.h>
@@ -38,6 +40,14 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "osi/include/osi.h"
 #include "osi/include/properties.h"
 
+#define IS_DEBUGGABLE_PROPERTY "ro.debuggable"
+#define BTSNOOP_LOG_MODE_PROPERTY "persist.bluetooth.btsnooplogmode"
+#define BTSNOOP_DEFAULT_MODE_PROPERTY "persist.bluetooth.btsnoopdefaultmode"
+#define BTSNOOP_MODE_DISABLED "disabled"
+#define BTSNOOP_MODE_FILTERED "filtered"
+#define BTSNOOP_MODE_FULL "full"
+#define BTSNOOP_MODE_SNOOPHEADERSFILTERED "snoopheadersfiltered"
+#define BTSNOOP_MODE_MEDIAPKTSFILTERED "mediapktsfiltered"
 #define BTLOGGER_ENABLE_PROPERTY "persist.bluetooth.btsnoopenable"
 #define LOCAL_SOCKET_NAME "bthcitraffic"
 
@@ -105,10 +115,34 @@ void clean_vnd_logger()
 
 static bool is_logging_enable()
 {
-  char logger_enabled[PROPERTY_VALUE_MAX] = {0};
-  osi_property_get(BTLOGGER_ENABLE_PROPERTY, logger_enabled, "false");
-  bt_logger_enabled = (strncmp(logger_enabled, "true", 4) == 0);
+  std::array<char, PROPERTY_VALUE_MAX> property = {};
+  std::string default_mode = BTSNOOP_MODE_DISABLED;
+
+  // Default mode is FILTERED on userdebug/eng build, DISABLED on user build.
+  // It can also be overwritten by modifying the global setting.
+  int is_debuggable = osi_property_get_int32(IS_DEBUGGABLE_PROPERTY, 0);
+  if (is_debuggable) {
+    int len = osi_property_get(BTSNOOP_DEFAULT_MODE_PROPERTY, property.data(),
+                               BTSNOOP_MODE_FILTERED);
+    default_mode = std::string(property.data(), len);
+  }
+
+  // Get the actual mode
+  int len = osi_property_get(BTSNOOP_LOG_MODE_PROPERTY, property.data(),
+                             default_mode.c_str());
+  std::string btsnoop_mode(property.data(), len);
+
+  if (btsnoop_mode == BTSNOOP_MODE_FULL ||
+      btsnoop_mode == BTSNOOP_MODE_MEDIAPKTSFILTERED ||
+      btsnoop_mode == BTSNOOP_MODE_SNOOPHEADERSFILTERED) {
+    osi_property_set("persist.bluetooth.btsnoopenable", "true");
+    bt_logger_enabled = true;
+  } else {
+    osi_property_set("persist.bluetooth.btsnoopenable", "");
+    bt_logger_enabled = false;
+  }
   return bt_logger_enabled;
+
 }
 
 void start_bt_logger()

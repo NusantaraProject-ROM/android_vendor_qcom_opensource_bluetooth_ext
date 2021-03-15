@@ -181,5 +181,19 @@
     public boolean isWrapperType(String classType) {
       return primitiveClsMap.containsKey(classType);
     }
+
+    /**
+     * Gets class object of the required class
+     * completeClassName:- String for Class name (including package name).
+     * Returns Class object.
+     */
+    public static Class getRequiredClass(String completeClassName) {
+        try {
+            return Class.forName(completeClassName);
+        } catch (ClassNotFoundException e) {
+             Log.e(TAG, "Exception in getRequiredClass: " + e);
+        }
+        return null;
+    }
   }
 

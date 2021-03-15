@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013,2020, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -83,12 +83,21 @@ static uint8_t L2cap_GetChnlFcrMode (uint16_t lcid);
 static uint16_t L2cap_SendFixedChnlData (uint16_t fixed_cid, RawAddress rem_bda, BT_HDR *p_buf);
 static bt_status_t L2cap_LE_Register (uint16_t le_psm, bool ConnType, uint16_t SecLevel, uint8_t enc_key_size);
 static bt_status_t L2cap_LE_DeRegister (uint16_t psm);
-static uint16_t L2cap_LE_Connect(uint16_t le_psm , RawAddress address, tL2CAP_LE_CFG_INFO *p_cfg);
+static uint16_t L2cap_LE_Connect(uint16_t le_psm , RawAddress address, tL2CAP_COC_CFG_INFO *p_cfg);
 static bool L2cap_LE_ConnectRsp (RawAddress p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result,
-                             uint16_t status, tL2CAP_LE_CFG_INFO *p_cfg);
+                             uint16_t status, tL2CAP_COC_CFG_INFO *p_cfg);
 //static bool L2cap_LE_ConnectRsp (RawAddress p_bd_addr, uint8_t id, uint16_t lcid, tL2CAP_LE_CFG_INFO *p_cfg);
 static bool L2cap_LE_FlowControl (uint16_t lcid, uint16_t credits);
 static void L2cap_LE_freebuf(BT_HDR *p_buf);
+static bt_status_t L2cap_coc_register (uint16_t psm, tL2CAP_COC_APPL_INFO *p_coc_cb_info,
+                uint16_t secLevel, uint8_t enc_key_size, bool orig);
+static int8_t L2cap_ConnectCocReq(tL2CAP_COC_CONN_REQ* conn_req);
+static bool L2cap_ConnectCocRsp(tL2CAP_COC_CONN_REQ *p_conn_req,
+                        uint16_t l2cap_id, uint16_t result,
+                        uint16_t status);
+static bool L2cap_ReconfigCocReq(tL2CAP_COC_CHMAP_INFO* chmap_info, uint16_t mtu);
+static bool L2cap_ReconfigCocRsp(tL2CAP_COC_CHMAP_INFO* chmap_info, uint16_t result);
+static BT_HDR* L2cap_ReadData(uint16_t cid);
 
 static const btl2cap_interface_t btl2capInterface = {
     sizeof(btl2cap_interface_t),
@@ -133,6 +142,12 @@ static const btl2cap_interface_t btl2capInterface = {
     L2cap_LE_ConnectRsp,
     L2cap_LE_FlowControl,
     L2cap_LE_freebuf,
+    L2cap_coc_register,
+    L2cap_ConnectCocReq,
+    L2cap_ConnectCocRsp,
+    L2cap_ReconfigCocReq,
+    L2cap_ReconfigCocRsp,
+    L2cap_ReadData
 };
 
 const btl2cap_interface_t *btif_l2cap_get_interface(void)
@@ -235,7 +250,79 @@ static bt_status_t L2cap_LE_Register (uint16_t le_psm, bool ConnType, uint16_t S
     return BT_STATUS_SUCCESS;
 }
 
-static uint16_t L2cap_LE_Connect (uint16_t le_psm , RawAddress address, tL2CAP_LE_CFG_INFO *p_cfg)
+/*******************************************************************************
+**
+** Function L2cap_LE_Register
+**
+** Description This function is called during the task startup
+** to register interface functions with L2CAP.
+**
+*******************************************************************************/
+static bt_status_t L2cap_coc_register (uint16_t psm, tL2CAP_COC_APPL_INFO *p_coc_cb_info,
+                uint16_t secLevel, uint8_t enc_key_size, bool orig) {
+
+    BTIF_TRACE_DEBUG("ECFC-L2CAP: %s psm=%d, SecLevel=%d ", __FUNCTION__, psm, secLevel);
+
+    g_Psm = L2CA_RegisterCoc(psm, p_coc_cb_info, 1);
+
+    if(0 == g_Psm) {
+        BTIF_TRACE_ERROR("ECFC-L2CAP: L2cap_Register failed");
+        return BT_STATUS_FAIL;
+    }
+
+    if (!BTM_SetSecurityLevel (orig, "l2c_ECFC_test", BTM_SEC_SERVICE_EATT,
+            secLevel, psm, 0, 0))
+    {
+        BTIF_TRACE_ERROR("ECFC-L2CAP: BTM_SetSecurityLevel failed");
+        return BT_STATUS_FAIL;
+    }
+    return BT_STATUS_SUCCESS;
+}
+
+static int8_t L2cap_ConnectCocReq(tL2CAP_COC_CONN_REQ* conn_req) {
+
+    int addr_type = 0;
+    int device_type = 0;
+    RawAddress address = conn_req->p_bd_addr;
+
+    if (btif_get_address_type(address, &addr_type) &&
+          btif_get_device_type(address, &device_type) &&
+          device_type != BT_DEVICE_TYPE_BREDR) {
+        BTA_DmAddBleDevice(address, addr_type, device_type);
+    }
+
+    BTIF_TRACE_DEBUG("ECFC-L2CAP: %s ", __FUNCTION__);
+    
+    return (L2CA_ConnectCocReq(conn_req));
+}
+
+static bool L2cap_ConnectCocRsp(tL2CAP_COC_CONN_REQ *p_conn_req,
+                        uint16_t l2cap_id,
+                        uint16_t result,
+                        uint16_t status) {
+    BTIF_TRACE_DEBUG("ECFC-L2CAP: %s ", __FUNCTION__);
+
+    return (L2CA_ConnectCocRsp(p_conn_req, l2cap_id, result, status));
+}
+
+static bool L2cap_ReconfigCocReq(tL2CAP_COC_CHMAP_INFO* chmap_info, uint16_t mtu) {
+    BTIF_TRACE_DEBUG("ECFC-L2CAP: %s ", __FUNCTION__);
+
+    return (L2CA_ReconfigCocReq(chmap_info,mtu));
+}
+
+static bool L2cap_ReconfigCocRsp(tL2CAP_COC_CHMAP_INFO* chmap_info, uint16_t result) {
+
+    BTIF_TRACE_DEBUG("ECFC-L2CAP: %s ", __FUNCTION__);
+
+    return (L2CA_ReconfigCocRsp(chmap_info, result));
+}
+
+static BT_HDR* L2cap_ReadData(uint16_t cid) {
+    return (L2CA_ReadData(cid));
+}
+
+static uint16_t L2cap_LE_Connect (uint16_t le_psm , RawAddress address, tL2CAP_COC_CFG_INFO *p_cfg)
 {
     BTIF_TRACE_DEBUG("LE-L2CAP: %s:: %s", __FUNCTION__, address.ToString().c_str());
 
@@ -254,7 +341,7 @@ static uint16_t L2cap_LE_Connect (uint16_t le_psm , RawAddress address, tL2CAP_L
 }
 
 static bool L2cap_LE_ConnectRsp (RawAddress p_bd_addr, uint8_t id, uint16_t lcid, uint16_t result,
-                             uint16_t status, tL2CAP_LE_CFG_INFO *p_cfg)
+                             uint16_t status, tL2CAP_COC_CFG_INFO *p_cfg)
 {
      p_cfg->credits = L2CAP_LE_CREDIT_DEFAULT;
      p_cfg->mtu = L2CAP_LE_MIN_MTU;
@@ -285,7 +372,7 @@ static void L2cap_LE_freebuf (BT_HDR *p_buf)
 
 static bt_status_t L2cap_LE_DeRegister (uint16_t psm)
 {
-    L2CA_DeregisterLECoc(psm);
+    L2CA_DeregisterCoc(psm);
     return BT_STATUS_SUCCESS;
 }
 
