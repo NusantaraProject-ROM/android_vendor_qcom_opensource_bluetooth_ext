@@ -5695,7 +5695,7 @@ public final class Avrcp_ext {
         if ((code == KeyEvent.KEYCODE_MEDIA_PAUSE) || (code == KeyEvent.KEYCODE_MEDIA_PLAY))
             deviceFeatures[deviceIndex].mLastPassthroughcmd = code;
 
-        mMediaSessionManager.dispatchMediaKeyEvent(event);
+        mMediaSessionManager.dispatchMediaKeyEvent(event, /*needWakeLock=*/false);
     }
 
     private int avrcpPassthroughToKeyCode(int operation) {
