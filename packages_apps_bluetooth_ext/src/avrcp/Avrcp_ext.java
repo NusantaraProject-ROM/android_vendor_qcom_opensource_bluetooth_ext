@@ -34,6 +34,7 @@ import com.android.bluetooth.apm.ApmConstIntf;
 import com.android.bluetooth.apm.DeviceProfileMapIntf;
 import com.android.bluetooth.apm.ActiveDeviceManagerServiceIntf;
 import com.android.bluetooth.apm.VolumeManagerIntf;
+import com.android.bluetooth.apm.MediaControlManagerIntf;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -749,6 +750,8 @@ public final class Avrcp_ext {
         @Override
         public void onMetadataChanged(MediaMetadata metadata) {
             if (DEBUG) Log.v(TAG, "onMetadataChanged");
+            MediaControlManagerIntf mMediaControlManager = MediaControlManagerIntf.get();
+            mMediaControlManager.onMetadataChanged(metadata);
             if (mBroadcastService == null) {
                 AdapterService adapterService = AdapterService.getAdapterService();
                 mBroadcastService = adapterService.getBroadcastService();
@@ -782,6 +785,8 @@ public final class Avrcp_ext {
         @Override
         public synchronized void onPlaybackStateChanged(PlaybackState state) {
             if (DEBUG) Log.v(TAG, "onPlaybackStateChanged: state " + ((state != null)? state.toString() : "NULL"));
+            MediaControlManagerIntf mMediaControlManager = MediaControlManagerIntf.get();
+            mMediaControlManager.onPlaybackStateChanged(state);
             updateCurrentMediaState(null);
             Log.v(TAG, " Exit onPlaybackStateChanged");
         }
@@ -803,6 +808,9 @@ public final class Avrcp_ext {
                 Log.v(TAG, "onQueueChanged: received null queue");
                 return;
             }
+
+            MediaControlManagerIntf mMediaControlManager = MediaControlManagerIntf.get();
+            mMediaControlManager.onQueueChanged(queue);
 
             Log.v(TAG, "onQueueChanged: NowPlaying list changed, Queue Size = "+ queue.size());
             mHandler.sendEmptyMessage(MSG_NOW_PLAYING_CHANGED_RSP);
@@ -1913,7 +1921,6 @@ public final class Avrcp_ext {
 
         deviceFeatures[deviceIndex].mCurrentPlayState = state;
         deviceFeatures[deviceIndex].mLastPassthroughcmd = KeyEvent.KEYCODE_UNKNOWN;
-
         if ((deviceFeatures[deviceIndex].mPlayStatusChangedNT ==
                 AvrcpConstants_ext.NOTIFICATION_TYPE_INTERIM) &&
                (oldPlayStatus != newPlayStatus) && deviceFeatures[deviceIndex].mCurrentDevice != null) {
@@ -2286,7 +2293,6 @@ public final class Avrcp_ext {
         boolean updateA2dpPlayState = false;
         Log.v(TAG,"updateCurrentMediaState: mMediaController: " + mMediaController);
         Log.v(TAG,"isMusicActive: " + mAudioManager.isMusicActive() + " getBluetoothPlayState: " + getBluetoothPlayState(mCurrentPlayerState));
-
         synchronized (this) {
             if (mMediaController == null ||
                 device != null) { //Update playstate for a2dp play state change
@@ -3915,6 +3921,8 @@ public final class Avrcp_ext {
             };
 
     private void setAddressedMediaSessionPackage(@Nullable String packageName) {
+        MediaControlManagerIntf mMediaControlManager = MediaControlManagerIntf.get();
+        mMediaControlManager.onPackageChanged(packageName);
         if (packageName == null) {
             // Should only happen when there's no media players, reset to no available player.
             updateCurrentController(0, mCurrBrowsePlayerID);
@@ -4181,6 +4189,8 @@ public final class Avrcp_ext {
                         info.setMediaController(null);
                         if (entry.getKey() == mCurrAddrPlayerID) {
                             updateCurrentController(mCurrAddrPlayerID, mCurrBrowsePlayerID);
+                            MediaControlManagerIntf mMediaControlManager = MediaControlManagerIntf.get();
+                            mMediaControlManager.onSessionDestroyed(controller.getPackageName());
                         }
                     }
                 }
