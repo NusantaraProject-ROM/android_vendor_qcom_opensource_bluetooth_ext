@@ -612,7 +612,7 @@ static jboolean startClockSyncNative(JNIEnv* env)
 }
 
 static bluetooth::Uuid from_java_uuid(jlong uuid_msb, jlong uuid_lsb) {
-  std::array<uint8_t, bluetooth::Uuid::kNumBytes128> uu;
+  std::array<uint8_t, bluetooth::Uuid::kNumBytes128> uu{};
   for (int i = 0; i < 8; i++) {
     uu[7 - i] = (uuid_msb >> (8 * i)) & 0xFF;
     uu[15 - i] = (uuid_lsb >> (8 * i)) & 0xFF;
