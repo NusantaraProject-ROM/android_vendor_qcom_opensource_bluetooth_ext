@@ -419,13 +419,13 @@ static void register_server_cb(int status, int server_if, const Uuid& app_uuid)
 
     std::vector<btgatt_db_element_t> service1;
     //1st service
-    btgatt_db_element_t svc1;
+    btgatt_db_element_t svc1 = {};
     svc1.uuid = Uuid::FromString(IMMEDIATE_ALERT_UUID, &is_valid);
     svc1.type = BTGATT_DB_PRIMARY_SERVICE;
     service1.push_back(svc1);
 
     //1st char
-    btgatt_db_element_t char1;
+    btgatt_db_element_t char1 = {};
     char1.uuid = Uuid::FromString(ALERT_LEVEL_UUID, &is_valid);
     char1.type = BTGATT_DB_CHARACTERISTIC;
     char1.properties = 58;
@@ -434,7 +434,7 @@ static void register_server_cb(int status, int server_if, const Uuid& app_uuid)
     service1.push_back(char1);
 
     //1st desc
-    btgatt_db_element_t desc1;
+    btgatt_db_element_t desc1 = {};
     desc1.uuid = Uuid::FromString(ClientCharConfigUUID, &is_valid);
     desc1.type = BTGATT_DB_DESCRIPTOR;
     desc1.permissions = 17;
