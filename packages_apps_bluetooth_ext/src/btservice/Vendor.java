@@ -53,6 +53,8 @@ package com.android.bluetooth.btservice;
 
 import android.util.Log;
 
+import static android.Manifest.permission.BLUETOOTH_CONNECT;
+
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothClass;
@@ -185,7 +187,7 @@ final class Vendor {
         intent.putExtra(BluetoothDevice.EXTRA_RSSI, rssi);
         intent.putExtra(BluetoothDevice.EXTRA_LINK_QUALITY, linkQuality);
         intent.putExtra(BluetoothDevice.EXTRA_GLITCH_COUNT, glitchCount);
-        mService.sendBroadcast(intent, AdapterService.BLUETOOTH_PERM);
+        mService.sendBroadcast(intent, BLUETOOTH_CONNECT);
     }
 
     private void bqrDeliver(byte[] remoteAddr,
@@ -210,7 +212,7 @@ final class Vendor {
         Log.d(TAG, "" + bqr);
         Intent intent = new Intent(BluetoothDevice.ACTION_REMOTE_ISSUE_OCCURRED);
         intent.putExtra(BluetoothDevice.EXTRA_BQR, bqr);
-        mService.sendBroadcast(intent, AdapterService.BLUETOOTH_PERM);
+        mService.sendBroadcast(intent, BLUETOOTH_CONNECT);
     }
 
     void ssr_cleanup_callback() {
