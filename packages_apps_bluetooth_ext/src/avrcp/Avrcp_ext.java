@@ -4547,7 +4547,11 @@ public final class Avrcp_ext {
             playItemRspNative(bdaddr, AvrcpConstants_ext.RSP_MEDIA_IN_USE);
             return;
         }
-
+        if (isBroadcastActive(false, 0, true, device)) {
+            Log.w(TAG,"Remote requesting play item while Broadcast is active");
+            playItemRspNative(bdaddr, AvrcpConstants_ext.RSP_MEDIA_IN_USE);
+            return;
+        }
         if (mBrowsingActiveDevice != null && !Objects.equals(mBrowsingActiveDevice, device)) {
             Log.w(TAG, "play item Cmd from browse inactive device, reject it");
             playItemRspNative(bdaddr, AvrcpConstants_ext.RSP_INTERNAL_ERR);
@@ -5435,6 +5439,40 @@ public final class Avrcp_ext {
         return mVolumeMap.get(device);
     }
 
+    private boolean isBroadcastActive(boolean passthrough, int action,
+                                      boolean playitem, BluetoothDevice device) {
+        BluetoothDevice a2dp_active_device = null;
+        if (mA2dpService != null) a2dp_active_device = mA2dpService.getActiveDevice();
+        boolean rc_only_device = isPeerDeviceAvrcpOnly(device);
+        if (a2dp_active_device == null) {
+            if (mBroadcastService == null) {
+                AdapterService adapterService = AdapterService.getAdapterService();
+                mBroadcastService = adapterService.getBroadcastService();
+                mBroadcastIsActive = adapterService.getBroadcastActive();
+            }
+            if (mBroadcastService != null && mBroadcastIsActive != null) {
+                boolean is_active = false;
+                try {
+                    is_active = (boolean) mBroadcastIsActive.invoke(mBroadcastService);
+                } catch(IllegalAccessException | InvocationTargetException e) {
+                    Log.e(TAG, "Broadcast:IsActive IllegalAccess/Target Exception");
+                }
+                if (is_active) {
+                    if (((passthrough && action == KeyEvent.ACTION_DOWN) ||
+                         playitem)&& !rc_only_device) {
+                        if (ApmConstIntf.getLeAudioEnabled()) {
+                            ActiveDeviceManagerServiceIntf activeDeviceManager =
+                                                 ActiveDeviceManagerServiceIntf.get();
+                            activeDeviceManager.setActiveDevice(device,
+                                           ApmConstIntf.AudioFeatures.MEDIA_AUDIO, false);
+                        }
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     public void setAbsVolumeFlag(BluetoothDevice device) {
         int deviceIndex = getIndexForDevice(device);
         int volume = getVolume(device);
@@ -5522,34 +5560,9 @@ public final class Avrcp_ext {
                 skip = true;
             }
         }
-        if (a2dp_active_device == null) {
-            if (mBroadcastService == null) {
-                AdapterService adapterService = AdapterService.getAdapterService();
-                mBroadcastService = adapterService.getBroadcastService();
-                mBroadcastIsActive = adapterService.getBroadcastActive();
-            }
-            if (mBroadcastService != null && mBroadcastIsActive != null) {
-                boolean is_active = false;
-                try {
-                    is_active = (boolean) mBroadcastIsActive.invoke(mBroadcastService);
-                } catch(IllegalAccessException e) {
-                    Log.e(TAG, "Broadcast:IsActive IllegalAccessException");
-                } catch (InvocationTargetException e) {
-                    Log.e(TAG, "Broadcast:IsActive InvocationTargetException");
-                }
-                if (is_active) {
-                    Log.d(TAG,"Broadcast is active, ignore passthrough from legacy hs");
-                    if (action == KeyEvent.ACTION_DOWN && !rc_only_device) {
-                        if (ApmConstIntf.getLeAudioEnabled()) {
-                            ActiveDeviceManagerServiceIntf activeDeviceManager =
-                                                 ActiveDeviceManagerServiceIntf.get();
-                            activeDeviceManager.setActiveDevice(device,
-                                           ApmConstIntf.AudioFeatures.MEDIA_AUDIO, false);
-                        }
-                    }
-                    return;
-                }
-            }
+        if (isBroadcastActive(true, action, false, device)) {
+            Log.d(TAG, "Ignore passthrough, Broadcast is active");
+            return;
         }
         if (a2dp_active_device == null &&
             code == KeyEvent.KEYCODE_MEDIA_PLAY) {
