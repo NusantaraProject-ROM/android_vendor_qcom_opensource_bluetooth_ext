@@ -122,7 +122,7 @@ typedef struct {
 #define L2CAP_LE_DEFAULT_MPS 230
 #define L2CAP_LE_MAX_CREDIT 65535
 #define L2CAP_LE_DEFAULT_CREDIT 1
-#define LE_CHAR_MAX_LEN_VAL 512
+#define LE_CHAR_MAX_LEN_VAL 500
 
 /************************************************************************************
 **  Local type definitions
@@ -1640,6 +1640,7 @@ static void do_set_localname(char *p);
 void do_start_adv_set(char *p);
 //void do_register_adv(char *p);
 void do_unregister_adv_set(char *p);
+void do_remove_bond(char *p);
 
 /*******************************************************************
  *
@@ -1728,6 +1729,7 @@ const t_cmd console_cmd_list[] =
     { "smp_security_grant", do_smp_security_grant, ":: BdAddr<00112233445566>, res<>", 0 },
     { "smp_passkey_reply", do_smp_passkey_reply, ":: BdAddr<00112233445566>, res<>, passkey<>", 0 },
     //{ "smp_encrypt", do_smp_encrypt, "::", 0 },
+    { "remove_bond", do_remove_bond, "bd_addr", 0 },
     { "l2cap_send_data_cid", do_l2cap_send_data_cid, ":: BdAddr<00112233445566>, CID<>", 0 },
 
     { "set_local_name", do_set_localname, ":: setName<name>", 0 },
@@ -3894,6 +3896,16 @@ void do_smp_encrypt(char *p)
     if(FALSE == GetBdAddr(p, &bd_addr))    return; //arg1
     res = (uint8_t)get_int(&p, -1); // arg2
     printf("%s:: res =%d Ret=%d \n", __FUNCTION__,res, Ret);
+}
+
+void do_remove_bond (char *p)
+{
+    RawAddress bd_addr = {{0}};
+    if(FALSE == GetBdAddr(p, &bd_addr))    return;
+    printf("%s:: remote_bd_addr=%02x:%02x:%02x:%02x:%02x:%02x \n",  __FUNCTION__,
+           bd_addr.address[0], bd_addr.address[1], bd_addr.address[2],
+           bd_addr.address[3], bd_addr.address[4], bd_addr.address[5]);
+    sBtInterface->remove_bond(&bd_addr);
 }
 
 void do_le_gap_conn_param_update(char *p)
