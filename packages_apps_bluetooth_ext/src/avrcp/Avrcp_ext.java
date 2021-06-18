@@ -4727,6 +4727,10 @@ public final class Avrcp_ext {
         }
         int newState = (rc_connected ? BluetoothProfile.STATE_CONNECTED :
             BluetoothProfile.STATE_DISCONNECTED);
+        if(ApmConstIntf.getLeAudioEnabled()) {
+            VolumeManagerIntf mVolumeManager = VolumeManagerIntf.get();
+            mVolumeManager.onConnStateChange(device, newState, ApmConstIntf.AudioProfiles.AVRCP);
+        }
         Message msg = mHandler.obtainMessage(MSG_SET_AVRCP_CONNECTED_DEVICE, newState, 0, device);
         mHandler.sendMessage(msg);
         Log.v(TAG, "Exit onConnectionStateChanged");
@@ -5493,7 +5497,7 @@ public final class Avrcp_ext {
     private void updateAbsVolumeSupport(BluetoothDevice device, boolean isSupported) {
         if(ApmConstIntf.getLeAudioEnabled()) {
             VolumeManagerIntf mVolumeManager = VolumeManagerIntf.get();
-            mVolumeManager.setAbsoluteVolumeSupport(device, isSupported);
+            mVolumeManager.setAbsoluteVolumeSupport(device, isSupported, ApmConstIntf.AudioProfiles.AVRCP);
         } else {
             mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), isSupported);
         }
