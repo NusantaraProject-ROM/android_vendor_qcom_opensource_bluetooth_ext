@@ -93,6 +93,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.LinkedHashMap;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Objects;
@@ -4005,8 +4006,9 @@ public final class Avrcp_ext {
 
                 List<android.media.session.MediaController> controllers =
                         mMediaSessionManager.getActiveSessions(null);
-                Map<String, android.media.session.MediaController> updatedPackages =
-                        new HashMap<String, android.media.session.MediaController>();
+                LinkedHashMap<String, android.media.session.MediaController> updatedPackages =
+                        new LinkedHashMap<String, android.media.session.MediaController>();
+
                 Log.d(TAG, "initMediaPlayerInfoList: " + controllers.size() + " controllers");
                 for (android.media.session.MediaController controller : controllers) {
                     String packageName = (controller != null) ? controller.getPackageName() : null;
