@@ -1070,7 +1070,7 @@ bool load_to_database(int feature, char *key, char *value, interop_entry_type en
     entry->entry_type.version_entry.version = version;
     interop_database_add_(entry, false);
   }
-  LOG_WARN(LOG_TAG, " feature:: %d, key :: %s, value :: %s",
+  LOG_DEBUG(LOG_TAG, " feature:: %d, key :: %s, value :: %s",
                     feature, key, value);
   return true;
 }
