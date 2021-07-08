@@ -35,6 +35,9 @@ void interop_database_add_vndr_prdt(const interop_feature_t feature, uint16_t ve
 void interop_database_add_addr_max_lat(const interop_feature_t feature, const RawAddress *addr,
           size_t length, uint16_t max_lat);
 void interop_database_add_version(const interop_feature_t feature, uint16_t version);
+void interop_database_add_addr_lmp_version(const interop_feature_t feature,
+          const RawAddress *addr, size_t length, uint8_t lmp_ver, uint16_t lmp_sub_ver);
+
 
 // API's for removing entries from dynamic interop database
 bool interop_database_remove_addr(const interop_feature_t feature, const RawAddress *addr);
@@ -45,6 +48,8 @@ bool interop_database_remove_addr_max_lat(const interop_feature_t feature,
           const RawAddress *addr, size_t length, uint16_t max_lat);
 bool interop_database_remove_version(const interop_feature_t feature, uint16_t version);
 bool interop_database_remove_feature(const interop_feature_t feature);
+bool interop_database_remove_addr_lmp_version(const interop_feature_t feature,
+          const RawAddress *addr, size_t length, uint8_t lmp_ver, uint16_t lmp_sub_ver);
 
 // API's to match entries with in dynamic interop database
 bool interop_database_match_addr(const interop_feature_t feature, const RawAddress *addr);
@@ -54,6 +59,8 @@ bool interop_database_match_vndr_prdt(const interop_feature_t feature, uint16_t 
 bool interop_database_match_addr_get_max_lat(const interop_feature_t feature,
           const RawAddress *addr, uint16_t *max_lat);
 bool interop_database_match_version(const interop_feature_t feature, uint16_t version);
+bool interop_database_match_addr_get_lmp_ver(const interop_feature_t feature,
+                                       const RawAddress *addr, uint8_t *lmp_ver, uint16_t *lmp_sub_ver);
 bool interop_get_whitelisted_media_players_list(list_t** p_bl_devices);
 bool interop_database_get_whitelisted_media_players_list( const interop_feature_t feature, list_t** p_bl_devices);
 
