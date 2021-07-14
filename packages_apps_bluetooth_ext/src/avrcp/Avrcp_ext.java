@@ -1613,6 +1613,12 @@ public final class Avrcp_ext {
                     }
                     setAvrcpDisconnectedDevice(device);
                 }
+                if(ApmConstIntf.getLeAudioEnabled()) {
+                    if (DEBUG) Log.d(TAG, "update Avrcp conn state to volumeManager");
+                    VolumeManagerIntf mVolumeManager = VolumeManagerIntf.get();
+                    mVolumeManager.onConnStateChange(device,
+                            msg.arg1, ApmConstIntf.AudioProfiles.AVRCP);
+                }
                 break;
 
             case MSG_PLAY_STATUS_CMD_TIMEOUT:
@@ -4729,10 +4735,6 @@ public final class Avrcp_ext {
         }
         int newState = (rc_connected ? BluetoothProfile.STATE_CONNECTED :
             BluetoothProfile.STATE_DISCONNECTED);
-        if(ApmConstIntf.getLeAudioEnabled()) {
-            VolumeManagerIntf mVolumeManager = VolumeManagerIntf.get();
-            mVolumeManager.onConnStateChange(device, newState, ApmConstIntf.AudioProfiles.AVRCP);
-        }
         Message msg = mHandler.obtainMessage(MSG_SET_AVRCP_CONNECTED_DEVICE, newState, 0, device);
         mHandler.sendMessage(msg);
         Log.v(TAG, "Exit onConnectionStateChanged");
