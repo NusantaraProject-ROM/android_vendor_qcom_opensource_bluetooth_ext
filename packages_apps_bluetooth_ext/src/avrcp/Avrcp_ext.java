@@ -1944,10 +1944,14 @@ public final class Avrcp_ext {
     }
 
     private boolean isPlayerPaused() {
-        if (mCurrentPlayerState == null)
-            return false;
+        if (mMediaController == null) {
+            return true;
+        }
+        PlaybackState playbackState = mMediaController.getPlaybackState();
+        if (playbackState == null)
+            return true;
 
-        int state = mCurrentPlayerState.getState();
+        int state = playbackState.getState();
         Log.d(TAG, "isPlayerPaused: state=" + state);
 
         return (state == PlaybackState.STATE_PAUSED ||
@@ -2292,8 +2296,13 @@ public final class Avrcp_ext {
                 }
             } else {
                 newState = mMediaController.getPlaybackState();
-                Log.d(TAG, "isMusicActive = " + isMusicActive +" mAudioPlaybackIsActive = "
-                        + mAudioPlaybackIsActive + " player state = " + newState);
+                if (newState != null) {
+                    Log.d(TAG, "isMusicActive = " + isMusicActive +" mAudioPlaybackIsActive = "
+                            + mAudioPlaybackIsActive + " player state = " + newState);
+                } else {
+                    Log.d(TAG, "isMusicActive = " + isMusicActive +" mAudioPlaybackIsActive = "
+                            + mAudioPlaybackIsActive + " player state = null ");
+                }
                 PlaybackState.Builder builder = new PlaybackState.Builder();
                 if (newState == null) {
                     if (isMusicActive) {
@@ -5544,6 +5553,7 @@ public final class Avrcp_ext {
         if ((deviceFeatures[deviceIndex].mLastPassthroughcmd == KeyEvent.KEYCODE_UNKNOWN) ||
                     deviceFeatures[deviceIndex].mLastPassthroughcmd == code) {
             if (isPlayingState(mCurrentPlayerState) &&
+                     mAudioManager.isMusicActive() &&
                      (code == KeyEvent.KEYCODE_MEDIA_PLAY)) {
                  Log.w(TAG, "Ignoring passthrough command play" + op + " state " + state +
                          "in music playing");
