@@ -93,6 +93,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.LinkedHashMap;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Objects;
@@ -4005,8 +4006,9 @@ public final class Avrcp_ext {
 
                 List<android.media.session.MediaController> controllers =
                         mMediaSessionManager.getActiveSessions(null);
-                Map<String, android.media.session.MediaController> updatedPackages =
-                        new HashMap<String, android.media.session.MediaController>();
+                LinkedHashMap<String, android.media.session.MediaController> updatedPackages =
+                        new LinkedHashMap<String, android.media.session.MediaController>();
+
                 Log.d(TAG, "initMediaPlayerInfoList: " + controllers.size() + " controllers");
                 for (android.media.session.MediaController controller : controllers) {
                     String packageName = (controller != null) ? controller.getPackageName() : null;
@@ -4727,6 +4729,10 @@ public final class Avrcp_ext {
         }
         int newState = (rc_connected ? BluetoothProfile.STATE_CONNECTED :
             BluetoothProfile.STATE_DISCONNECTED);
+        if(ApmConstIntf.getLeAudioEnabled()) {
+            VolumeManagerIntf mVolumeManager = VolumeManagerIntf.get();
+            mVolumeManager.onConnStateChange(device, newState, ApmConstIntf.AudioProfiles.AVRCP);
+        }
         Message msg = mHandler.obtainMessage(MSG_SET_AVRCP_CONNECTED_DEVICE, newState, 0, device);
         mHandler.sendMessage(msg);
         Log.v(TAG, "Exit onConnectionStateChanged");
@@ -5493,7 +5499,7 @@ public final class Avrcp_ext {
     private void updateAbsVolumeSupport(BluetoothDevice device, boolean isSupported) {
         if(ApmConstIntf.getLeAudioEnabled()) {
             VolumeManagerIntf mVolumeManager = VolumeManagerIntf.get();
-            mVolumeManager.setAbsoluteVolumeSupport(device, isSupported);
+            mVolumeManager.setAbsoluteVolumeSupport(device, isSupported, ApmConstIntf.AudioProfiles.AVRCP);
         } else {
             mAudioManager.avrcpSupportsAbsoluteVolume(device.getAddress(), isSupported);
         }

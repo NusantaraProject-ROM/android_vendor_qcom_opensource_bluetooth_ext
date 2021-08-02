@@ -65,6 +65,7 @@ public class BluetoothMapAccountEmailLoader extends BluetoothMapAccountLoader {
         mEmailContext = ctx;
         if(mEmailContext != null){
             Log.d(TAG,"mEmailContext Assigned ");
+            mPackageManager = mEmailContext.getPackageManager();
         }
     }
 
