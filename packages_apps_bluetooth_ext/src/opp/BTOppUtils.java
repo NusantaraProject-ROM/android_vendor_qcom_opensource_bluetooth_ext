@@ -114,42 +114,12 @@ public class BTOppUtils {
         }
     }
 
-    protected static void isTurnOnScreen(Context context, boolean needConfirm) {
-        if (D)
-            Log.d(TAG, "Received incoming file request : " + needConfirm);
-        if (needConfirm) {
-            sendVendorDebugBroadcast(context);
-        }
-    }
-
     protected static void acquirePartialWakeLock(WakeLock partialWakeLock) {
         if (!partialWakeLock.isHeld()) {
             if (D)
                 Log.d(TAG, "acquire partial WakeLock");
             partialWakeLock.acquire();
         }
-    }
-
-    /*
-     * Automation team not able to find incoming file notification so broad cast to
-     * CST APP when receive incoming file request
-     *
-     * @ Condition set persistent property using adb "persist.sys.opp" opp
-     */
-    protected static void sendVendorDebugBroadcast(Context ctx) {
-        String INCOMING_FILE_NOTIFICATION =
-            "android.btopp.intent.action.INCOMING_FILE_NOTIFICATION";
-        String property = SystemProperties.get("persist.sys.opp", "");
-        if (property.equals("opp")) {
-            Intent intent = new Intent(INCOMING_FILE_NOTIFICATION);
-            intent.setComponent(new android.content.ComponentName("com.android.CST",
-                    "com.android.CST.ConnectivitySystemTest.OppIncomingReceiver"));
-            ctx.sendBroadcast(intent);
-            if (D)
-                Log.d(TAG, "intent :" + intent);
-        }
-        if (D)
-            Log.d(TAG, "property :" + property + ":");
     }
 
     protected static void checkAction(Intent intent) {
@@ -233,8 +203,4 @@ public class BTOppUtils {
         if (fileToDelete != null)
             fileToDelete.delete();
     }
-
-    protected static void acquireFullWakeLock(Object pm, String tag) { }
-
-    protected static void releaseFullWakeLock() { }
 }
