@@ -3373,6 +3373,7 @@ public final class Avrcp_ext {
     }
     public void setAvrcpConnectedDevice(BluetoothDevice device) {
         boolean NeedCheckMusicActive = true;
+        boolean rc_only_device = isPeerDeviceAvrcpOnly(device);
         Log.i(TAG,"setAvrcpConnectedDevice, Device added is " + device);
         for (int i = 0; i < maxAvrcpConnections; i++) {
             if (deviceFeatures[i].mCurrentDevice != null) {
@@ -3396,25 +3397,28 @@ public final class Avrcp_ext {
                 deviceFeatures[i].mInitialRemoteVolume = -1;
                 deviceFeatures[i].mBlackListVolume = -1;
 
-                /*Playstate is explicitly updated here to take care of cases
-                        where play state update is missed because of that happening
-                        even before Avrcp connects*/
+                Log.i(TAG,"setAvrcpConnectedDevice, mCurrentPlayerState = " + mCurrentPlayerState +
+                          " isMusicActive = " + mAudioManager.isMusicActive() +
+                          " isA2dpPlaying = " + mA2dpService.isA2dpPlaying(device) +
+                          " is_rc_only_device = " + rc_only_device);
+
+                /* Playstate is explicitly updated here to take care of cases
+                ** where play state update is missed because of that happening
+                ** even before Avrcp connects
+                */
                 deviceFeatures[i].mCurrentPlayState = mCurrentPlayerState;
                 if (isPlayingState(mCurrentPlayerState)) {
                 /* In dual a2dp connection mode, if music is streaming on other device and
                 ** avrcp connection was delayed to second device and is not in playing state
                 ** check for playing device and update play status accordingly
                 */
-                    if (!isPlayStateToBeUpdated(i)) {
+                    if (!isPlayStateToBeUpdated(i) && !rc_only_device) {
                         PlaybackState.Builder playState = new PlaybackState.Builder();
                         playState.setState(PlaybackState.STATE_PAUSED,
                                        PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
                         deviceFeatures[i].mCurrentPlayState = playState.build();
                     }
                 }
-                Log.i(TAG,"setAvrcpConnectedDevice, mCurrentPlayerState = " + mCurrentPlayerState +
-                          "isMusicActive = " + mAudioManager.isMusicActive() +
-                          "isA2dpPlaying = " + mA2dpService.isA2dpPlaying(device));
                 if (!isPlayingState(mCurrentPlayerState) &&
                      (mA2dpService.isA2dpPlaying(device)) &&
                       ((NeedCheckMusicActive && mAudioManager.isMusicActive()) ||(!NeedCheckMusicActive))) {
@@ -3429,7 +3433,7 @@ public final class Avrcp_ext {
                         deviceFeatures[i].mCurrentPlayState = playState.build();
                     }
                 } else if (isPlayingState(mCurrentPlayerState) &&
-                           !mA2dpService.isA2dpPlaying(device)) {
+                           !mA2dpService.isA2dpPlaying(device) && !rc_only_device) {
                        PlaybackState.Builder playState = new PlaybackState.Builder();
                        playState.setState(PlaybackState.STATE_PAUSED,
                                      PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
@@ -3438,7 +3442,6 @@ public final class Avrcp_ext {
                 Log.i(TAG,"play status updated on Avrcp connection as: " +
                                                     deviceFeatures[i].mCurrentPlayState);
                 Log.i(TAG,"device added at " + i);
-                Log.i(TAG,"Active device set to true at index =  " + i);
                 break;
             }
         }
