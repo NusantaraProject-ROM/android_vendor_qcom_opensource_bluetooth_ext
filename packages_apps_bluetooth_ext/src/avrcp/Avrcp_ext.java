@@ -665,7 +665,11 @@ public final class Avrcp_ext {
             for (AudioPlaybackConfiguration config : configs) {
                 if (DEBUG)
                     Log.d(TAG, "AudioManager Player: " + config);
-                if (config.isActive()) {
+                if (config.isActive() &&
+                        (config.getAudioAttributes() == null ||
+                        config.getAudioAttributes().getUsage() !=
+                        AudioAttributes.USAGE_VOICE_COMMUNICATION)) {
+                    //skip voice communication case as hfp works for such case
                     String pkgName = getAppIdByPID(config.getClientPid());
                     Log.d(TAG, "AudioManager Player in started state: " + pkgName);
                     if (!isActive) {
@@ -5552,11 +5556,11 @@ public final class Avrcp_ext {
             " Cached passthrough command: " + deviceFeatures[deviceIndex].mLastPassthroughcmd);
         if ((deviceFeatures[deviceIndex].mLastPassthroughcmd == KeyEvent.KEYCODE_UNKNOWN) ||
                     deviceFeatures[deviceIndex].mLastPassthroughcmd == code) {
-            if (isPlayingState(mCurrentPlayerState) &&
-                     mAudioManager.isMusicActive() &&
+            if (((isPlayingState(mCurrentPlayerState) && mAudioManager.isMusicActive()) ||
+                      hasVoiceCommunicationActive()) &&
                      (code == KeyEvent.KEYCODE_MEDIA_PLAY)) {
                  Log.w(TAG, "Ignoring passthrough command play" + op + " state " + state +
-                         "in music playing");
+                         "in music playing or voice communication");
                  return;
             }
             if ((!isPlayingState(mCurrentPlayerState)) &&
@@ -5651,6 +5655,31 @@ public final class Avrcp_ext {
             deviceFeatures[deviceIndex].mLastPassthroughcmd = code;
 
         mMediaSessionManager.dispatchMediaKeyEvent(event, /*needWakeLock=*/false);
+    }
+
+    private boolean hasVoiceCommunicationActive() {
+        boolean result = false;
+        List<AudioPlaybackConfiguration> allAudioPlaybackConfigs = null;
+        if (mAudioManager != null) {
+            allAudioPlaybackConfigs = mAudioManager.getActivePlaybackConfigurations();
+            if (allAudioPlaybackConfigs != null) {
+                for (AudioPlaybackConfiguration config : allAudioPlaybackConfigs) {
+                    if (config != null && config.isActive() &&
+                            config.getAudioAttributes() != null &&
+                            config.getAudioAttributes().getUsage() ==
+                            AudioAttributes.USAGE_VOICE_COMMUNICATION) {
+                        result = true;
+                        if (DEBUG) {
+                            Log.d(TAG, "hasVoiceCommunicationActive find config = " + config);
+                        }
+                        break;
+                    }
+                }
+            }
+        } else {
+            Log.w(TAG, "hasVoiceCommunicationActive null mAudioManager");
+        }
+        return result;
     }
 
     private int avrcpPassthroughToKeyCode(int operation) {
