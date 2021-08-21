@@ -58,7 +58,7 @@ class BrowsedMediaPlayer_ext {
 
     private boolean mBrowseRoot = false;
 
-    /*  package and service name of target Media Player which is set for browsing */
+    /* package and service name of target Media Player which is set for browsing */
     private String mPackageName;
     private String mConnectingPackageName;
     private String mClassName;
@@ -134,6 +134,7 @@ class BrowsedMediaPlayer_ext {
                     + ", Sending fail response!");
             mMediaInterface.setBrowsedPlayerRsp(mBDAddr, AvrcpConstants_ext.RSP_PLAY_NOT_BROW,
                     (byte) 0x00, 0, null);
+            RespondPendingGetFolderItemsVFS();
         }
 
         @Override
@@ -143,6 +144,7 @@ class BrowsedMediaPlayer_ext {
             mTempMediaBrowser = null;
             mConnState = SUSPENDED;
             Log.e(TAG, "mediaBrowser SUSPENDED connection with " + mPackageName);
+            RespondPendingGetFolderItemsVFS();
             resetBrowse();
         }
     }
@@ -313,8 +315,8 @@ class BrowsedMediaPlayer_ext {
     /* initialize mediacontroller in order to communicate with media player. */
     private void onBrowseConnect(String connectedPackage, MediaBrowser browser) {
         if (!connectedPackage.equals(mConnectingPackageName)) {
-            Log.w(TAG, "onBrowseConnect: recieved callback for package" + mConnectingPackageName +
-                    "we aren't connecting to " + connectedPackage);
+            Log.w(TAG, "onBrowseConnect: recieved callback for package " + mConnectingPackageName +
+                    " we aren't connecting to " + connectedPackage);
             mMediaInterface.setBrowsedPlayerRsp(
                     mBDAddr, AvrcpConstants_ext.RSP_INTERNAL_ERR, (byte) 0x00, 0, null);
             RespondPendingGetFolderItemsVFS();
@@ -395,7 +397,7 @@ class BrowsedMediaPlayer_ext {
     }
 
     public void setBrowsed(String packageName, String cls) {
-        Log.w(TAG, "!! In setBrowse function !!" + mFolderItems + "browse root " + mBrowseRoot);
+        Log.w(TAG, "!! In setBrowse function !!" + mFolderItems + " browse root " + mBrowseRoot);
         if ((mPackageName != null && packageName != null && !mPackageName.equals(packageName))
                 || (mFolderItems == null) || mBrowseRoot) {
             Log.d(TAG, "setBrowse for packageName = " + packageName);
@@ -420,7 +422,7 @@ class BrowsedMediaPlayer_ext {
             int rsp_status = AvrcpConstants_ext.RSP_NO_ERROR;
             int folder_depth = (mPathStack.size() > 0) ? (mPathStack.size() - 1) : 0;
             if (!mPathStack.empty()) {
-                Log.d(TAG, "~~current Path = " + mPathStack.peek());
+                Log.d(TAG, "current Path = " + mPathStack.peek());
                 if (mPathStack.size() > 1) {
                     String top = mPathStack.peek();
                     mPathStack.pop();
@@ -667,9 +669,12 @@ class BrowsedMediaPlayer_ext {
         mFolderItemsReqObj = reqObj;
 
         if ((mCurrentBrowsePackage != null) && (!mCurrentBrowsePackage.equals(mPackageName))) {
+            mNeedToSendGetFolderItem = true;
             Log.w(TAG, "Try reconnection with Browser service as addressed pkg is changed = "
-                    + mCurrentBrowsePackage + "from " + mPackageName);
+                    + mCurrentBrowsePackage + " from " + mPackageName);
             TryReconnectBrowse(mCurrentBrowsePackage, mCurrentBrowseClass);
+            Log.w(TAG, "Need to send getFolderItemsVFS after obtaing VFS without SetBrowse");
+            return;
         }
 
         if (mFolderItems == null && mTempMediaBrowser == null) {
@@ -686,7 +691,7 @@ class BrowsedMediaPlayer_ext {
                     mFolderItemsReqObj.mEndItem);
         } else {
             mNeedToSendGetFolderItem = true;
-            Log.w(TAG, "Need to send getFolderItemsVFS after obtaing VFS");
+            Log.w(TAG, "Need to send getFolderItemsVFS after obtaing VFS post SetBrowse Rsp");
         }
     }
 
