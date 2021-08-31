@@ -31,14 +31,17 @@ package com.android.bluetooth.avrcp;
 
 import com.android.bluetooth.IObexConnectionHandler;
 import com.android.bluetooth.ObexServerSockets;
+import com.android.bluetooth.btservice.AdapterService;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Attributable;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.MediaMetadata;
 import android.os.Message;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -60,7 +63,7 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
     // The handle to the socket registration with SDP
     private ObexServerSockets mServerSocket = null;
 
-    private BluetoothAdapter mAdapter;
+    private AdapterService mAdapterService;
 
     private Context mContext;
 
@@ -84,7 +87,7 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
     public AvrcpBipRsp (Context context, int maxBipConnections) {
         mContext = context;
         mMaxBipDevices = maxBipConnections;
-        mAdapter = BluetoothAdapter.getDefaultAdapter();
+        mAdapterService = AdapterService.getAdapterService();
         mHandlerThread = new HandlerThread("BipHandlerThread");
         mHandlerThread.start();
         mBipStateMachineMap.clear();
@@ -119,7 +122,7 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
             if (D) Log.d(TAG, "Handler(): got msg=" + msg.what);
             switch (msg.what) {
                 case START_LISTENER:
-                    if (mAdapter != null && mAdapter.isEnabled()) {
+                    if (mAdapterService != null && mAdapterService.isEnabled()) {
                         startL2capListener();
                     } else {
                         Log.w(TAG, "Adapter is disabled, ignoring..");
@@ -240,60 +243,49 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
     }
 
     BluetoothDevice getBluetoothDevice(byte[] address) {
-        BluetoothDevice device = null;
-        try {
-            if (address != null && address.length == BD_ADDR_LEN) {
-                device = mAdapter.getRemoteDevice(address);
-            } else {
-                Log.w(TAG, " getBluetoothDevice invalid address ");
-            }
-        } catch (RuntimeException e) {
-            Log.w(TAG, " getBluetoothDevice " + e.toString());
-        }
-        return device;
+        return Attributable.setAttributionSource(
+                BluetoothAdapter.getDefaultAdapter().getRemoteDevice(address), null);
     }
 
-    synchronized String getImgHandleFromTitle(byte[] address, String title) {
-        if(D) Log.d(TAG," getImgHandleFromTitle address :" + address + " title :" + title);
-        if (address == null || address.length != BD_ADDR_LEN) {
-            Log.w(TAG," retrun invalid getImgHandleFromTitle");
-            return "";
-        }
-        BluetoothDevice device = getBluetoothDevice(address);
-        AvrcpTgBipStateMachine bipSm = mBipStateMachineMap.get(device);
-        if(bipSm != null) {
-            AvrcpBipRspObexServer bipServer = bipSm.getBipRsp();
-            if(bipServer != null) {
-                return bipServer.getImgHandleFromTitle(title);
-            } else {
-                Log.w(TAG,"getImgHandleFromTitle bipServer null");
-            }
-        } else {
-            Log.w(TAG,"getImgHandleFromTitle bipSm null");
-        }
-        return "";
-    }
-
-    synchronized String getImgHandle(BluetoothDevice device, String albumName) {
-        if (D) Log.v(TAG," getImgHandle device :" + device + " albumName :" + albumName);
-        if (device == null || albumName == null) {
+    synchronized String getImgHandle(BluetoothDevice device, MediaMetadata data) {
+        if (D) Log.d(TAG," getImgHandle device :" + device + " data :" + data);
+        if ( data == null || device == null) {
             Log.w(TAG," retrun invalid getImgHandle ");
             return "";
         }
         AvrcpTgBipStateMachine bipSm = mBipStateMachineMap.get(device);
-        if(bipSm != null) {
+        if (bipSm != null) {
             AvrcpBipRspObexServer bipServer = bipSm.getBipRsp();
-            if(bipServer != null) {
-                return bipServer.getImgHandle(albumName);
+            if (bipServer != null) {
+                return bipServer.getImgHandle(data);
             } else {
-                Log.v(TAG,"getImgHandle bipServer null");
+                Log.w(TAG,"getImgHandle bipServer null");
             }
         } else {
-            Log.v(TAG,"getImgHandle bipSm null");
+            Log.w(TAG,"getImgHandle bipSm null");
         }
         return "";
     }
 
+    synchronized String getImgHandle(BluetoothDevice device, String title) {
+        if (D) Log.d(TAG," getImgHandle device :" + device + " title :" + title);
+        if (device == null || title == null) {
+            Log.w(TAG," retrun invalid getImgHandle ");
+            return "";
+        }
+        AvrcpTgBipStateMachine bipSm = mBipStateMachineMap.get(device);
+        if (bipSm != null) {
+            AvrcpBipRspObexServer bipServer = bipSm.getBipRsp();
+            if (bipServer != null) {
+                return bipServer.getImgHandle(title);
+            } else {
+                Log.w(TAG,"getImgHandle bipServer null");
+            }
+        } else {
+            Log.w(TAG,"getImgHandle bipSm null");
+        }
+        return "";
+    }
     void disconnect(BluetoothDevice device) {
         AvrcpTgBipStateMachine bipSm = mBipStateMachineMap.get(device);
         if (D) Log.d(TAG, "disconnect device :" + device + " bipSm :" + bipSm);
@@ -323,21 +315,4 @@ public class AvrcpBipRsp implements IObexConnectionHandler {
         }
         return maxBipConnection;
     }
-
-    // Todo : Added to avaoid compilation issue
-    public AvrcpBipRsp (Context context) {
-        mContext = context;
-        mMaxBipDevices = getMaxDevices();
-        mAdapter = BluetoothAdapter.getDefaultAdapter();
-        mHandlerThread = new HandlerThread("BipHandlerThread");
-        mHandlerThread.start();
-        mBipStateMachineMap.clear();
-        if (D) Log.d(TAG, "mMaxBipDevices, ignore :" + mMaxBipDevices);
-    }
-
-    public String getImgHandle(String imgHandle){
-        if (D) Log.d(TAG, "getImgHandle ignore ");
-        return "";
-    }
-
 }
