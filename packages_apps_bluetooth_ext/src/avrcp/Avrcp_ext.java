@@ -229,7 +229,9 @@ public final class Avrcp_ext {
     private static final int MSG_PLAY_STATUS_CMD_TIMEOUT = 33;
     private final static int MESSAGE_START_SHO = 34;
     private static final int MSG_SET_ACTIVE_DEVICE = 35;
+    private static final int MSG_LONG_PRESS_PT_CMD_TIMEOUT = 36;
 
+    private static final int LONG_PRESS_PT_CMD_TIMEOUT_DELAY = 600;
     private static final int CMD_TIMEOUT_DELAY = 2000;
     private static final int MAX_ERROR_RETRY_TIMES = 6;
     private static final int AVRCP_MAX_VOL = 127;
@@ -1582,15 +1584,26 @@ public final class Avrcp_ext {
                 break;
 
             case MSG_NATIVE_REQ_PASS_THROUGH:
-                if (DEBUG)
-                    Log.v(TAG, "MSG_NATIVE_REQ_PASS_THROUGH: id=" + msg.arg1 + " st=" + msg.arg2);
+            {
+                Log.v(TAG, "MSG_NATIVE_REQ_PASS_THROUGH: id = " + msg.arg1 + " st = " + msg.arg2);
                 // argument 1 is id, argument 2 is keyState
+                mHandler.removeMessages(MSG_LONG_PRESS_PT_CMD_TIMEOUT);
                 Bundle data = msg.getData();
                 byte[] bdaddr = data.getByteArray("BdAddress");
                 String address = Utils.getAddressStringFromByte(bdaddr);
                 Log.v(TAG, "MSG_NATIVE_REQ_PASS_THROUGH " + address);
                 handlePassthroughCmd(bdaddr, msg.arg1, msg.arg2);
                 break;
+            }
+
+            case MSG_LONG_PRESS_PT_CMD_TIMEOUT:
+            {
+                Bundle data = msg.getData();
+                byte[] bdaddr = data.getByteArray("BdAddress");
+                Log.v(TAG, "MSG_LONG_PRESS_PT_CMD_TIMEOUT id = " + msg.arg1 + " st = " + msg.arg2);
+                handlePassthroughCmd(bdaddr, msg.arg1, msg.arg2);
+                break;
+            }
 
             case MSG_SET_AVRCP_CONNECTED_DEVICE:
                 BluetoothDevice device = (BluetoothDevice) msg.obj;
@@ -5629,6 +5642,15 @@ public final class Avrcp_ext {
                 mFastforward = false;
                 mRewind = false;
             }
+        }
+
+        if ((code == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD || code == KeyEvent.KEYCODE_MEDIA_REWIND)
+                && (mFastforward || mRewind) && (state == AvrcpConstants_ext.KEY_STATE_PRESS)) {
+            Message msg = mHandler.obtainMessage(MSG_LONG_PRESS_PT_CMD_TIMEOUT, op, state);
+            Bundle data = new Bundle();
+            data.putByteArray("BdAddress", bdaddr);
+            msg.setData(data);
+            mHandler.sendMessageDelayed(msg, LONG_PRESS_PT_CMD_TIMEOUT_DELAY);
         }
 
         /* IOT Fix as some remote recognise FF/Rewind state as non-playing hence send
