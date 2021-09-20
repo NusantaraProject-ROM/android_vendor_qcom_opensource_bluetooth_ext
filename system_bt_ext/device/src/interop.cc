@@ -77,6 +77,7 @@ static std::map<std::string, int> feature_name_id_map;
 #define VALID_MNFR_STR_LEN    (6)
 #define VALID_SSR_LAT_LEN   (15)
 #define VALID_VERSION_LEN   (6)
+#define VALID_LMP_VERSION_LEN   (20)
 #define VENDOR_VALUE_SEPARATOR  "-"
 
 #define ADDR_BASED    "Address_Based"
@@ -85,6 +86,7 @@ static std::map<std::string, int> feature_name_id_map;
 #define VNDR_PRDT_BASED   "Vndr_Prdt_Based"
 #define SSR_MAX_LAT_BASED   "SSR_Max_Lat_Based"
 #define VERSION_BASED   "Version_Based"
+#define LMP_VERSION_BASED   "LMP_Version_Based"
 
 struct config_t {
   list_t *sections;
@@ -112,6 +114,14 @@ typedef struct {
   interop_feature_t feature;
 } interop_version_t;
 
+typedef struct {
+  RawAddress addr;
+  size_t length;
+  uint8_t  lmp_ver;
+  uint16_t lmp_sub_ver;
+  interop_feature_t feature;
+} interop_lmp_version_t;
+
 typedef enum {
     INTEROP_BL_TYPE_ADDR = 0,
     INTEROP_BL_TYPE_NAME,
@@ -119,6 +129,7 @@ typedef enum {
     INTEROP_BL_TYPE_VNDR_PRDT,
     INTEROP_BL_TYPE_SSR_MAX_LAT,
     INTEROP_BL_TYPE_VERSION,
+    INTEROP_BL_TYPE_LMP_VERSION,
 
 } interop_bl_type;
 
@@ -139,6 +150,7 @@ typedef struct {
         interop_hid_multitouch_t vnr_pdt_entry;
         interop_hid_ssr_max_lat_t ssr_max_lat_entry;
         interop_version_t version_entry;
+        interop_lmp_version_t lmp_version_entry;
     } entry_type;
 
 } interop_db_entry_t;
@@ -587,6 +599,21 @@ static void interop_database_add_( interop_db_entry_t *db_entry,
         interop_config_flush();
         break;
       }
+    case INTEROP_BL_TYPE_LMP_VERSION:
+      {
+        interop_feature_t feature =
+          db_entry->entry_type.lmp_version_entry.feature;
+        char m_version[KEY_MAX_LENGTH] = { '\0' };
+        std::string addrstr = db_entry->entry_type.lmp_version_entry.addr.ToString();
+        const char* bdstr = addrstr.c_str();
+        snprintf(m_version, sizeof(m_version), "%s-0x%02x-00x%04x",
+            bdstr, db_entry->entry_type.lmp_version_entry.lmp_ver,
+                   db_entry->entry_type.lmp_version_entry.lmp_sub_ver);
+        interop_config_set_str(interop_feature_string_(feature),
+            m_version, LMP_VERSION_BASED);
+        interop_config_flush();
+        break;
+      }
   }
 }
 
@@ -707,6 +734,21 @@ static bool interop_database_match_( interop_db_entry_t *entry,
           }
           break;
         }
+      case INTEROP_BL_TYPE_LMP_VERSION:
+        {
+          interop_lmp_version_t *src = &entry->entry_type.lmp_version_entry;
+          interop_lmp_version_t *cur = &db_entry->entry_type.lmp_version_entry;
+
+          if ((src->feature == cur->feature) &&
+              (!memcmp( &src->addr, &cur->addr, cur->length)) ) {
+            src->length = cur->length;
+            if (ret_entry) {
+              *ret_entry = db_entry;
+            }
+            found = true;
+          }
+          break;
+        }
     }
 
     if (found) {
@@ -816,6 +858,21 @@ static bool interop_database_remove_( interop_db_entry_t *entry)
         interop_config_flush();
         break;
       }
+    case INTEROP_BL_TYPE_LMP_VERSION:
+      {
+        interop_lmp_version_t *src = &entry->entry_type.lmp_version_entry;
+
+        interop_feature_t feature = src->feature;
+        char m_version[KEY_MAX_LENGTH] = { '\0' };
+        std::string addrstr = src->addr.ToString();
+        const char* bdstr = addrstr.c_str();
+        snprintf(m_version, sizeof(m_version), "%s-0x%02x-0x%04x",
+            bdstr, src->lmp_ver,src->lmp_sub_ver);
+        interop_config_remove(interop_feature_string_(feature),
+            m_version);
+        interop_config_flush();
+        break;
+      }
     default:
     status = false;
   }
@@ -889,6 +946,35 @@ static bool get_addr_maxlat(char *str, char *bdaddrstr,
       ret_value = true;
   }
   return ret_value;
+}
+
+static bool get_addr_lmp_ver(char *str, char *bdaddrstr,
+               uint8_t *lmp_ver ,uint16_t *lmp_sub_ver)
+{
+    char *token;
+    char *saveptr;
+    char *e;
+
+  if ( (token = strtok_r(str, VENDOR_VALUE_SEPARATOR,
+                  &saveptr)) != NULL) {
+    trim(token);
+    strlcpy(bdaddrstr, token, KEY_MAX_LENGTH);
+  }
+  if ( (token = strtok_r(NULL, VENDOR_VALUE_SEPARATOR, &saveptr)) != NULL) {
+    trim(token);
+    errno = 0;
+    *lmp_ver = (uint8_t)strtoul(token, &e, 16);
+    if ( errno == EINVAL || errno == ERANGE )
+      return false;
+  }
+  if ( (token = strtok_r(NULL, VENDOR_VALUE_SEPARATOR, &saveptr)) != NULL) {
+    trim(token);
+    errno = 0;
+    *lmp_sub_ver = (uint16_t)strtoul(token, &e, 16);
+    if ( (e != NULL) || errno != EINVAL || errno != ERANGE )
+      return true;
+  }
+  return false;
 }
 
 static char* interop_trim_name(char* str) {
@@ -1071,6 +1157,59 @@ bool load_to_database(int feature, char *key, char *value, interop_entry_type en
     entry->entry_type.version_entry.feature = (interop_feature_t)feature;
     entry->entry_type.version_entry.version = version;
     interop_database_add_(entry, false);
+  } else if ( !strncasecmp( value, LMP_VERSION_BASED, strlen(LMP_VERSION_BASED))) {
+
+    uint8_t lmp_ver;
+    uint16_t lmp_sub_ver;
+    char tmp_key[KEY_MAX_LENGTH] = { '\0' };
+    char bdaddr_str[KEY_MAX_LENGTH] = { '\0' };
+
+    if ( strlen(key) != VALID_LMP_VERSION_LEN ) {
+      LOG_WARN(LOG_TAG,
+      " ignoring %s due to invalid key for lmp ver in config file",key);
+      return false;
+    }
+
+    strlcpy(tmp_key, key, KEY_MAX_LENGTH);
+    if (!get_addr_lmp_ver(tmp_key, bdaddr_str, &lmp_ver, &lmp_sub_ver)) {
+      LOG_WARN(LOG_TAG, " Error in parsing address and lmp_ver %s", key);
+      return false;
+    }
+
+    char bdstr[18] = { '\0' };
+    RawAddress addr;
+    int len = 0;
+    char append_str[] = ":00";
+
+    len = (strlen(bdaddr_str) + 1) / 3;
+    if ( len < 3 && len > 6 ) {
+      LOG_WARN(LOG_TAG, "%s Ignoring as invalid entry for Address %s",
+      __func__, bdaddr_str);
+      return false;
+    }
+
+    snprintf(bdstr, sizeof(bdstr), "%s", bdaddr_str);
+    for ( int i = 6;  i > len; i-- )
+      strlcat(bdstr, append_str, sizeof(bdstr));
+
+    RawAddress::FromString(bdstr, addr);
+
+    if (!RawAddress::IsValidAddress(bdstr)) {
+      LOG_WARN(LOG_TAG,
+      "%s key %s or Bluetooth Address %s is invalid, not added to interop list",
+      __func__, key, bdstr);
+      return false;
+    }
+
+    interop_db_entry_t *entry = (interop_db_entry_t *)osi_calloc(sizeof(interop_db_entry_t));
+    entry->bl_type = INTEROP_BL_TYPE_LMP_VERSION;
+    entry->bl_entry_type = entry_type;
+    entry->entry_type.lmp_version_entry.feature = (interop_feature_t)feature;
+    entry->entry_type.lmp_version_entry.addr = addr;
+    entry->entry_type.lmp_version_entry.length = len;
+    entry->entry_type.lmp_version_entry.lmp_ver = lmp_ver;
+    entry->entry_type.lmp_version_entry.lmp_sub_ver = lmp_sub_ver;
+    interop_database_add_(entry, false);
   }
   LOG_DEBUG(LOG_TAG, " feature:: %d, key :: %s, value :: %s",
                     feature, key, value);
@@ -1224,6 +1363,25 @@ void interop_database_add_version(const interop_feature_t feature, uint16_t vers
   interop_database_add_(entry, true);
 }
 
+void interop_database_add_addr_lmp_version(const interop_feature_t feature,
+                  const RawAddress *addr, size_t length, uint8_t lmp_ver, uint16_t lmp_sub_ver)
+{
+
+  assert(addr);
+  assert(length > 0);
+  assert(length < sizeof(RawAddress));
+
+  interop_db_entry_t *entry = (interop_db_entry_t *)osi_calloc(sizeof(interop_db_entry_t));
+  entry->bl_type = INTEROP_BL_TYPE_LMP_VERSION;
+  entry->bl_entry_type = INTEROP_ENTRY_TYPE_DYNAMIC;
+  memcpy(&entry->entry_type.lmp_version_entry.addr, addr, length);
+  entry->entry_type.lmp_version_entry.feature = feature;
+  entry->entry_type.lmp_version_entry.length = length;
+  entry->entry_type.lmp_version_entry.lmp_ver = lmp_ver;
+  entry->entry_type.lmp_version_entry.lmp_sub_ver = lmp_sub_ver;
+  interop_database_add_(entry, true);
+}
+
 bool interop_database_match_manufacturer(const interop_feature_t feature,
                       uint16_t manufacturer)
 {
@@ -1357,6 +1515,32 @@ bool interop_database_match_version(const interop_feature_t feature, uint16_t ve
 
   return false;
 }
+
+bool interop_database_match_addr_get_lmp_ver(const interop_feature_t feature,
+                   const RawAddress *addr, uint8_t *lmp_ver, uint16_t *lmp_sub_ver)
+{
+
+  interop_db_entry_t entry;
+  interop_db_entry_t *ret_entry = NULL;
+
+  entry.bl_type = INTEROP_BL_TYPE_LMP_VERSION;
+
+  entry.entry_type.lmp_version_entry.feature = feature;
+  memcpy(&entry.entry_type.lmp_version_entry.addr, addr, sizeof(RawAddress));
+  entry.entry_type.lmp_version_entry.feature = feature;
+  entry.entry_type.lmp_version_entry.length = sizeof(RawAddress);
+  if (interop_database_match_(&entry, &ret_entry, (interop_entry_type)(INTEROP_ENTRY_TYPE_STATIC  | INTEROP_ENTRY_TYPE_DYNAMIC))) {
+      LOG_WARN(LOG_TAG, "%s() Device %s is a match for interop workaround %s.",
+        __func__, addr->ToString().c_str(),
+        interop_feature_string_(feature));
+      *lmp_ver = ret_entry->entry_type.lmp_version_entry.lmp_ver;
+      *lmp_sub_ver = ret_entry->entry_type.lmp_version_entry.lmp_sub_ver;
+    return true;
+  }
+
+  return false;
+}
+
 
 bool interop_database_remove_name( const interop_feature_t feature, const char *name)
 {
@@ -1516,6 +1700,30 @@ bool interop_database_remove_version(const interop_feature_t feature, uint16_t v
   return false;
 }
 
+bool interop_database_remove_addr_lmp_version(const interop_feature_t feature,
+          const RawAddress *addr, size_t length, uint8_t lmp_ver, uint16_t lmp_sub_ver)
+{
+
+  interop_db_entry_t entry;
+
+  entry.bl_type = INTEROP_BL_TYPE_LMP_VERSION;
+  entry.bl_entry_type = INTEROP_ENTRY_TYPE_DYNAMIC;
+
+  memcpy(&entry.entry_type.lmp_version_entry.addr, addr, sizeof(RawAddress));
+  entry.entry_type.lmp_version_entry.feature = feature;
+  entry.entry_type.lmp_version_entry.length = sizeof(RawAddress);
+  entry.entry_type.lmp_version_entry.lmp_ver = lmp_ver;
+  entry.entry_type.lmp_version_entry.lmp_sub_ver = lmp_sub_ver;
+
+  if (interop_database_remove_(&entry)) {
+      LOG_WARN(LOG_TAG,
+        "%s() Device %s is a removed from interop workaround %s.",
+        __func__, addr->ToString().c_str(),
+        interop_feature_string_(feature));
+    return true;
+  }
+  return false;
+}
 
 bool interop_database_get_whitelisted_media_players_list( const interop_feature_t feature, list_t** p_bl_devices)
 {
