@@ -288,7 +288,7 @@ int len_short_char = 2;
 int curr_char_val_len =0;
 int curr_handle = 0;
 
-std::map<int, std::vector<uint8_t>> cccd_value_map;
+std::map<RawAddress, std::vector<uint8_t>> cccd_value_map;
 
 int exec_write_status = BT_STATUS_SUCCESS;
 int invalid_offset = 0x07;
@@ -1058,7 +1058,7 @@ static void request_read_cb(int conn_id, int trans_id, const RawAddress& bda,
     //Client char configuration descriptor
     else if(attr_handle == 43)
     {
-        cccd_val = cccd_value_map[conn_id];
+        cccd_val = cccd_value_map[bda];
         for(int i=0; i< cccd_val.size(); i++) {
             val[i] = cccd_val[i];
         }
@@ -1124,8 +1124,8 @@ static void request_write_cb(int conn_id, int trans_id, const RawAddress& bda,
         for(int i=0; i< value.size(); i++) {
             cccd_val[i] = value[i];
         }
-        //cccd_value_map.insert(std::make_pair(conn_id, cccd_val));
-        cccd_value_map[conn_id] = value;
+        //cccd_value_map.insert(std::make_pair(bda, cccd_val));
+        cccd_value_map[bda] = value;
         memcpy(gatt_resp.attr_value.value, &cccd_val, value.size());
         gatt_resp.attr_value.len = value.size();
     }
