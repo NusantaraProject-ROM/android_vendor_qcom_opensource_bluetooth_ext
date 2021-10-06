@@ -5344,6 +5344,12 @@ public final class Avrcp_ext {
     }
 
     public int getVolume(BluetoothDevice device) {
+        if (ApmConstIntf.getLeAudioEnabled()) {
+            VolumeManagerIntf mVolumeManager = VolumeManagerIntf.get();
+            int volume = mVolumeManager.getSavedVolume(device, ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
+            Log.d(TAG, "getVolume_LE: Returning volume " + volume);
+            return volume;
+        }
         if (!mVolumeMap.containsKey(device)) {
             Log.w(TAG, "getVolume: Couldn't find volume preference for device: " + device);
             return mAudioStreamMax/2;
