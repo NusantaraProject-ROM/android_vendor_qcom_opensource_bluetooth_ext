@@ -649,6 +649,8 @@ static bt_soc_type_t convertSocNameToBTSocType(const char * soc_name)
     soc_type = BT_SOC_TYPE_HASTINGS;
   } else if (!strncasecmp(soc_name, "moselle", sizeof("moselle"))) {
     soc_type = BT_SOC_TYPE_MOSELLE;
+  } else if (!strncasecmp(soc_name, "hamilton", sizeof("hamilton"))) {
+    soc_type = BT_SOC_TYPE_HAMILTON;
   } else if (!strncasecmp(soc_name, "pronto", sizeof("pronto"))) {
     soc_type = BT_SOC_TYPE_DEFAULT;
   } else {

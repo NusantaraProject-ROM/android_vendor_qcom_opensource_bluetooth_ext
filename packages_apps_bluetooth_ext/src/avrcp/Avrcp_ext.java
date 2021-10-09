@@ -4887,11 +4887,12 @@ public final class Avrcp_ext {
 
         public void setBrowsedPlayerRsp(byte[] address, int rspStatus, byte depth, int numItems,
                 String[] textArray) {
+            Log.d(TAG, "setBrowsedRsp with rsp status  " + rspStatus);
             if (!setBrowsedPlayerRspNative(address, rspStatus, depth, numItems, textArray)) {
                 Log.e(TAG, "setBrowsedPlayerRsp failed!");
             }
             else {
-                if (address != null && address.length != 6) {
+                if (address != null && address.length == 6) {
                     mCurrentBrowsingDevice = mAdapter.getRemoteDevice(address);
                     Log.e(TAG, "setBrowsedRsp successfully sent to " + mCurrentBrowsingDevice);
                 }
