@@ -497,12 +497,14 @@ public final class Avrcp_ext {
                   new ArrayList<String>(Arrays.asList(adapterService.getWhitelistedMediaPlayers()));
             Log.w(TAG,"List of Players in WhiteListDB Conf file are: " + mBrowsePlayerListConfWLDB);
         }
-
+        boolean isCoverArtEnabled =
+                mContext.getResources().getBoolean(R.bool.avrcp_target_enable_bip);
         String avrcpVersion = SystemProperties.get(AVRCP_VERSION_PROPERTY, AVRCP_1_6_STRING);
-        if (DEBUG) Log.d(TAG, "avrcpVersion " + avrcpVersion);
+        if (DEBUG) Log.d(TAG, "avrcpVersion " + avrcpVersion
+                + " isCoverArtEnabled " + isCoverArtEnabled);
         /* Enable Cover Art support is version is 1.6 and flag is set in config */
         if (isCoverArtSupported && avrcpVersion != null &&
-            avrcpVersion.equals(AVRCP_1_6_STRING))
+            avrcpVersion.equals(AVRCP_1_6_STRING) && isCoverArtEnabled)
             mAvrcpBipRsp = new AvrcpBipRsp(mContext, maxAvrcpConnections);
         if (mAvrcpBipRsp != null) {
             if (DEBUG) Log.d(TAG, "Starting AVRCP BIP Responder Service");
@@ -2130,11 +2132,11 @@ public final class Avrcp_ext {
                 mediaTotalNumber = longStringOrBlank(data.getLong(MediaMetadata.METADATA_KEY_NUM_TRACKS));
                 genre = stringOrBlank(data.getString(MediaMetadata.METADATA_KEY_GENRE));
                 playingTimeMs = data.getLong(MediaMetadata.METADATA_KEY_DURATION);
-                Log.d(TAG," albumName :" + albumName + " device :" + device);
-                if (mAvrcpBipRsp != null && device != null)
-                    coverArt = stringOrBlank(mAvrcpBipRsp.getImgHandle(device, albumName));
-                else coverArt = stringOrBlank(null);
-
+                if (mAvrcpBipRsp != null) {
+                    coverArt = getImgHandle(device, data);
+                } else {
+                    coverArt = "";
+                }
                 // Try harder for the title.
                 title = data.getString(MediaMetadata.METADATA_KEY_TITLE);
 
@@ -2200,13 +2202,8 @@ public final class Avrcp_ext {
                 case ATTR_PLAYING_TIME_MS:
                     return Long.toString(playingTimeMs);
                 case ATTR_COVER_ART:
-                    if (mAvrcpBipRsp != null && device != null) {
-                        /* Fetch coverArt Handle now in case OBEX channel is established just
-                        * before retrieving get element attribute. */
-                        coverArt = stringOrBlank(mAvrcpBipRsp.getImgHandle(device, albumName));
-                    } else {
-                        coverArt = stringOrBlank(null);
-                    }
+                    String name = (TextUtils.isEmpty(title) ? albumName : title);
+                    coverArt = getImgHandle(device, name);
                     return coverArt;
                 default:
                     return new String();
@@ -2239,7 +2236,7 @@ public final class Avrcp_ext {
             return "[MediaAttributes: " + Utils.ellipsize(title) + " - "
                     + Utils.ellipsize(albumName) + " by " + Utils.ellipsize(artistName) + " ("
                     + playingTimeMs + " " + mediaNumber + "/" + mediaTotalNumber + ") " + genre
-                    + "]";
+                    + "-" + coverArt +" ]";
         }
     }
 
@@ -2264,7 +2261,8 @@ public final class Avrcp_ext {
                     playbackState = mMediaController.getPlaybackState();
 
                 if (device == null) {
-                    isPlaying = isPlayingState(mCurrentPlayerState) || mAudioPlaybackIsActive;
+                    isPlaying = (isPlayingState(mCurrentPlayerState) || mAudioPlaybackIsActive) &&
+                            (mA2dpState == BluetoothA2dp.STATE_PLAYING);
                 } else { //Update playstate for a2dp play state change
                     isPlaying = mAudioPlaybackIsActive && (mA2dpState==BluetoothA2dp.STATE_PLAYING);
                 }
@@ -2281,10 +2279,8 @@ public final class Avrcp_ext {
                             PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0.0f);
                 }
                 newState = builder.build();
-
                 currentAttributes = new MediaAttributes(device,
                         (mMediaController != null) ? mMediaController.getMetadata() : null);
-
                 for (int i = 0; i < maxAvrcpConnections; i++) {
                     if (device != null && deviceFeatures[i].mCurrentDevice != null) {
                         if ((isPlaying != isPlayingState(deviceFeatures[i].mCurrentPlayState)) &&
@@ -2312,14 +2308,21 @@ public final class Avrcp_ext {
                         newState = builder.build();
                     }
                 } else {
-                    if (mAudioPlaybackIsActive && !isPlayingState(newState)) {
+                    if (mAudioPlaybackIsActive && !isPlayingState(newState) &&
+                            (mA2dpState==BluetoothA2dp.STATE_PLAYING)) {
                         builder.setState(PlaybackState.STATE_PLAYING, newState.getPosition(), 1.0f);
                         newState = builder.build();
                         Log.d(TAG, "updateCurrentMediaState: updated player state = " + newState);
                     }
                 }
-                Log.v(TAG,"updateCurrentMediaState: get media attributes: ");
-                currentAttributes = new MediaAttributes(device, mMediaController.getMetadata());
+
+                if (device == null) {
+                    currentAttributes = new MediaAttributes(mA2dpService.getActiveDevice(),
+                        mMediaController.getMetadata());
+                } else {
+                    currentAttributes = new MediaAttributes(device,
+                        mMediaController.getMetadata());
+                }
             }
         }
 
@@ -5341,6 +5344,12 @@ public final class Avrcp_ext {
     }
 
     public int getVolume(BluetoothDevice device) {
+        if (ApmConstIntf.getLeAudioEnabled()) {
+            VolumeManagerIntf mVolumeManager = VolumeManagerIntf.get();
+            int volume = mVolumeManager.getSavedVolume(device, ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
+            Log.d(TAG, "getVolume_LE: Returning volume " + volume);
+            return volume;
+        }
         if (!mVolumeMap.containsKey(device)) {
             Log.w(TAG, "getVolume: Couldn't find volume preference for device: " + device);
             return mAudioStreamMax/2;
@@ -5926,18 +5935,42 @@ public final class Avrcp_ext {
     private native boolean registerNotificationRspNowPlayingChangedNative(int type,
             byte[] address);
 
-    public static String getImgHandleFromTitle(String title) {
-        if (DEBUG) Log.d(TAG, " getImgHandleFromTitle title:" + title + " return empty ");
-        return "";
+    String getImgHandle(byte[] bdaddr, MediaMetadata data) {
+        String handle = "";
+        if (mAvrcpBipRsp != null) {
+            handle = getImgHandle(mAvrcpBipRsp.getBluetoothDevice(bdaddr), data);
+        }
+        return handle;
     }
 
-    public static String getImgHandleFromTitle(byte[] bdaddr, String title) {
-        String handle = null;
-        if (DEBUG) Log.d(TAG, " getImgHandleFromTitle bdaddr:" + bdaddr + " title:" + title);
-        if (mAvrcpBipRsp != null && title != null) {
-            handle = mAvrcpBipRsp.getImgHandleFromTitle(bdaddr, title);
-            return (handle != null && !handle.isEmpty()) ? handle:null;
+    String getImgHandle(BluetoothDevice device, MediaMetadata data) {
+        String handle = "";
+        boolean isKeyContains = data.containsKey(MediaMetadata.METADATA_KEY_ALBUM_ART);
+        if (mAvrcpBipRsp != null && device != null && data != null && isKeyContains ) {
+            handle = mAvrcpBipRsp.getImgHandle(device, data);
+            if (DEBUG)
+                Log.d(TAG, " getImgHandle device:" + device + " data:" + data
+                        + " isKeyContains " + isKeyContains + " Handle " + handle);
         }
+        return handle;
+    }
+
+    String getImgHandle(byte[] bdaddr, String title) {
+        String handle = "";
+        if (mAvrcpBipRsp != null && title != null) {
+            handle = getImgHandle(mAvrcpBipRsp.getBluetoothDevice(bdaddr), title);
+        }
+        return handle;
+    }
+
+    String getImgHandle(BluetoothDevice device, String title) {
+        String handle = "";
+        if (mAvrcpBipRsp != null && title != null) {
+            handle = mAvrcpBipRsp.getImgHandle(device, title);
+        }
+        if (DEBUG)
+            Log.d(TAG, " getImgHandle device:" + device
+                    + " title:" + title + " handle " + handle);
         return handle;
     }
 }

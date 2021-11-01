@@ -28,6 +28,7 @@ import javax.obex.ResponseCodes;
 import javax.obex.ServerRequestHandler;
 
 import android.content.Context;
+import android.media.MediaMetadata;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -191,22 +192,24 @@ public class AvrcpBipRspObexServer extends ServerRequestHandler {
         return responseCode;
     }
 
-    String getImgHandleFromTitle(String title) {
-        if (!mConnected) {
-            if (D) Log.d(TAG, "getImgHandleFromTitle, Session not established retrun empty");
+    String getImgHandle(MediaMetadata data) {
+        if (D) Log.d(TAG, "getImgHandle data: " + data);
+        if (mAvrcpBipRspParser == null || data == null || (!mConnected)) {
+            if (D) Log.d(TAG, "getImgHandle: mAvrcpBipRspParser :" + mAvrcpBipRspParser
+                    + " data :" + data + " mConnected :" + mConnected);
             return "";
         }
-        return mAvrcpBipRspParser.getImgHandleFromTitle(title);
+        return mAvrcpBipRspParser.getImgHandle(data);
     }
 
-    String getImgHandle(String albumName) {
-        if (D) Log.d(TAG, "getImgHandle albumName: " + albumName);
-        if (mAvrcpBipRspParser == null || albumName == null || (!mConnected)) {
+    String getImgHandle(String title) {
+        if (D) Log.d(TAG, "getImgHandle title: " + title);
+        if (mAvrcpBipRspParser == null || title == null || (!mConnected)) {
             if (D) Log.d(TAG, "getImgHandle: mAvrcpBipRspParser :" + mAvrcpBipRspParser
-                    + " albumName :" + albumName + " mConnected :" + mConnected);
+                    + " title :" + title + " mConnected :" + mConnected);
             return "";
         }
-        return mAvrcpBipRspParser.getImgHandle(albumName);
+        return mAvrcpBipRspParser.getImgHandle(title);
     }
 
     private final void logHeader(HeaderSet hs) {
@@ -282,7 +285,7 @@ public class AvrcpBipRspObexServer extends ServerRequestHandler {
             return ResponseCodes.OBEX_HTTP_BAD_REQUEST;
         }
         if (D) Log.d(TAG,"getImgThumbRsp: imgHandle = " + imgHandle);
-        if (mAvrcpBipRspParser.getImgThumb(outStream, imgHandle)) {
+        if (mAvrcpBipRspParser.getImgThumb( outStream, imgHandle, op.getMaxPacketSize())) {
             if (!mAborted && mConnected) {
                 if (D) Log.d(TAG,"getImgThumbRsp: returning OBEX_HTTP_OK");
                 return ResponseCodes.OBEX_HTTP_OK;
@@ -308,7 +311,8 @@ public class AvrcpBipRspObexServer extends ServerRequestHandler {
         }
 
         if (D) Log.d(TAG,"getImgRsp: imgHandle = " + imgHandle);
-        if (mAvrcpBipRspParser.getImg(outStream, imgHandle, imgDescXmlString)) {
+        if (mAvrcpBipRspParser.getImg(outStream, imgHandle, imgDescXmlString,
+            op.getMaxPacketSize())) {
             if (!mAborted && mConnected) {
                 if (V) Log.d(TAG,"getImgRsp: returning OBEX_HTTP_OK");
                 return ResponseCodes.OBEX_HTTP_OK;

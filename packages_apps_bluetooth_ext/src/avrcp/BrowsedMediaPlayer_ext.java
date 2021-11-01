@@ -914,13 +914,10 @@ class BrowsedMediaPlayer_ext {
 
                 case AvrcpConstants_ext.ATTRID_COVER_ART:
                     if (mAvrcp != null && mAvrcp.isCoverArtFeatureSupported(bdaddr)) {
-                        attrValue = Avrcp_ext.getImgHandleFromTitle(bdaddr,
-                                desc.getTitle().toString());
-                    } else {
-                        attrValue = null;
+                        String title  = desc.getTitle().toString();
+                        attrValue = mAvrcp.getImgHandle(bdaddr, title);
                     }
                     break;
-
                 default:
                     Log.e(TAG, "getAttrValue: Unknown attribute ID requested: " + attr);
                     return null;
