@@ -102,6 +102,7 @@ typedef struct {
     map_feature_t map_feature_entry;
     max_pow_feature_t max_pow_feature_entry;
     opp_feature_t opp_feature_entry;
+    rf_path_loss_feature_t rf_path_loss_feature_entry;
   } profile_feature_type;
 
 } profile_db_entry_t;
@@ -127,6 +128,7 @@ static const char* profile_name_string_(const profile_t profile_name)
     CASE_RETURN_STR(MAP_ID)
     CASE_RETURN_STR(MAX_POW_ID)
     CASE_RETURN_STR(OPP_ID)
+    CASE_RETURN_STR(RF_PATH_LOSS_ID)
     CASE_RETURN_STR(END_OF_PROFILE_LIST)
   }
   return "UNKNOWN";
@@ -146,6 +148,8 @@ static const char* profile_feature_string_(const profile_info_t feature)
     CASE_RETURN_STR(EDR_MAX_POW_SUPPORT)
     CASE_RETURN_STR(BLE_MAX_POW_SUPPORT)
     CASE_RETURN_STR(OPP_0100_SUPPORT)
+    CASE_RETURN_STR(RF_TX_PATH_COMPENSATION_VALUE)
+    CASE_RETURN_STR(RF_RX_PATH_COMPENSATION_VALUE)
     CASE_RETURN_STR(END_OF_FEATURE_LIST)
   }
   return "UNKNOWN";
@@ -346,6 +350,41 @@ max_pow_feature_t max_radiated_power_fetch(const profile_t profile, profile_info
     LOG_WARN(LOG_TAG, "max_radiated_power_fetch:profile = %d" , profile);
 
   return Tech_max_power;
+}
+
+uint16_t rf_path_loss_values_fetch(const profile_t profile, profile_info_t feature_name)
+{
+  assert(profile);
+  LOG_WARN(LOG_TAG, "rf_path_loss_values_fetch:profile %d", profile);
+  uint16_t compen_value = 0;
+  profile_db_entry_t *db_entry = profile_entry_fetch(profile);
+  if (db_entry == NULL)
+    return compen_value;
+
+  if (profile == RF_PATH_LOSS_ID) {
+    switch (feature_name) {
+      case RF_TX_PATH_COMPENSATION_VALUE :
+      {
+         compen_value = db_entry->profile_feature_type.rf_path_loss_feature_entry.RF_TX_path_compensation_value;
+         LOG_WARN(LOG_TAG,"rf_path_loss_values_fetch:RF_TX_PATH_COMPENSATION_VALUE found, tx value : %d",compen_value);
+      }
+      break;
+      case RF_RX_PATH_COMPENSATION_VALUE :
+      {
+         compen_value = db_entry->profile_feature_type.rf_path_loss_feature_entry.RF_RX_path_compensation_value;
+         LOG_WARN(LOG_TAG,"rf_path_loss_values_fetch:RF_RX_PATH_COMPENSATION_VALUE found, rx value : %d",compen_value);
+      }
+      break;
+      default:
+      {
+        LOG_WARN(LOG_TAG, "rf_path_loss_values_fetch:profile = %d , feature %d not found" , profile, feature_name);
+      }
+      break;
+    }
+  } else
+    LOG_WARN(LOG_TAG, "rf_path_loss_values_fetch:profile = %d not found" , profile);
+
+  return compen_value;
 }
 
 bool profile_feature_fetch(const profile_t profile, profile_info_t feature_name)
@@ -651,6 +690,42 @@ static bool load_to_database(int profile_id, char *key, char *value)
               '\0', VALUE_MAX_LENGTH);
           memcpy(&entry->profile_feature_type.opp_feature_entry.opp_0100_support,
               value, strlen(value));
+        }
+        break;
+        default:
+        {
+          LOG_WARN(LOG_TAG,"%s is invalid key %s", __func__, key);
+        }
+        break;
+      }
+      profile_database_add_(entry);
+    }
+    break;
+    case RF_PATH_LOSS_ID:
+    {
+      LOG_WARN(LOG_TAG, " RF_PATH_LOSS_ID: key :: %s, value :: %s", key, value);
+      entry = profile_entry_fetch(RF_PATH_LOSS_ID);
+      if (entry == NULL) {
+        entry = (profile_db_entry_t *)osi_calloc(sizeof(profile_db_entry_t));
+        entry->profile_id = (profile_t)profile_id;
+      }
+      switch (get_feature(key)) {
+        case RF_TX_PATH_COMPENSATION_VALUE :
+        {
+          uint16_t tx_value;
+          char *e;
+
+          tx_value = (uint16_t)strtoul(value, &e, 16);
+          entry->profile_feature_type.rf_path_loss_feature_entry.RF_TX_path_compensation_value = tx_value;
+        }
+        break;
+        case RF_RX_PATH_COMPENSATION_VALUE :
+        {
+          uint16_t rx_value;
+          char *e;
+
+          rx_value = (uint16_t)strtoul(value, &e, 16);
+          entry->profile_feature_type.rf_path_loss_feature_entry.RF_RX_path_compensation_value = rx_value;
         }
         break;
         default:

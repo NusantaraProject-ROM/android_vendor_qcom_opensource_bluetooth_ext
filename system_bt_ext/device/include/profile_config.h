@@ -31,7 +31,7 @@
 #pragma once
 
 #include <stdbool.h>
-#include <hardware/vendor.h>
+#include "../../../vhal/include/hardware/vendor.h"
 
 static const char PROFILE_CONFIG_MODULE[] = "profile_config_module";
 
@@ -44,5 +44,11 @@ typedef struct {
    bool BLE_max_pow_feature = false;
 } max_pow_feature_t;
 
+typedef struct {
+   uint16_t RF_TX_path_compensation_value;
+   uint16_t RF_RX_path_compensation_value;
+} rf_path_loss_feature_t;
+
 extern bool profile_feature_fetch(const profile_t profile, profile_info_t feature_name);
 extern max_pow_feature_t max_radiated_power_fetch(const profile_t profile, profile_info_t feature_name);
+extern uint16_t rf_path_loss_values_fetch(const profile_t profile, profile_info_t feature_name);
