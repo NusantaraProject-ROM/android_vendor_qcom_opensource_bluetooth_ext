@@ -103,6 +103,7 @@ import java.util.Objects;
 import java.util.StringTokenizer;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.lang.reflect.*;
 /******************************************************************************
  * support Bluetooth AVRCP profile. support metadata, play status, event
@@ -477,7 +478,7 @@ public final class Avrcp_ext {
             mMediaSessionManager.addOnActiveSessionsChangedListener(mActiveSessionListener, null,
                     mHandler);
             mMediaSessionManager.addOnMediaKeyEventSessionChangedListener(
-                    mContext.getMainExecutor(), mMediaKeyEventSessionChangedListener);
+                    Executors.newSingleThreadExecutor(), mMediaKeyEventSessionChangedListener);
         }
         mPackageManager = mContext.getApplicationContext().getPackageManager();
 
