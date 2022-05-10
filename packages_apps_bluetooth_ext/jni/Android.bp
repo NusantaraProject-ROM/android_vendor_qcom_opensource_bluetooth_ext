@@ -12,6 +12,9 @@ cc_defaults {
         "libandroid_runtime",
         "libbtconfigstore",
     ],
+    cflags: [
+        "-Wno-unused-parameter",
+    ],
 }
 
 // BTA static library for target
